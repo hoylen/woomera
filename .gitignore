@@ -4,5 +4,6 @@
 .pub
 .packages
 packages
+pubspec.lock
 doc/api
 build

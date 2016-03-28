@@ -15,12 +15,6 @@ part of woomera;
 // views - templates
 // filters: before after
 
-// content_type
-// headers
-// session optional
-// response.set_cookie response.cookies, response.delete_cookie(name)
-// attachments
-
 //----------------------------------------------------------------
 /// A Web server.
 ///
@@ -138,6 +132,15 @@ class Server {
 
   ExceptionHandler exceptionHandler;
 
+  /// Indicates if the Web server is running secured HTTPS or unsecured HTTP.
+  ///
+  /// True means it is listening for requests over HTTPS. False means it is
+  /// listening for requests over HTTP. Null means it is not running.
+
+  bool get isSecure => _isSecure;
+
+  bool _isSecure;
+
   // Set when the server is running (i.e. is listening for requests).
 
   HttpServer _svr = null;
@@ -204,17 +207,16 @@ class Server {
 
     // Start the server
 
-    var isSecure;
     if (certificateName == null || certificateName.isEmpty) {
       // Normal HTTP bind
-      isSecure = false;
+      _isSecure = false;
       _svr = await HttpServer.bind(bindAddress, bindPort ?? 80);
     } else {
       // Secure HTTPS bind
       //
       // Note: this uses the TLS libraries in Dart 1.13 or later.
       // https://dart-lang.github.io/server/tls-ssl.html
-      isSecure = true;
+      _isSecure = true;
       var securityContext = new SecurityContext()
         ..useCertificateChain(certChainFilename)
         ..usePrivateKey(privateKeyFilename);
@@ -225,14 +227,14 @@ class Server {
 
     // Log that it started
 
-    var url = (isSecure) ? "https://" : "http://";
+    var url = (_isSecure) ? "https://" : "http://";
     url += (_svr.address.isLoopback) ? "localhost" : _svr.address.host;
     if (_svr.port != null) {
       url += ":${_svr.port}";
     }
 
     _logServer.fine(
-        "${(isSecure) ? "HTTPS" : "HTTP"} server started: ${_svr.address} port ${_svr.port} <${url}>");
+        "${(_isSecure) ? "HTTPS" : "HTTP"} server started: ${_svr.address} port ${_svr.port} <${url}>");
 
     // Listen for and process HTTP requests
 
@@ -260,8 +262,9 @@ class Server {
     // Finished: it only gets to here if the server stops running (see [stop] method)
 
     _logServer.fine(
-        "${(isSecure) ? "HTTPS" : "HTTP"} server stopped: ${numRequestsReceived} requests");
+        "${(_isSecure) ? "HTTPS" : "HTTP"} server stopped: ${numRequestsReceived} requests");
     _svr = null;
+    _isSecure = null;
 
     return numRequestsReceived;
   }
@@ -616,6 +619,23 @@ class Server {
   /// application.
 
   String sessionCookieName = "wSession";
+
+  /// Force the use of secure cookies for the session cookie.
+  ///
+  /// If session cookies are used, they are created with their secure flag set
+  /// if this is set to true. That indicated to the browser to only send the
+  /// cookie over a secure connection (HTTPS).
+  ///
+  /// The default value is false. This allows the cookies to be used over HTTPS
+  /// and unsecured HTTP, which is necessary when testing over HTTP.
+  ///
+  /// Note: if the server is run over HTTPS (i.e. the [run] method is invoked
+  /// with credentials) secure cookies are automatically used. Therefore,
+  /// setting this member to true is only important if running the Web server
+  /// in unsecured mode, but with a HTTPS reverse proxy providing a secured
+  /// connection to the Web server.
+
+  bool sessionCookieForceSecure = false;
 
   /// The name of the URL query parameter used to track sessions (if cookies
   /// are not used).
