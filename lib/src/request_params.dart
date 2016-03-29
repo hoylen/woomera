@@ -202,9 +202,21 @@ class RequestParams {
     var str = "";
 
     for (var key in _data.keys) {
-      for (var value in _data[key]) {
-        str += "\n  ${key}=\"${value}\"";
+      if (str.isNotEmpty) {
+        str += ",  ";
       }
+      str += "$key=[";
+
+      var first = true;
+      for (var value in _data[key]) {
+        if (first) {
+          first = false;
+        } else {
+          str += ", ";
+        }
+        str += "\"${value}\"";
+      }
+      str += "]";
     }
 
     return str;
