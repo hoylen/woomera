@@ -69,6 +69,11 @@ class ServerRule {
   ServerRule(String pathPattern, RequestHandler handler) {
     _segments = pathPattern.split(_pathSeparator);
 
+    if (_segments.isEmpty || _segments[0] != "~") {
+      throw new ArgumentError.value(pathPattern, "pathPattern", "Does not start with \"~/\"");
+    }
+    _segments.removeAt(0); // remove the leading "~".
+
     while (_segments.isNotEmpty && _segments[0].isEmpty) {
       _segments.removeAt(0); // remove leading slashes "/", "//", "/////"
     }
@@ -138,5 +143,11 @@ class ServerRule {
 
   /// Prints the pattern
   ///
-  String toString() => _pathSeparator + _segments.join(_pathSeparator);
+  String toString() {
+    if (_segments.isEmpty) {
+      return "~/";
+    } else {
+      return "~" + _pathSeparator + _segments.join(_pathSeparator);
+    }
+  }
 }

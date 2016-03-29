@@ -689,38 +689,38 @@ Future main(List<String> args) async {
 
   // Set up the handlers for the second pipeline
 
-  p2.register("GET", "/", homePage);
+  p2.register("GET", "~/", homePage);
 
-  p2.get("/must/all/match", debugHandler);
-  p2.post("/must/all/match", debugHandler);
+  p2.get("~/must/all/match", debugHandler);
+  p2.post("~/must/all/match", debugHandler);
 
-  p2.get("/one/:first", debugHandler);
-  p2.get("/two/:first/:second", debugHandler);
-  p2.get("/three/:first/:second/:third", debugHandler);
-  p2.post("/one/:first", debugHandler);
-  p2.post("/two/:first/:second", debugHandler);
-  p2.post("/three/:first/:second/:third", debugHandler);
+  p2.get("~/one/:first", debugHandler);
+  p2.get("~/two/:first/:second", debugHandler);
+  p2.get("~/three/:first/:second/:third", debugHandler);
+  p2.post("~/one/:first", debugHandler);
+  p2.post("~/two/:first/:second", debugHandler);
+  p2.post("~/three/:first/:second/:third", debugHandler);
 
-  p2.get("/double/:name/:name", debugHandler);
-  p2.get("/triple/:name/:name/:name", debugHandler);
-  p2.post("/double/:name/:name", debugHandler);
-  p2.post("/triple/:name/:name/:name", debugHandler);
+  p2.get("~/double/:name/:name", debugHandler);
+  p2.get("~/triple/:name/:name/:name", debugHandler);
+  p2.post("~/double/:name/:name", debugHandler);
+  p2.post("~/triple/:name/:name/:name", debugHandler);
 
-  p2.get("/wildcard1/*", debugHandler);
-  p2.get("/wildcard2/*/foo/bar", debugHandler);
-  p2.get("/wildcard3/*/*", debugHandler);
-  p2.get("/wildcard4/*/foo/bar/*/baz", debugHandler);
+  p2.get("~/wildcard1/*", debugHandler);
+  p2.get("~/wildcard2/*/foo/bar", debugHandler);
+  p2.get("~/wildcard3/*/*", debugHandler);
+  p2.get("~/wildcard4/*/foo/bar/*/baz", debugHandler);
 
-  p2.get("/throw/:name", handleThrow); // tests exception handling
+  p2.get("~/throw/:name", handleThrow); // tests exception handling
 
-  p2.get("/test", debugHandler);
-  p2.post("/test", debugHandler);
+  p2.get("~/test", debugHandler);
+  p2.post("~/test", debugHandler);
 
-  p2.get("/streamTest", streamTest);
+  p2.get("~/streamTest", streamTest);
 
-  p2.get("/session/login", handleLogin);
-  p2.get("/session/loginWithCookies", handleLoginWithCookies);
-  p2.get("/session/logout", handleLogout);
+  p2.get("~/session/login", handleLogin);
+  p2.get("~/session/loginWithCookies", handleLoginWithCookies);
+  p2.get("~/session/logout", handleLogout);
 
   // Serve static files
 
@@ -728,15 +728,15 @@ Future main(List<String> args) async {
       .parentOf(FileSystemEntity.parentOf(Platform.script.path));
 
   p2.get(
-      "/file/*",
+      "~/file/*",
       new StaticFiles(projectDir + "/web",
               defaultFilename: "index.html", allowDirectoryListing: true)
           .handler);
 
   // Special handlers for testing
 
-  p2.post("/system/exceptionHandler", handleExceptionHandlers);
-  p2.post("/system/stop", handleStop);
+  p2.post("~/system/exceptionHandler", handleExceptionHandlers);
+  p2.post("~/system/stop", handleStop);
 
   //--------
   // Start the server

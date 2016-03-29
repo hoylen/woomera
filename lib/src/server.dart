@@ -344,6 +344,8 @@ class Server {
     var methodFound = false;
     Response response;
 
+    var pathSegments = req._request.uri.pathSegments;
+
     // Process the request through the pipeline.
 
     // This section of code guarantees to set the "response" (even if exceptions
@@ -362,7 +364,7 @@ class Server {
       methodFound = true;
 
       for (var rule in rules) {
-        var params = rule._matches(req._request.uri.pathSegments);
+        var params = rule._matches(pathSegments);
 
         if (params != null) {
           // A matching rule was found
@@ -381,7 +383,7 @@ class Server {
             _logRequest.fine(str);
           }
 
-          _logRequest.fine("rule: ${rule}");
+          _logRequest.fine("[${req._requestNo}] matched rule: ${rule}");
 
           // Invoke the rule's handler
 

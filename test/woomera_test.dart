@@ -121,19 +121,19 @@ Server createTestServer() {
   pipe1 = webServer.pipelines.first;
   pipe1.exceptionHandler = exceptionHandlerOnPipe1;
 
-  pipe1.register("GET", "/", testHandler);
+  pipe1.register("GET", "~/", testHandler);
 
-  pipe1.register("GET", "/test", testHandler);
-  pipe1.register("POST", "/test", testHandler);
+  pipe1.register("GET", "~/test", testHandler);
+  pipe1.register("POST", "~/test", testHandler);
 
-  pipe1.register("GET", "/two/:first/:second", testHandler);
-  pipe1.register("GET", "/double/:name/:name", testHandler);
-  pipe1.register("GET", "/wildcard1/*", testHandler);
-  pipe1.register("GET", "/wildcard2/*/foo/bar", testHandler);
-  pipe1.register("GET", "/wildcard3/*/*", testHandler);
-  pipe1.register("GET", "/wildcard4/*/foo/bar/*/baz", testHandler);
+  pipe1.register("GET", "~/two/:first/:second", testHandler);
+  pipe1.register("GET", "~/double/:name/:name", testHandler);
+  pipe1.register("GET", "~/wildcard1/*", testHandler);
+  pipe1.register("GET", "~/wildcard2/*/foo/bar", testHandler);
+  pipe1.register("GET", "~/wildcard3/*/*", testHandler);
+  pipe1.register("GET", "~/wildcard4/*/foo/bar/*/baz", testHandler);
 
-  pipe1.register("GET", "/system/stop", handleStop);
+  pipe1.register("GET", "~/system/stop", handleStop);
 
   // Configure the second pipeline
 

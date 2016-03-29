@@ -131,12 +131,14 @@ class StaticFiles {
         var dfName = path + defaultFilename;
         var df = new File(dfName);
         if (await df.exists()) {
+          _logRequest.finest("returning default file: $df");
           return await _serveFile(req, df);
         }
       }
 
       if (allowDirectoryListing) {
         // List the contents of the directory
+        _logRequest.finest("returning generated directory listing");
         return await _serveDirectoryListing(path);
       }
     } else {
@@ -144,12 +146,14 @@ class StaticFiles {
 
       var file = new File(path);
       if (await file.exists()) {
+        _logRequest.finest("returning static file: $file");
         return await _serveFile(req, file);
       }
     }
 
     // Not found (or directory listing not allowed)
 
+    _logRequest.finest("could not find static file/directory");
     throw new NotFoundException();
   }
 
