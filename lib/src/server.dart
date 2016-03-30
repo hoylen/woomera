@@ -502,16 +502,18 @@ class Server {
       }
     }
 
-    // Produce HTTP response from the "response"
-
     assert(response != null);
+
+    // Finish the HTTP response from the "response" by invoking its
+    // application-visible finish method.
+
+    await response.finish();
+
+    // Really finish the HTTP response from the "response" by invoking its
+    // internal finish method.
 
     response._finish(req);
   }
-
-// response.addStream
-
-  // Construct response
 
 // contentLength -1
   // cookies
@@ -521,6 +523,10 @@ class Server {
 
   //----------------------------------------------------------------
   // Internal default exception handler.
+  //
+  // This is the exception handler that is invoked if the application did not
+  // provide a server-level exception handler, or its server-level exception
+  // handler threw an exception. It generates a "last resort" error page.
 
   static Future<Response> _defaultExceptionHandler(
       Request req, Object e, StackTrace st) async {
@@ -538,12 +544,15 @@ class Server {
           : HttpStatus.NOT_FOUND;
       resp.write("""
 <html>
-<head><title>Error: not found</title>
+<head>
+<title>Error: not found</title>
 <style type="text/css">body { background: #333; color: #fff; }</style>
-</head><body>
+</head>
+<body>
 <h1>Not found</h1>
 <p>The requested page was not found.</p>
-</body></html>
+</body>
+</html>
 """);
     } else {
       // Everything else is reported to the requester as an internal error
@@ -565,12 +574,15 @@ class Server {
       resp.status = HttpStatus.INTERNAL_SERVER_ERROR;
       resp.write("""
 <html>
-<head><title>Error: server error</title>
+<head>
+<title>Error: server error</title>
 <style type="text/css">body { background: #333; color: #c00; }</style>
-</head><body>
+</head>
+<body>
 <h1>Server error</h1>
 <p>An error occured while trying to process the request.</p>
-</body></html>
+</body>
+</html>
 """);
     }
 

@@ -14,7 +14,9 @@ import 'dart:io'
         HttpStatus,
         HttpClient,
         HttpClientResponse,
-        InternetAddress;
+        InternetAddress,
+        stderr,
+        exit;
 
 import 'package:test/test.dart';
 import 'package:logging/logging.dart';
@@ -148,29 +150,23 @@ Server createTestServer() {
 Future<Response> testHandler(Request req) async {
   var str = "${req.method};";
 
-  var hasParams = false;
   for (var key in req.pathParams.keys) {
     for (var value in req.pathParams.values(key, raw: true)) {
       str += "Path.${key}=${value};";
-      hasParams = true;
     }
   }
 
-  hasParams = false;
   if (req.postParams != null) {
     for (var key in req.postParams.keys) {
       for (var value in req.postParams.values(key, raw: true)) {
         str += "Post.${key}=${value};";
-        hasParams = true;
       }
     }
   }
 
-  hasParams = false;
   for (var key in req.queryParams.keys) {
     for (var value in req.queryParams.values(key, raw: true)) {
       str += "Query.${key}=${value};";
-      hasParams = true;
     }
   }
 
@@ -222,7 +218,8 @@ Future<String> postRequest(String path, String data) async {
 
   var request = await new HttpClient().post("localhost", PORT_NUMBER, path);
 
-  request.headers.contentType = new ContentType("application", "x-www-form-urlencoded", charset: "utf-8");
+  request.headers.contentType =
+      new ContentType("application", "x-www-form-urlencoded", charset: "utf-8");
   request.write(data);
 
   HttpClientResponse response = await request.close();
@@ -327,12 +324,11 @@ void runTests() {
       expect(str, equals("GET;Path.*=alpha/beta;Path.*=gamma;."));
     });
     test("wildcard /x/*/x/x/*/x matching /x/A/B/C/x/x/D/x", () async {
-      var str = await getRequest("/wildcard4/alpha/beta/gamma/foo/bar/delta/baz");
+      var str =
+          await getRequest("/wildcard4/alpha/beta/gamma/foo/bar/delta/baz");
       expect(str, equals("GET;Path.*=alpha/beta/gamma;Path.*=delta;."));
     });
-
   });
-
 
   //----------------------------------------------------------------
 
@@ -343,7 +339,6 @@ void runTests() {
       var str = await getRequest("/test");
       expect(str, equals("GET;."));
     });
-
 
     test("one", () async {
       var str = await getRequest("/test?foo=bar");
@@ -408,7 +403,7 @@ void loggingSetup() {
     print('${rec.time}: ${rec.loggerName}: ${rec.level.name}: ${rec.message}');
   });
 
-  Logger.root.level = Level.OFF;
+  //Logger.root.level = Level.OFF;
   Logger.root.level = Level.ALL;
 
   new Logger("main").level = Level.ALL;
@@ -419,18 +414,44 @@ void loggingSetup() {
 
 //----------------------------------------------------------------
 
-Future main() async {
-  //loggingSetup();
+Future main(List<String> args) async {
+  if (args.isNotEmpty) {
+    for (var arg in args) {
+      switch (arg) {
+        case "-v":
+        case "--verbose":
+          loggingSetup();
+          break;
+        case "-h":
+        case "--help":
+          print("Usage: progname [-v | -h]");
+          exit(0);
+          break;
+        default:
+          stderr.writeln("Unknown argument/option: $arg (see -h for help)");
+          exit(1);
+      }
+    }
+  }
+
+  var mainLogger = new Logger("main");
+
+  // Start the test server
 
   var server = createTestServer();
   var numProcessedFuture = server.run();
 
-  var _expiryTimer = new Timer(new Duration(seconds: 1), () {
-    new Logger("main").info("running tests: started");
+  // Run the tests
+
+  new Timer(new Duration(seconds: 1), () {
+    // Run the tests, after waiting a short time for the server to get started
+    mainLogger.info("running tests: started");
     runTests();
-    new Logger("main").info("running tests: finished");
+    mainLogger.info("running tests: finished");
   });
 
-  new Logger("main").info("waiting for server to stop");
-  var _ = await numProcessedFuture;
+  // Stop the test server
+
+  var num = await numProcessedFuture;
+  mainLogger.info("server to stopped: number of requests processed: $num");
 }

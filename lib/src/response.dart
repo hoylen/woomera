@@ -148,9 +148,36 @@ abstract class Response {
     _headersOutputted = true;
   }
 
-  /// The finish method is called at the end of the response.
-  /// Usually this is overridden by a subclass to perform finialization
-  /// operations.
+  /// Method that is invoked at the end of creating the HTTP response.
+  ///
+  /// The framework automatically invokes this method when it creates a HTTP
+  /// response from the [Request] object returned by the application's request
+  /// handler or exception handler.
+  ///
+  /// The implementation in the base [Request] class does nothing. But an
+  /// application could create their own subclass (usually of [RequestBuffered],
+  /// [RequestStream]) and implement its own [finish] method. A typical use of a
+  /// subclass is to generate HTML pages for an application: the subclass's
+  /// constructor could produce the common HTML headers and the subclass's
+  /// [finish] method could produce the common HTML footers.
+
+  Future finish() async {
+    // do nothing
+  }
+
+  /// The internal finish method is called at the end of the response.
+  ///
+  /// The framework automatically invokes this method when it creates a HTTP
+  /// response from the [Request] object returned by the application's request
+  /// handler or exception handler. This private [_finish] method is invoked
+  /// after the public [finish] method.
+  ///
+  /// Although it could have been incorporated into the base-class' public
+  /// [finish] method, that would have required any application's [finish]
+  /// method to remember to invoke the [finish] method from its
+  /// superclass. There is no guarantee an application defined subclass will do
+  /// that. So this is a separate internal method to guarantee that it always
+  /// gets invoked by the framework.
 
   void _finish(Request req) {
     // Do nothing
