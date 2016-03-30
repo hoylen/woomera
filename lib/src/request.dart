@@ -70,6 +70,10 @@ class Request {
 
   bool _sessionWasSetInRequest;
 
+  /// Indicates if the request has a session or not.
+
+  bool get hasSession => session != null;
+
   //================================================================
   /// The three different sources of parameters.
   ///
@@ -309,6 +313,27 @@ class Request {
 
   String get method => _request.method;
 
+  //----------------------------------------------------------------
+  /// Returns the request's path as a relative path.
+  ///
+  /// That is, starting with "~/" (if possible), otherwise the full path is
+  /// returned.
+
+  String requestPath() {
+    var p = this.request.uri.path;
+
+    if (p.startsWith(_server._basePath)) {
+      // TODO: this needs more work to account for # and ? parameters
+
+      if (p.length <= _server._basePath.length) p = "~/";
+      else p = "~/" + p.substring(_server._basePath.length);
+    } else {
+      p = "~/";
+    }
+
+    return p;
+  }
+
   //================================================================
   // Session
 
@@ -357,6 +382,25 @@ class Request {
     } else {
       throw new ArgumentError.value(url, "url", "Does not start with ~/");
       return url;
+    }
+  }
+
+  //----------------------------------------------------------------
+  /// Returns hidden form parameter input to include the session parameter.
+  ///
+  /// If there is no session (i.e. session is null) or cookies are being used
+  /// to preserve the session, returns the empty string.
+
+  String sessionFormHiddenParameter() {
+    if (hasSession && !this._sessionUsingCookies) {
+      // Require hidden POST form parameter to preserve session
+      return "<input type=\"hidden\" name=\"" +
+        HEsc.attr(_server.sessionParamName) +
+          "\" value=\"" +
+        HEsc.attr(session.id) +
+        "\"/>";
+    } else {
+      return ""; // hidden POST form parameter not required
     }
   }
 }
