@@ -19,12 +19,13 @@ class StaticFiles {
     "txt": ContentType.TEXT,
     "html": ContentType.HTML,
     "htm": ContentType.HTML,
+    "json": ContentType.JSON,
+    "css": new ContentType("text", "css"), 
     "png": new ContentType("image", "png"),
     "jpg": new ContentType("image", "jpeg"),
     "jpeg": new ContentType("image", "jpeg"),
     "gif": new ContentType("image", "gif"),
     "xml": new ContentType("application", "xml"),
-    "json": ContentType.JSON,
   };
 
   //================================================================
