@@ -199,8 +199,8 @@ class Request {
 
   /// Constructor
   ///
-  /// Internal constructor. Code outside this package cannot create
-  /// contexts.
+  /// Internal constructor invoked by [Server] code. Code outside this package
+  /// cannot create [Request] objects.
   ///
   Request._internal(HttpRequest request, int requestNo, Server server)
       : _request = request,
@@ -263,46 +263,94 @@ class Request {
 
     _unifiedParams = new RequestParamsUnified._internalConstructor(this);
 
-    // Extract session (from cookies or query parameters)
-
-    var sessionId;
-    for (var cookie in request.cookies) {
-      if (cookie.name == server.sessionCookieName) {
-        sessionId = cookie.value;
-        break;
-      }
-    }
-    if (sessionId == null) {
-      // Try query parameters
-      var values = queryParams.values(server.sessionParamName);
-      if (values.length == 1) {
-        // Only use if there is exactly one. If multiples ignore them all.
-        sessionId = values[0];
-      }
-    }
-    queryParams._removeAll(server.sessionParamName);
-
-    if (sessionId != null) {
-      this.session = server._sessionFind(sessionId);
-      _sessionWasSetInRequest = (this.session != null);
-
-      if (this.session != null) {
-        _logSession.finest("session restored: $sessionId");
-      } else {
-        _logSession.finest("session not restored: $sessionId");
-      }
-    } else {
-      this.session = null;
-      _sessionWasSetInRequest = false;
-    }
-
-    // Automatically detect if cookies are supported
+    // Determine method used for maintaining (future) sessions
 
     if (request.cookies.isNotEmpty) {
       _sessionUsingCookies = true; // got cookies, so browser must support them
     } else {
-      _sessionUsingCookies = false; // don't know, but assume browser doesn't
+      _sessionUsingCookies = false; // don't know, so assume browser doesn't
     }
+  }
+
+  //----------------------------------------------------------------
+  /// Attempt to restore the session (if there was one).
+  ///
+  /// Using the cookies, query parameters or POST parameters, to restore
+  /// a session for the request.
+  ///
+  /// If a session was successfully found, the [session] member is set to it
+  /// and [_sessionWasSetInRequest] is set to true. Otherwise, [session] is
+  /// set to null and [_sessionWasSetInRequest] set to false.
+  ///
+  /// Any session query parameter and/or POST parameter are removed. So the
+  /// application never sees them. But any session cookie(s) are not removed
+  /// (since the list is read only).
+  ///
+  /// Note: it is an error for multiple session parameters to be defined. If
+  /// that happens, a severe error is logged to the "woomera.session" logger
+  /// and they are all ignored (i.e. no session is restored).
+
+  void _sessionRestore() {
+    // Attempt to retrieve a session ID from the request.
+
+    var sessionId = null;
+    var numIdsFound = 0;
+
+    // First, try finding a session cookie
+
+    for (var cookie in request.cookies) {
+      if (cookie.name == server.sessionCookieName) {
+        sessionId = cookie.value;
+        numIdsFound++;
+      }
+    }
+
+    // Second, try query parameters (i.e. URL rewriting)
+
+    for (var value in queryParams.values(server.sessionParamName)) {
+      sessionId = value;
+      numIdsFound++;
+    }
+    queryParams._removeAll(server.sessionParamName);
+
+    // Finally, try POST parameters (i.e. URL rewriting in a POST request)
+
+    if (postParams != null) {
+      for (var value in postParams.values(server.sessionParamName)) {
+        sessionId = value;
+        numIdsFound++;
+      }
+      postParams._removeAll(server.sessionParamName);
+    }
+
+    // Retrieve session (if any)
+
+    if (sessionId != null) {
+      if (numIdsFound == 1) {
+        this.session = server._sessionFind(sessionId);
+
+        if (this.session != null) {
+          _logSession.finest("session restored: $sessionId");
+          this._sessionWasSetInRequest = true;
+          return; // session restored
+        } else {
+          _logSession.finest("session not restored: $sessionId");
+          // fall through to treat as no session found
+        }
+      } else {
+        // Multiple session IDs found: this should not happen
+        _logSession.shout("multiple session IDs in request: not restoring any of them");
+        // fall through to treat as no session found
+      }
+    } else {
+      _logSession.finest("no session ID in request");
+      // fall through to treat as no session found
+    }
+
+    // No session found
+
+    this.session = null;
+    this._sessionWasSetInRequest = false;
   }
 
   //================================================================
@@ -325,8 +373,10 @@ class Request {
     if (p.startsWith(_server._basePath)) {
       // TODO: this needs more work to account for # and ? parameters
 
-      if (p.length <= _server._basePath.length) p = "~/";
-      else p = "~/" + p.substring(_server._basePath.length);
+      if (p.length <= _server._basePath.length)
+        p = "~/";
+      else
+        p = "~/" + p.substring(_server._basePath.length);
     } else {
       p = "~/";
     }
@@ -395,10 +445,10 @@ class Request {
     if (hasSession && !this._sessionUsingCookies) {
       // Require hidden POST form parameter to preserve session
       return "<input type=\"hidden\" name=\"" +
-        HEsc.attr(_server.sessionParamName) +
+          HEsc.attr(_server.sessionParamName) +
           "\" value=\"" +
-        HEsc.attr(session.id) +
-        "\"/>";
+          HEsc.attr(session.id) +
+          "\"/>";
     } else {
       return ""; // hidden POST form parameter not required
     }

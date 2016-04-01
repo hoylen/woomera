@@ -78,7 +78,7 @@ td p { margin: 0 0 0.5ex 0; }
       <tr>
         <td><code>/must/all/match</code></td>
         <td>
-          <p><a href="/must/all/match">/must/all/match</a></p>
+          <p><a href="${req.rewriteUrl("~/must/all/match")}">/must/all/match</a></p>
         </td>
         <td>
           <p><a href="/must">/must</a> missing a component</p>
@@ -233,19 +233,27 @@ td p { margin: 0 0 0.5ex 0; }
   </ul>
 
   <h2>Sessions</h2>
-  <ul>
   """);
 
   if (req.session == null) {
-    resp.write(
-        "<li><a href=\"${req.rewriteUrl("~/session/login")}\">Login without cookies</a></li>");
-    resp.write(
-        "<li><a href=\"${req.rewriteUrl("~/session/loginWithCookies")}\">Login with cookies</a></li>");
+    // Not logged in
+    resp.write("""
+<ul>
+  <li><a href=\"${req.rewriteUrl("~/session/loginWithCookies")}\">Login using
+      cookies to preserve the session</a> (if the browser uses them)</li>
+  <li><a href=\"${req.rewriteUrl("~/session/login")}\">Login without cookies</a></li>
+</ul>
+""");
   } else {
-    resp.write(
-        "<li><a href=\"${req.rewriteUrl("~/session/logout")}\">Logout</a></li>");
+    // Logged in
+    resp.write("""
+<ul>
+  <li><a href=\"${req.rewriteUrl("~/session/info")}\">Session information page</a></li>
+  <li><a href=\"${req.rewriteUrl("~/session/logout")}\">Logout</a></li>
+</ul>
+<p style="font-size: smaller">Logged in at: ${req.session["when"]}</p>
+""");
   }
-  resp.write("</ul>");
 
   var eh1checked =
       (webServer.exceptionHandler != null) ? "checked='checked'" : "";
@@ -565,16 +573,21 @@ Future<Response> handleLoginWithCookies(Request req) async {
 <html>
 <head></head>
 <body>
-<h1>Setting test cookie</h1>
+<h1>Determining if the browser uses cookies</h1>
 
-<p>An attempt has been done to set a test cookie. Now go to the
-<a href="${req.rewriteUrl("~/session/login")}">login</a> page.
-If the browser supports cookies, the
-login page will detect that cookie and then use cookies to preserve
-the session. If it doesn't detect the cookie, then it will fall
-back to using URL rewriting to preserve the session.</p>
+<p>An attempt has been done to set a test cookie. If the browser
+presents the cookie when when the login page is visited, it will know
+the browser supports cookies and will automatically use cookies to
+preserve the session. If no cookies are presented to the login page,
+it will not use cookies and instead use URL rewriting to preserve the
+session.  The login page will not be presented the cookie: if the
+browser does not support cookies, if the browser supports cookies but
+they have been disabled, or if the login page is visited directly
+(without going via this page).</p>
 
-${homeButton(req)}
+<p>Now please visit the
+<a href="${req.rewriteUrl("~/session/login")}">login page</a>.</p>
+
 </body>
 </html>
 """);
@@ -586,7 +599,8 @@ ${homeButton(req)}
 
 Future<Response> handleLogin(Request req) async {
   req.session = new Session(webServer);
-  req.session["name"] = "fred";
+
+  req.session["when"] = new DateTime.now();
 
   var resp = new ResponseBuffered(ContentType.HTML);
 
@@ -599,6 +613,8 @@ Future<Response> handleLogin(Request req) async {
 <h1>Session: logged in</h1>
 
 <p>You have logged in.</p>
+
+<p><a href="${req.rewriteUrl("~/session/info")}">Session information page</a></p>
 
 ${homeButton(req)}
 </body>
@@ -619,10 +635,135 @@ Future<Response> handleLogout(Request req) async {
 """);
 
   if (req.session != null) {
-    req.session = null;
-    resp.write("You have been logged out.");
+    req.session.terminate(); // terminate the session (also removes the timer)
+    req.session = null; // clear the session so it is no longer preserved
+
+    resp.write("<p>You have been logged out.</p>");
   } else {
-    resp.write("<p>You were not logged in.</p>");
+    resp.write("<p>Error: not logged in: you should not see this page.</p>");
+  }
+
+  resp.write("""
+${homeButton(req)}
+</body>
+</html>
+""");
+  return resp;
+}
+
+//----------------------------------------------------------------
+
+Future<Response> handleSessionInfoPage(Request req) async {
+  var resp = new ResponseBuffered(ContentType.HTML);
+  resp.write("""
+<html>
+<head></head>
+<body>
+<h1>Session information</h1>
+""");
+
+  if (req.session != null) {
+    var duration = new DateTime.now().difference(req.session["when"]);
+
+    var name = req.session["name"];
+    if (name != null) {
+      resp.write("<p>Welcome <strong>${HEsc.text(name)}</strong>.</p>");
+    }
+    resp.write("""
+<p>Logged in at ${req.session["when"]}.
+You have been logged in for over ${duration.inSeconds} seconds.</p>
+
+<h2>Session preservation across GET requests</h2>
+
+<p>If using cookies, the session is preserved using a session cookie.
+Otherwise URL rewriting is used to preserve the session for GET requests,
+and the following link (back to this page) will have a session query parameters</p>
+
+<ul>
+  <li><a href="${req.rewriteUrl("~/session/info")}">Session info page</a></li>
+  <li><a href="${req.rewriteUrl("~/session/info?foo=bar&foo=baz&abc=xyz")}">With other query parameters</a></li>
+</ul>
+
+<p>Note: any session query parameters are stripped out so the application never
+sees them. The handler that processed this request saw
+""");
+    if (req.queryParams.isEmpty) {
+      resp.write("no query parameters.");
+    } else {
+      resp.write("these query parameters: ${req.queryParams}");
+    }
+
+    resp.write("""
+<h2>Session preserved across POST requests</h2>
+
+<p>If using cookies, the session is preserved using a session cookie.
+Otherwise the session needs to be preserved using a parameter.</p>
+
+<p>For a POST request, typically this is done by rewriting the form's action URL.
+So the POST request actually has both query parameters and POST parameters
+(though the application never sees this, because the session parameter is
+stripped out after processing it).</p>
+
+<form method="POST" action="${req.rewriteUrl("~/session/set-name")}">
+  <label for="n">Name:</label>
+  <input type="text" name="name" id="n"/>
+  <input type="submit" value="Set name"/>
+</form>
+
+<p>Although it is possible to preserve the session using a hidden form
+parameter, that is not recommended because rewriting a URL also incorporates
+the server's basePath in the URL. If the URL is not rewritten, there is a risk
+that changes to the basePath are not incorporated in the URL and the application
+breaks.</p>
+
+<p>Do not both rewrite the form's action URL and include the hidden form field.
+That will be detected as multiple session IDs (even though they are the
+same value) and (for security and consistent behaviour) they will all be ignored
+and the session will be lost.</p>
+
+<p>The session can also be lost if the cookies are cleared from the browser
+(when using cookies) or a link which has not been rewritten is followed
+(when not using cookies). Any external link will not be rewritten, so the user
+must stay within the application to preserve the session, when cookies are
+not used. A session will also be lost if/when it times out.</p>
+
+""");
+  } else {
+    resp.write("<p>No session.</p>");
+  }
+
+  resp.write("""
+${homeButton(req)}
+</body>
+</html>
+""");
+  return resp;
+}
+
+//----------------------------------------------------------------
+
+Future<Response> handleSessionSetName(Request req) async {
+  var resp = new ResponseBuffered(ContentType.HTML);
+  resp.write("""
+<html>
+<head></head>
+<body>
+<h1>Session: name set</h1>
+""");
+
+  if (req.session != null) {
+    var newName = req.postParams["name"];
+    req.session["name"] = newName;
+
+    if (newName.isNotEmpty) {
+      resp.write("<p>Your name has been set to \"${HEsc.text(newName)}\".</p>");
+    } else {
+      resp.write("<p>Your name has been cleared.</p>");
+    }
+    resp.write(
+        "<p>Return to the <a href=\"${req.rewriteUrl("~/session/info")}\">session info page</a>.</p>");
+  } else {
+    resp.write("<p>Error: not logged in: you should not see this page.</p>");
   }
 
   resp.write("""
@@ -720,6 +861,8 @@ Future main(List<String> args) async {
 
   p2.get("~/session/login", handleLogin);
   p2.get("~/session/loginWithCookies", handleLoginWithCookies);
+  p2.get("~/session/info", handleSessionInfoPage);
+  p2.post("~/session/set-name", handleSessionSetName);
   p2.get("~/session/logout", handleLogout);
 
   // Serve static files

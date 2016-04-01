@@ -296,6 +296,7 @@ class Server {
 
       var req = new Request._internal(request, requestNo, this);
       await req._postParmsInit(this.postMaxSize);
+      req._sessionRestore(); // must do this after obtaining the post parameters
 
       // Handle the request in its context
 
@@ -657,6 +658,9 @@ class Server {
   /// Applications should normally not need to worry about this value.
   /// It only needs changing if it clashes with a query parameter used by the
   /// application.
+  ///
+  /// This is used for both URL rewriting (i.e. as the name of a query parameter
+  /// as well as a hidden form parameter.
 
   String sessionParamName = "wSession";
 
