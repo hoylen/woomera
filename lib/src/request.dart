@@ -210,7 +210,7 @@ class Request {
     assert(requestNo != null);
     assert(server != null);
 
-    _logRequest.fine("[${_requestNo}]: ${request.method} ${request.uri}");
+    _logRequest.fine("[${_requestNo}] ${request.method} ${request.uri}");
 
     if (_logRequest.level <= Level.FINE) {
       // Log request
@@ -330,20 +330,20 @@ class Request {
         this.session = server._sessionFind(sessionId);
 
         if (this.session != null) {
-          _logSession.finest("session restored: $sessionId");
+          _logSession.finest("[$_requestNo] session restored: $sessionId");
           this._sessionWasSetInRequest = true;
           return; // session restored
         } else {
-          _logSession.finest("session not restored: $sessionId");
+          _logSession.finest("[$_requestNo] session not found: $sessionId");
           // fall through to treat as no session found
         }
       } else {
         // Multiple session IDs found: this should not happen
-        _logSession.shout("multiple session IDs in request: not restoring any of them");
+        _logSession.shout("[$_requestNo] multiple session IDs in request: not restoring any of them");
         // fall through to treat as no session found
       }
     } else {
-      _logSession.finest("no session ID in request");
+      _logSession.finest("[$_requestNo] no session ID in request");
       // fall through to treat as no session found
     }
 
@@ -430,7 +430,7 @@ class Request {
         return "${url}${separator}${server.sessionParamName}=${session.id}";
       }
     } else {
-      throw new ArgumentError.value(url, "url", "Does not start with ~/");
+      throw new ArgumentError.value(url, "url", "rewriteUrl: does not start with '~/'");
       return url;
     }
   }

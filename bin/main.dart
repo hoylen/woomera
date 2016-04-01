@@ -873,7 +873,9 @@ Future main(List<String> args) async {
   p2.get(
       "~/file/*",
       new StaticFiles(projectDir + "/web",
-              defaultFilename: "index.html", allowDirectoryListing: true)
+              defaultFilenames: ["index.html", "index.htm"],
+              allowDirectoryListing: true,
+              allowFilePathsAsDirectories: true)
           .handler);
 
   // Special handlers for testing

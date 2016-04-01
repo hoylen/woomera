@@ -5,7 +5,6 @@ part of woomera;
 ///
 
 class StaticFiles {
-
   /// Global MIME types.
   ///
   /// This is used for matching file extensions to MIME types. The file
@@ -20,7 +19,7 @@ class StaticFiles {
     "html": ContentType.HTML,
     "htm": ContentType.HTML,
     "json": ContentType.JSON,
-    "css": new ContentType("text", "css"), 
+    "css": new ContentType("text", "css"),
     "png": new ContentType("image", "png"),
     "jpg": new ContentType("image", "jpeg"),
     "jpeg": new ContentType("image", "jpeg"),
@@ -33,14 +32,14 @@ class StaticFiles {
 
   String baseDir;
 
-  /// Name of file to try to find if a directory is requested.
+  /// Names of files to try to find if a directory is requested.
   ///
   /// If a request arrives for a directory and this is not null, an attempt is
-  /// made to return that file from the directory. If it is null, then
-  /// [allowDirectoryListing] determines if a listing is generated or an
-  /// error is raised.
+  /// made to return one of these files from the directory. If none of these
+  /// files are found, [allowDirectoryListing] determines if a listing is
+  /// generated or an error is raised.
 
-  String defaultFilename;
+  List<String> defaultFilenames;
 
   /// Permit listing of directory contents.
   ///
@@ -50,6 +49,14 @@ class StaticFiles {
   /// listing of the directory is returned or [NotFoundException] is raised.
 
   bool allowDirectoryListing;
+
+  /// Interpret paths that do not end in slash as directory if not a file.
+  ///
+  /// If a path does not end with a slash it is treated as a request for a
+  /// file. But if a file does not exist with that name, this determines if
+  /// it will then be treated as a path to a directory.
+
+  bool allowFilePathsAsDirectories;
 
   /// Local MIME types.
   ///
@@ -69,7 +76,9 @@ class StaticFiles {
   /// a listing of the directory is produced, otherwise an exception is thrown.
 
   StaticFiles(String directory,
-      {String defaultFilename, bool allowDirectoryListing: false}) {
+      {List<String> defaultFilenames,
+      bool allowDirectoryListing: false,
+      bool allowFilePathsAsDirectories: true}) {
     if (directory == null) {
       throw new ArgumentError.notNull("directory");
     }
@@ -78,8 +87,13 @@ class StaticFiles {
     }
     baseDir = directory;
 
-    this.defaultFilename = defaultFilename;
+    if (defaultFilenames != null) {
+      this.defaultFilenames = defaultFilenames;
+    } else {
+      this.defaultFilenames = []; // empty list
+    }
     this.allowDirectoryListing = allowDirectoryListing;
+    this.allowFilePathsAsDirectories = allowFilePathsAsDirectories;
   }
 
   //----------------------------------------------------------------
@@ -109,7 +123,8 @@ class StaticFiles {
         components.removeAt(depth);
         depth--;
         if (depth < 0) {
-          throw new NotFoundException(); // tried to climb above base directory
+          throw new NotFoundException(
+              req); // tried to climb above base directory
         }
       } else if (c == ".") {
         components.removeAt(depth);
@@ -120,50 +135,74 @@ class StaticFiles {
       }
     }
 
-
     var path = baseDir + "/" + components.join("/");
-    _logRequest.finer("request for static file: $path");
+    _logRequest
+        .finer("[${req._requestNo}] static file/directory requested: $path");
 
-    if (path.endsWith("/")) {
-      // Directory
+    bool wasFilePath = false;
 
-      if (defaultFilename != null && defaultFilename.isNotEmpty) {
-        // Treat as request for the default file under the directory
-        var dfName = path + defaultFilename;
-        var df = new File(dfName);
-        if (await df.exists()) {
-          _logRequest.finest("returning default file: $df");
-          return await _serveFile(req, df);
-        }
-      }
-
-      if (allowDirectoryListing) {
-        // List the contents of the directory
-        _logRequest.finest("returning generated directory listing");
-        return await _serveDirectoryListing(path);
-      }
-    } else {
-      // File
+    if (!path.endsWith("/")) {
+      // Probably a file
 
       var file = new File(path);
       if (await file.exists()) {
-        _logRequest.finest("returning static file: $file");
+        _logRequest.finest("[${req._requestNo}] static file found: $path");
         return await _serveFile(req, file);
+      }
+
+      if (allowFilePathsAsDirectories) {
+        path += "/"; // append a "/" to try and treat it as a directory
+        wasFilePath = true;
+      } else {
+        _logRequest.finest("[${req._requestNo}] static file not found");
+      }
+    }
+
+    if (path.endsWith("/")) {
+      // Try directory
+
+      if (await new Directory(path).exists()) {
+        // Try to find one of the default files in that directory
+
+        for (var defaultFilename in defaultFilenames) {
+          var dfName = path + defaultFilename;
+          var df = new File(dfName);
+          if (await df.exists()) {
+            _logRequest.finest("[${req
+                ._requestNo}] static directory: default file found: $dfName");
+            return await _serveFile(req, df);
+          }
+        }
+
+        if (allowDirectoryListing) {
+          // List the contents of the directory
+          _logRequest.finest("[${req._requestNo}] returning directory listing");
+          return await _serveDirectoryListing(req, path);
+        } else {
+          _logRequest.finest(
+              "[${req._requestNo}] static directory listing not allowed");
+        }
+      } else {
+        if (wasFilePath) {
+          _logRequest.finest(
+              "[${req._requestNo}] static file not found (even tried directory)");
+        } else {
+          _logRequest.finest("[${req._requestNo}] static directory not found");
+        }
       }
     }
 
     // Not found (or directory listing not allowed)
 
-    _logRequest.finest("could not find static file/directory");
-    throw new NotFoundException();
+    throw new NotFoundException(req);
   }
 
   //----------------------------------------------------------------
 
-  Future<Response> _serveDirectoryListing(String path) async {
+  Future<Response> _serveDirectoryListing(Request req, String path) async {
     var dir = new Directory(path);
     if (!await dir.exists()) {
-      throw new NotFoundException();
+      throw new NotFoundException(req);
     }
 
     var str = """

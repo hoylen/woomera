@@ -480,10 +480,10 @@ class Server {
 
       if (methodFound) {
         _logRequest.fine("handler not found");
-        e = new NotFoundException();
+        e = new NotFoundException(req, methodNotFound: false);
       } else {
         _logRequest.fine("handler not found for method");
-        e = new NotFoundException(methodNotFound: true);
+        e = new NotFoundException(req, methodNotFound: true);
       }
 
       // Try reporting this through the server's exception handler
@@ -610,7 +610,7 @@ class Server {
       _basePath = value;
     } else {
       throw new ArgumentError.value(
-          value, "value", "Does not start with a slash and is not null/blank");
+          value, "value", "basePath: does not start with a '/' and is not null/blank");
     }
   }
 

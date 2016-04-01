@@ -42,6 +42,8 @@ class PostTooLongException extends WoomeraException {}
 ///
 class NotFoundException extends WoomeraException {
 
+  Request request;
+
   /// Indicates that no handlers for the HTTP method was found.
   ///
   /// If true, no rules for the HTTP method was found. If false, rules for the
@@ -52,9 +54,12 @@ class NotFoundException extends WoomeraException {
 
   bool methodNotFound;
 
-  NotFoundException({bool methodNotFound: false}) {
+  NotFoundException(Request req, {bool methodNotFound: false}) {
+    this.request = req;
     this.methodNotFound = methodNotFound;
   }
+
+  String toString() => "Not found: ${request.requestPath()}";
 }
 
 //================================================================

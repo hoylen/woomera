@@ -49,7 +49,6 @@ abstract class Response {
     _headers[name].add(value);
   }
 
-
   /// Set a cookie.
   ///
   /// A session cookie is one that does not have an expiry date. It gets
@@ -98,7 +97,6 @@ abstract class Response {
     return cookieAdd(delCookie);
   }
 
-
   /// Output the status and headers.
   ///
   void _outputHeaders(Request req) {
@@ -110,7 +108,8 @@ abstract class Response {
     var sessionCookieName = req.server.sessionCookieName;
     for (var c in _cookies) {
       if (c.name == sessionCookieName) {
-        throw new ArgumentError.value(c.name, "cookieName", "Clashes with name of session cookie");
+        throw new ArgumentError.value(
+            c.name, "cookieName", "Clashes with name of session cookie");
       }
     }
 
@@ -181,7 +180,7 @@ abstract class Response {
 
   void _finish(Request req) {
     // Do nothing
-    if (! _headersOutputted) {
+    if (!_headersOutputted) {
       throw new StateError("Header has not been outputted");
     }
   }
@@ -247,7 +246,6 @@ class ResponseBuffered extends Response {
 /// using the [String.codeUnits] method.
 
 class ResponseStream extends Response {
-
   bool _contentOutputted = false;
 
   ResponseStream(ContentType ct) {
@@ -280,7 +278,7 @@ class ResponseStream extends Response {
     if (req == null) {
       throw new ArgumentError.notNull("req");
     }
-    if (! _contentOutputted) {
+    if (!_contentOutputted) {
       throw new StateError("Stream content was not added");
     }
     super._finish(req);
@@ -291,7 +289,11 @@ class ResponseStream extends Response {
 /// HTTP response that redirects the browser to a URL.
 ///
 class ResponseRedirect extends Response {
-  String _actualRedirect;
+  // The address to redirect to.
+  //
+  // Can be a internal relative-path or an external URL.
+
+  String _addr;
 
   /// Constructor.
   ///
@@ -312,17 +314,23 @@ class ResponseRedirect extends Response {
   /// For more information on HTTP status codes, see
   /// <https://www.w3.org/Protocols/rfc2616/rfc2616-sec10.html#sec10.3>
 
-  ResponseRedirect(String url, {int status: HttpStatus.SEE_OTHER}) {
+  ResponseRedirect(String addr, {int status: HttpStatus.SEE_OTHER}) {
     if (status < 300 || 399 < status) {
-      throw new ArgumentError.value(status, "status", "Not a redirection HTTP status");
+      throw new ArgumentError.value(
+          status, "status", "ResponseRedirect: not a redirection HTTP status");
+    }
+    if (addr == null) {
+      throw new ArgumentError.notNull("ResponseRedirect.addr");
+    }
+    if (addr.isEmpty) {
+      throw new ArgumentError.value(addr, "addr", "ResponseRedirect: empty string");
+    }
+    if (addr.startsWith("/")) {
+      _logResponse.warning("ResponseRedirect address starts with '/', should start with '~/' : addr");
     }
 
-    if (url.startsWith("~/")) {
-      throw new ArgumentError.value(url, "url", "Does not start with '~/'");
-      //_actualRedirect = req.rewriteURL(url);
-    } else {
-      _actualRedirect = url;
-    }
+    _addr = addr;
+
     this.status = status;
   }
 
@@ -332,9 +340,12 @@ class ResponseRedirect extends Response {
     if (req == null) {
       throw new ArgumentError.notNull("req");
     }
-    _logResponse.fine("[${req._requestNo}] redirecting to ${_actualRedirect}");
 
-    header('Location', _actualRedirect);
+    var url = (_addr.startsWith("~/")) ? req.rewriteUrl(_addr) : _addr;
+
+    _logResponse.fine("[${req._requestNo}] redirecting to ${url}");
+
+    header('Location', url);
     super._outputHeaders(req);
     req._request.response.write("Redirect\n");
     super._finish(req);
