@@ -514,7 +514,7 @@ Future<Response> _exceptionHandler(
   // Set the status depending on the type of exception
 
   if (exception is NotFoundException) {
-    resp.status = (exception.methodNotFound)
+    resp.status = (exception.found == NotFoundException.foundNothing)
         ? HttpStatus.METHOD_NOT_ALLOWED
         : HttpStatus.NOT_FOUND;
   } else {

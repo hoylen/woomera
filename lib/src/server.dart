@@ -343,6 +343,7 @@ class Server {
 
   Future _handleRequestWithContext(Request req) async {
     var methodFound = false;
+    var handlerFound = false;
     Response response;
 
     var pathSegments = req._request.uri.pathSegments;
@@ -369,6 +370,8 @@ class Server {
 
         if (params != null) {
           // A matching rule was found
+
+          handlerFound = true;
 
           req._pathParams = params; // set matched path parameters
 
@@ -476,15 +479,13 @@ class Server {
     if (response == null) {
       // No rule matched or the ones that did match all returned null
 
-      var e;
-
-      if (methodFound) {
-        _logRequest.fine("handler not found");
-        e = new NotFoundException(methodNotFound: false);
-      } else {
-        _logRequest.fine("handler not found for method");
-        e = new NotFoundException(methodNotFound: true);
-      }
+      var found = (methodFound)
+          ? ((handlerFound)
+              ? NotFoundException.foundHandler
+              : NotFoundException.foundMethod)
+          : NotFoundException.foundNothing;
+      _logRequest.fine("not found: found=$found");
+      var e = new NotFoundException(found);
 
       // Try reporting this through the server's exception handler
 
@@ -497,6 +498,7 @@ class Server {
       }
 
       if (response == null) {
+        // Server exception handler returned null, or it threw an exception
         // Resort to using the internal default exception handler.
         response = await _defaultExceptionHandler(req, e, null);
         assert(response != null);
@@ -540,7 +542,7 @@ class Server {
           "[${req._requestNo}] not found: ${req._request.method} ${req._request.uri.path}");
       assert(st == null);
 
-      resp.status = (e.methodNotFound)
+      resp.status = (e.found == NotFoundException.foundNothing)
           ? HttpStatus.METHOD_NOT_ALLOWED
           : HttpStatus.NOT_FOUND;
       resp.write("""
@@ -609,8 +611,8 @@ class Server {
     } else if (value.startsWith("/")) {
       _basePath = value;
     } else {
-      throw new ArgumentError.value(
-          value, "value", "basePath: does not start with a '/' and is not null/blank");
+      throw new ArgumentError.value(value, "value",
+          "basePath: does not start with a '/' and is not null/blank");
     }
   }
 

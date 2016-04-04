@@ -58,6 +58,15 @@ class StaticFiles {
 
   bool allowFilePathsAsDirectories;
 
+  /// Throws not found exceptions.
+  ///
+  /// If true, the handler will thrown a [StaticNotFoundException] if the
+  /// file or directory could not produce a result.
+  ///
+  /// If false, the handler will return null.
+
+  bool throwNotFoundExceptions;
+
   /// Local MIME types.
   ///
   /// This is used for matching file extensions to MIME types. The file
@@ -78,7 +87,8 @@ class StaticFiles {
   StaticFiles(String directory,
       {List<String> defaultFilenames,
       bool allowDirectoryListing: false,
-      bool allowFilePathsAsDirectories: true}) {
+      bool allowFilePathsAsDirectories: true,
+      bool throwNotFoundExceptions: true}) {
     if (directory == null) {
       throw new ArgumentError.notNull("directory");
     }
@@ -94,6 +104,7 @@ class StaticFiles {
     }
     this.allowDirectoryListing = allowDirectoryListing;
     this.allowFilePathsAsDirectories = allowFilePathsAsDirectories;
+    this.throwNotFoundExceptions = throwNotFoundExceptions;
   }
 
   //----------------------------------------------------------------
@@ -123,7 +134,12 @@ class StaticFiles {
         components.removeAt(depth);
         depth--;
         if (depth < 0) {
-          throw new NotFoundException(); // tried to climb above base directory
+          if (throwNotFoundExceptions) {
+            // tried to climb above base directory
+            throw new NotFoundException(NotFoundException.foundStaticHandler);
+          } else {
+            return null;
+          }
         }
       } else if (c == ".") {
         components.removeAt(depth);
@@ -193,7 +209,11 @@ class StaticFiles {
 
     // Not found (or directory listing not allowed)
 
-    throw new NotFoundException();
+    if (throwNotFoundExceptions) {
+      throw new NotFoundException(NotFoundException.foundStaticHandler);
+    } else {
+      return null;
+    }
   }
 
   //----------------------------------------------------------------
@@ -201,7 +221,11 @@ class StaticFiles {
   Future<Response> _serveDirectoryListing(Request req, String path) async {
     var dir = new Directory(path);
     if (!await dir.exists()) {
-      throw new NotFoundException();
+      if (throwNotFoundExceptions) {
+        throw new NotFoundException(NotFoundException.foundStaticHandler);
+      } else {
+        return null;
+      }
     }
 
     var str = """

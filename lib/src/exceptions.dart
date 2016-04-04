@@ -38,22 +38,46 @@ class PostTooLongException extends WoomeraException {}
 // Handler matching exceptions
 
 //----------------------------------------------------------------
-/// Exception indicating a rule for the request could not be found.
+/// Exception indicating a response could not be created.
 ///
 class NotFoundException extends WoomeraException {
 
-  /// Indicates that no handlers for the HTTP method was found.
-  ///
-  /// If true, no rules for the HTTP method was found. If false, rules for the
-  /// method were found, but none of them matched the request.
-  ///
-  /// This should be used to set the HTTP response status to either
-  /// [HttpStatus.NOT_FOUND] to [HttpStatus.METHOD_NOT_ALLOWED].
+  /// Value for [found] when no handlers for the HTTP method were found.
 
-  bool methodNotFound;
+  static int foundNothing = 0;
 
-  NotFoundException({bool methodNotFound: false}) {
-    this.methodNotFound = methodNotFound;
+  /// Value for [found] when at least one handler for the HTTP method
+  /// was found, but none of them matched the request path.
+
+  static int foundMethod = 1;
+
+  /// Value for [found] when a handler was found, but no result was produced.
+
+  static int foundHandler = 2;
+
+  /// Value for [found] when a [StaticFile] handler failed to produce a response.
+  ///
+  /// The [StaticFile.handler] failed to find a file or directory. In the case
+  /// of a directory, this could be because the directory could not be read,
+  /// the default file in the directory could not be read, or an automatic
+  /// listing of the directory was not permitted.
+
+  static int foundStaticHandler = 3;
+
+  /// Indicates how much was found before a result could not be created.
+  ///
+  /// This member is typically used to distinguish between the situation of
+  /// the HTTP method not being supported (when its value is
+  /// [NotFoundException.foundNothing] and when at least there were some rules
+  /// for processing the HTTP method (when its value is any other value).
+  /// In the former situation, the HTTP response should return a status of
+  /// [HttpStatus.METHOD_NOT_ALLOWED]. In the later situation, the HTTP
+  /// response should return a status of [HttpStatus.NOT_FOUND].
+
+  int found;
+
+  NotFoundException(int found) {
+    this.found = found;
   }
 }
 
