@@ -310,9 +310,9 @@ Future<Response> handleTestPost(Request req) async {
 //----------------------------------------------------------------
 
 Future<Response> handleExceptionHandlers(Request req) async {
-  var eh0 = req.params["eh0"] == "on";
-  var eh1 = req.params["eh1"] == "on";
-  var eh2 = req.params["eh2"] == "on";
+  var eh0 = req.postParams["eh0"] == "on";
+  var eh1 = req.postParams["eh1"] == "on";
+  var eh2 = req.postParams["eh2"] == "on";
 
   webServer.exceptionHandler = (eh0) ? exceptionHandlerOnServer : null;
   p1.exceptionHandler = (eh1) ? exceptionHandlerOnPipe1 : null;
@@ -352,7 +352,7 @@ Future<Response> handleStop(Request req) async {
 Future<Response> handleThrow(Request req) async {
   mainLog.fine("exception test");
 
-  var type = req.params["name"];
+  var type = req.pathParams["name"];
 
   switch (type) {
     case "":

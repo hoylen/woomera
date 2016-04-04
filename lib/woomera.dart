@@ -49,7 +49,6 @@ part 'src/h_esc.dart';
 part 'src/handler_debug.dart';
 part 'src/handler_static_files.dart';
 part 'src/request_params.dart';
-part 'src/request_params_unified.dart';
 part 'src/server_rule.dart';
 part 'src/server_pipeline.dart';
 part 'src/handler.dart';

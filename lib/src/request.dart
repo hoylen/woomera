@@ -161,10 +161,6 @@ class Request {
   RequestParams _queryParams; // initially set by constructor
 
   //================================================================
-
-  RequestParamsUnified _unifiedParams;
-
-  //================================================================
   // Properties
 
   final Map<String, Object> _properties = new Map<String, Object>();
@@ -185,15 +181,6 @@ class Request {
     assert(key != null);
     return _properties[key];
   }
-
-  //================================================================
-
-  /// The unified parameters.
-  ///
-  /// This is used to obtain parameters, regardless of whether they were
-  /// defined in the path, POST, or query.
-  ///
-  RequestParamsUnified get params => _unifiedParams;
 
   //================================================================
 
@@ -258,10 +245,6 @@ class Request {
       str += queryParams.toString();
       _logRequest.fine(str);
     }
-
-    // Create the unified parameters object
-
-    _unifiedParams = new RequestParamsUnified._internalConstructor(this);
 
     // Determine method used for maintaining (future) sessions
 
