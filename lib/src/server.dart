@@ -480,10 +480,10 @@ class Server {
 
       if (methodFound) {
         _logRequest.fine("handler not found");
-        e = new NotFoundException(req, methodNotFound: false);
+        e = new NotFoundException(methodNotFound: false);
       } else {
         _logRequest.fine("handler not found for method");
-        e = new NotFoundException(req, methodNotFound: true);
+        e = new NotFoundException(methodNotFound: true);
       }
 
       // Try reporting this through the server's exception handler

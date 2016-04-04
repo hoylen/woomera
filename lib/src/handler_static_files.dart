@@ -123,8 +123,7 @@ class StaticFiles {
         components.removeAt(depth);
         depth--;
         if (depth < 0) {
-          throw new NotFoundException(
-              req); // tried to climb above base directory
+          throw new NotFoundException(); // tried to climb above base directory
         }
       } else if (c == ".") {
         components.removeAt(depth);
@@ -194,7 +193,7 @@ class StaticFiles {
 
     // Not found (or directory listing not allowed)
 
-    throw new NotFoundException(req);
+    throw new NotFoundException();
   }
 
   //----------------------------------------------------------------
@@ -202,7 +201,7 @@ class StaticFiles {
   Future<Response> _serveDirectoryListing(Request req, String path) async {
     var dir = new Directory(path);
     if (!await dir.exists()) {
-      throw new NotFoundException(req);
+      throw new NotFoundException();
     }
 
     var str = """
@@ -256,10 +255,11 @@ class StaticFiles {
       }
     }
 
+    contentType = contentType ?? ContentType.BINARY; // default if not known
+
     // Return contents of file
 
-    var resp = new ResponseStream(contentType ?? ContentType.BINARY);
-    await resp.addStream(req, file.openRead()); // TODO: read as a stream
-    return resp;
+    var resp = new ResponseStream(contentType);
+    return await resp.addStream(req, file.openRead());
   }
 }

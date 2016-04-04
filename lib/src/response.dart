@@ -259,7 +259,7 @@ class ResponseStream extends Response {
   /// Note: any headers must be defined before this method is called.
   /// Headers cannot be defined after the stream has started.
 
-  Future addStream(Request req, Stream<List<int>> stream) async {
+  Future<ResponseStream> addStream(Request req, Stream<List<int>> stream) async {
     if (req == null) {
       throw new ArgumentError.notNull("req");
     }
@@ -270,6 +270,8 @@ class ResponseStream extends Response {
     super._outputHeaders(req);
     await req._request.response.addStream(stream);
     _contentOutputted = true;
+
+    return this;
   }
 
   /// Produce the response.
@@ -326,7 +328,7 @@ class ResponseRedirect extends Response {
       throw new ArgumentError.value(addr, "addr", "ResponseRedirect: empty string");
     }
     if (addr.startsWith("/")) {
-      _logResponse.warning("ResponseRedirect address starts with '/', should start with '~/' : addr");
+      _logResponse.warning("ResponseRedirect address should start with '~/' : $addr");
     }
 
     _addr = addr;
