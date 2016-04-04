@@ -670,12 +670,32 @@ class Server {
 
   Map<String, Session> _allSessions = new Map<String, Session>();
 
+  /// Callback for monitoring session creation and terminations.
+  ///
+  /// If set, it will be invoked when a session is associated with the
+  /// server (invoked with [terminatedByTimeout] set to null); and when it is terminated
+  /// (with [terminatedByTimeout] set to true if it was automatically
+  /// terminated by the timer or true if it was explicity terminated.
+
+  SessionMonitor sessionMonitor;
+
   //----------------------------------------------------------------
 
   void _sessionRegister(Session s) {
     _allSessions[s.id] = s;
+    if (sessionMonitor != null) {
+      sessionMonitor(s);
+    }
   }
 
+  //----------------------------------------------------------------
+
+  void _sessionUnregister(Session s, bool byTimeOut) {
+    _allSessions.remove(s.id);
+    if (sessionMonitor != null) {
+      sessionMonitor(s, byTimeOut);
+    }
+  }
   //----------------------------------------------------------------
   /// Finds the session with the given [id].
   ///
@@ -686,12 +706,10 @@ class Server {
   Session _sessionFind(String id) {
     return _allSessions[id];
   }
-
-  //----------------------------------------------------------------
-  // When a session is stopped (either terminated or by timeout) this
-  // method is called.
-
-  void _monitorSessionStop(Session session, bool byTimeOut) {
-    // TODO
-  }
 }
+
+/// Session monitor function type.
+///
+/// Callback function for use with the [Server.sessionMonitor].
+
+typedef void SessionMonitor(Session session, [bool terminatedByTimeout]);

@@ -140,8 +140,6 @@ class Session {
     _logSession.fine(
         "[session:$id]: ${(byTimeOut) ? "timeout" : "terminated"} after $duration");
 
-    _server._monitorSessionStop(this, byTimeOut);
-
-    _server._allSessions.remove(this.id);
+    _server._sessionUnregister(this, byTimeOut);
   }
 }
