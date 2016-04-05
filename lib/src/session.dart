@@ -14,6 +14,13 @@ part of woomera;
 
 class Session {
   //================================================================
+  // Constants
+
+  static const int endByTerminate = 0;
+  static const int endByTimeout = 1;
+  static const int endByFailureToResume = 2;
+
+  //================================================================
   // Members
 
   final Server _server;
@@ -118,9 +125,9 @@ class Session {
   /// This is used when the user deliberately logs out, to terminate
   /// the session without waiting for it to time out.
 
-  void terminate() {
+  Future terminate() async {
     this._expiryTimer.cancel();
-    _terminate(false);
+    await _terminate(endByTerminate);
   }
 
   //----------------------------------------------------------------
@@ -138,7 +145,7 @@ class Session {
     // Create a new timer
 
     if (keepAlive != null) {
-      _expiryTimer = new Timer(keepAlive, () => _terminate(true));
+      _expiryTimer = new Timer(keepAlive, () async => await _terminate(endByTimeout));
     }
   }
 
@@ -146,26 +153,53 @@ class Session {
   // Internal method to consistently terminate a session. Used by all code
   // that terminates a session (i.e. terminate and the refresh timeout).
 
-  void _terminate(bool byTimeOut) {
+  Future _terminate(int endReason) async {
     var duration = new DateTime.now().compareTo(_created);
-    _logSession.fine(
-        "[session:$id]: ${(byTimeOut) ? "timeout" : "terminated"} after $duration");
+    var r;
+    switch (endReason) {
+      case endByTerminate:
+        r = "terminated";
+        break;
+      case endByTimeout:
+        r = "timeout";
+        break;
+      case endByFailureToResume:
+        r = "failed to resume";
+        break;
+      default:
+        r = "?";
+        break;
+    }
+    _logSession.fine("[session:$id]: ${r} after $duration");
 
     _server._sessionUnregister(this);
-    finalize(byTimeOut);
+    await finish(endReason);
   }
 
   //----------------------------------------------------------------
-  /// Finalize method.
+  /// Resume
   ///
-  /// This method is invoked when the session is ended. The [byTimeOut]
-  /// is true if the sessions is ending because it has timed out, or is false
-  /// if it is being ended by [terminate] being invoked.
+  /// This method is invoked when the session is restored to a HTTP request.
+  ///
+  /// If it returns true, the session is associated with the HTTP request.
+  /// Otherwise, the session is treated as no longer being valid and is
+  /// terminated.
+
+  Future<bool> resume() async {
+    return true;
+  }
+
+  //----------------------------------------------------------------
+  /// Finish method.
+  ///
+  /// This method is invoked when the session is ended. The [endReason]
+  /// indicates why the session has ended.
   ///
   /// The implementation of this method in [Session] does nothing, but this
   /// method can be implemented by subclasses of it.
 
-  void finalize(bool byTimeOut) {
+  Future finish(int endReason) async {
     // do nothing
+    return;
   }
 }

@@ -296,7 +296,7 @@ class Server {
 
       var req = new Request._internal(request, requestNo, this);
       await req._postParmsInit(this.postMaxSize);
-      req._sessionRestore(); // must do this after obtaining the post parameters
+      await req._sessionRestore(); // must do this after obtaining the post parameters
 
       // Handle the request in its context
 

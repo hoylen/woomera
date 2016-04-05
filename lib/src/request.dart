@@ -273,7 +273,7 @@ class Request {
   /// that happens, a severe error is logged to the "woomera.session" logger
   /// and they are all ignored (i.e. no session is restored).
 
-  void _sessionRestore() {
+  Future _sessionRestore() async {
     // Attempt to retrieve a session ID from the request.
 
     var sessionId = null;
@@ -310,20 +310,30 @@ class Request {
 
     if (sessionId != null) {
       if (numIdsFound == 1) {
-        this.session = server._sessionFind(sessionId);
+        var candidate = server._sessionFind(sessionId);
 
-        if (this.session != null) {
-          _logSession.finest("[$_requestNo] session restored: $sessionId");
+        if (candidate != null) {
+
+          if (await candidate.resume()) {
+            _logSession.finest("[$_requestNo] session resumed: $sessionId");
+            candidate._refresh(); // restart timeout timer
+            this.session = candidate;
+          } else {
+            _logSession.finest("[$_requestNo] session could not be resumed: $sessionId");
+            await candidate._terminate(Session.endByFailureToResume);
+            this.session = null;
+          }
           this._sessionWasSetInRequest = true;
-          this.session._refresh(); // restart timeout timer
-          return; // session restored
+          return; // found session (but might not have been restored)
+
         } else {
           _logSession.finest("[$_requestNo] session not found: $sessionId");
           // fall through to treat as no session found
         }
       } else {
         // Multiple session IDs found: this should not happen
-        _logSession.shout("[$_requestNo] multiple session IDs in request: not restoring any of them");
+        _logSession.shout(
+            "[$_requestNo] multiple session IDs in request: not restoring any of them");
         // fall through to treat as no session found
       }
     } else {
@@ -414,7 +424,8 @@ class Request {
         return "${url}${separator}${server.sessionParamName}=${session.id}";
       }
     } else {
-      throw new ArgumentError.value(url, "url", "rewriteUrl: does not start with '~/'");
+      throw new ArgumentError.value(
+          url, "url", "rewriteUrl: does not start with '~/'");
       return url;
     }
   }

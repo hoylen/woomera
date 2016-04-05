@@ -640,7 +640,7 @@ Future<Response> handleLogout(Request req) async {
 """);
 
   if (req.session != null) {
-    req.session.terminate(); // terminate the session (also removes the timer)
+    await req.session.terminate(); // terminate the session (also removes the timer)
     req.session = null; // clear the session so it is no longer preserved
 
     resp.write("<p>You have been logged out.</p>");
