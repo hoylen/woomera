@@ -67,10 +67,13 @@ class ServerRule {
   /// "/foo/bar?/baz"
 
   ServerRule(String pathPattern, RequestHandler handler) {
+    if (pathPattern == null) {
+      throw new ArgumentError.notNull("ServerRule.pathPattern");
+    }
     _segments = pathPattern.split(_pathSeparator);
 
     if (_segments.isEmpty || _segments[0] != "~") {
-      throw new ArgumentError.value(pathPattern, "pathPattern", "ServerRule: does not start with '~/'");
+      throw new ArgumentError.value(pathPattern, "pathPattern", "ServerRule: does not start with '~'");
     }
     _segments.removeAt(0); // remove the leading "~".
 
@@ -96,10 +99,16 @@ class ServerRule {
     int componentIndex = 0;
     int segmentIndex = 0;
     for (var segment in _segments) {
+      var component;
       if (components.length <= componentIndex) {
-        return null; // no component(s) to match this segment
+        if (_isWildcard(segment)) {
+          component = null; // wildcard can match no components
+        } else {
+          return null; // no component(s) to match this segment
+        }
+      } else {
+        component = components[componentIndex];
       }
-      var component = components[componentIndex];
 
       if (_isVariable(segment)) {
         // Variable segment
@@ -109,7 +118,7 @@ class ServerRule {
         // Wildcard segment
         var numSegmentsLeft = _segments.length - segmentIndex - 1;
         var numConsumed = components.length - componentIndex - numSegmentsLeft;
-        if (numConsumed < 1) {
+        if (numConsumed < 0) {
           return null; // insufficient components to satisfy rest of pattern
         }
         result._add(
