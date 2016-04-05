@@ -62,7 +62,7 @@ class Session {
     // Set up expiry timer to expire this session if it
     // becomes inactive (i.e. is not used after some time).
 
-    refresh(); // create a new expiry timer
+    _refresh(); // create a new expiry timer
 
     // Register it in the Web server's list of all sessions
 
@@ -70,6 +70,21 @@ class Session {
     server._sessionRegister(this);
 
     _logSession.fine("[session:${id}]: created");
+  }
+
+  //----------------------------------------------------------------
+  /// Sets the expiry time and restarts the timer.
+  ///
+  /// This method is used to change the expiry duration. Setting the expiry
+  /// duration also restarts the timer.
+  ///
+  /// The expiry duration is also set by the [Session] constructor, so this
+  /// method is only required if a different expiry duration is required
+  /// after the session has been created.
+
+  void expirySet(Duration e) {
+    keepAlive = e;
+    _refresh();
   }
 
   //================================================================
@@ -113,7 +128,7 @@ class Session {
   ///
   /// The session is set to expire in [keepAlive].
 
-  void refresh() {
+  void _refresh() {
     if (_expiryTimer != null) {
       // Cancel the old timer, if any.
       _expiryTimer.cancel();

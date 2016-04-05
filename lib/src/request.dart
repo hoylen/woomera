@@ -315,7 +315,7 @@ class Request {
         if (this.session != null) {
           _logSession.finest("[$_requestNo] session restored: $sessionId");
           this._sessionWasSetInRequest = true;
-          this.session.refresh(); // restart timeout timer
+          this.session._refresh(); // restart timeout timer
           return; // session restored
         } else {
           _logSession.finest("[$_requestNo] session not found: $sessionId");
