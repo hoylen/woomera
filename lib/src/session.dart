@@ -95,7 +95,7 @@ class Session {
   }
 
   //================================================================
-  // Session
+  // Lifecycle
 
   //----------------------------------------------------------------
   /// Explicitly terminate a session.
@@ -140,6 +140,22 @@ class Session {
     _logSession.fine(
         "[session:$id]: ${(byTimeOut) ? "timeout" : "terminated"} after $duration");
 
-    _server._sessionUnregister(this, byTimeOut);
+    _server._sessionUnregister(this);
+    finalize(byTimeOut);
   }
+
+  //----------------------------------------------------------------
+  /// Finalize method.
+  ///
+  /// This method is invoked when the session is ended. The [byTimeOut]
+  /// is true if the sessions is ending because it has timed out, or is false
+  /// if it is being ended by [terminate] being invoked.
+  ///
+  /// The implementation of this method in [Session] does nothing, but this
+  /// method can be implemented by subclasses of it.
+
+  void finalize(bool byTimeOut) {
+    // do nothing
+  }
+
 }
