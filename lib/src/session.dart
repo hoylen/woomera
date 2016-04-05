@@ -13,11 +13,6 @@ part of woomera;
 /// A session is created by calling the [Server.sessionCreate] method on the [Server].
 
 class Session {
-  /// The duration a session can remain active before it is automatically terminated.
-
-  static Duration _defaultExpiry =
-      new Duration(hours: 0, minutes: 10, seconds: 0);
-
   //================================================================
   // Members
 
@@ -38,31 +33,36 @@ class Session {
 
   Timer _expiryTimer;
 
+  /// Duration the session remains alive after the last HTTP request.
+  ///
+  /// The duration the session remains alive, before it is automatically
+  /// terminated. The timeout timer is restarted with this value when
+  /// a new HTTP request is received that is associated with the session.
+
+  Duration keepAlive;
+
   //================================================================
   /// Constructor
   ///
   /// Creates a new session in the [server].
   ///
-  /// If the [expiry] duration is provided, initially the session lasts for
-  /// that duration. This value is not remembered for refreshes: if the
-  /// [refresh] method is used to refresh the session an expiry duration
-  /// must be passed to it (unless the default durations are desired).
-  ///
-  /// If [expiry] is not provided (or is null), the [Server.sessionDuration]
-  /// from the [server] is used. If the server does not have a default duration
-  /// then an internal default value is used.
+  /// The [expiry] is the duration the session remains alive, before it
+  /// is automatically terminated. The timeout timer is restarted when a new
+  /// HTTP request is received that is associated with the session.
 
-  Session(Server server, [Duration expiry])
+  Session(Server server, Duration expiry)
       : _server = server,
         _created = new DateTime.now() {
     if (server == null) {
       throw new ArgumentError.notNull("server");
     }
 
+    keepAlive = expiry;
+
     // Set up expiry timer to expire this session if it
     // becomes inactive (i.e. is not used after some time).
 
-    refresh(expiry); // create a new expiry timer
+    refresh(); // create a new expiry timer
 
     // Register it in the Web server's list of all sessions
 
@@ -111,24 +111,20 @@ class Session {
   //----------------------------------------------------------------
   /// Refreshes the expiry time of the session.
   ///
-  /// The session is set to expire in [expiry] time. If [expiry] is not
-  /// provided, the default in the server ([Server.sessionExpiry] is used.
-  /// If that is also not set, an internal default (of 10 minutes) is used.
+  /// The session is set to expire in [keepAlive].
 
-  void refresh([Duration expiry]) {
+  void refresh() {
     if (_expiryTimer != null) {
-      // Cancel the old timer. This always happens except when this method
-      // is used by the Session constructor to create its first timer.
+      // Cancel the old timer, if any.
       _expiryTimer.cancel();
+      _expiryTimer = null;
     }
 
-    if (expiry == null) {
-      expiry = _server.sessionExpiry ?? _defaultExpiry;
-    }
     // Create a new timer
-    _expiryTimer = new Timer(expiry, () {
-      _terminate(true);
-    });
+
+    if (keepAlive != null) {
+      _expiryTimer = new Timer(keepAlive, () => _terminate(true));
+    }
   }
 
   //----------------------------------------------------------------
@@ -157,5 +153,4 @@ class Session {
   void finalize(bool byTimeOut) {
     // do nothing
   }
-
 }

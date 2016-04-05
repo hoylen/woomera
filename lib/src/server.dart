@@ -666,7 +666,11 @@ class Server {
 
   String sessionParamName = "wSession";
 
-  // Tracks all active sessions
+  /// All active sessions
+  ///
+  /// An [Iterable] of all the currently active sessions.
+
+  Iterable<Session> get sessions => _allSessions.values;
 
   Map<String, Session> _allSessions = new Map<String, Session>();
 

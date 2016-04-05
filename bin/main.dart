@@ -598,7 +598,9 @@ they have been disabled, or if the login page is visited directly
 //----------------------------------------------------------------
 
 Future<Response> handleLogin(Request req) async {
-  req.session = new Session(webServer);
+  var keepAlive = new Duration(minutes: 1);
+
+  req.session = new Session(webServer, keepAlive);
 
   req.session["when"] = new DateTime.now();
 
@@ -613,6 +615,9 @@ Future<Response> handleLogin(Request req) async {
 <h1>Session: logged in</h1>
 
 <p>You have logged in.</p>
+
+<p>The session will remain alive for ${keepAlive.inSeconds} seconds, after the
+last HTTP request was received for the session.</p>
 
 <p><a href="${req.rewriteUrl("~/session/info")}">Session information page</a></p>
 
