@@ -154,7 +154,7 @@ class Session {
   // that terminates a session (i.e. terminate and the refresh timeout).
 
   Future _terminate(int endReason) async {
-    var duration = new DateTime.now().compareTo(_created);
+    var duration = new DateTime.now().difference(_created);
     var r;
     switch (endReason) {
       case endByTerminate:
@@ -170,7 +170,7 @@ class Session {
         r = "?";
         break;
     }
-    _logSession.fine("[session:$id]: ${r} after $duration");
+    _logSession.fine("[session:$id]: ${r} after ${duration.inSeconds}s");
 
     _server._sessionUnregister(this);
     await finish(endReason);
