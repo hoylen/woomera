@@ -227,7 +227,7 @@ class ResponseBuffered extends Response {
     req._request.response.write(str);
 
     _logResponse.fine(
-        "[${req._requestNo}] status=${_status}, contentSize=${str.length} bytes");
+        "[${req.id}] status=${_status}, contentSize=${str.length} bytes");
     _contentOutputted = true;
 
     super._finish(req);
@@ -345,7 +345,7 @@ class ResponseRedirect extends Response {
 
     var url = (_addr.startsWith("~/")) ? req.rewriteUrl(_addr) : _addr;
 
-    _logResponse.fine("[${req._requestNo}] redirecting to ${url}");
+    _logResponse.fine("[${req.id}] redirecting to ${url}");
 
     header('Location', url);
     super._outputHeaders(req);

@@ -203,7 +203,7 @@ class RequestParams {
 
     for (var key in _data.keys) {
       if (str.isNotEmpty) {
-        str += ",  ";
+        str += ", ";
       }
       str += "$key=[";
 

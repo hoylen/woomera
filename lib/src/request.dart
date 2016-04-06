@@ -3,7 +3,7 @@ part of woomera;
 //----------------------------------------------------------------
 
 class Request {
-  final int _requestNo;
+  final String id;
 
   /// The server that received this request.
   ///
@@ -134,15 +134,10 @@ class Request {
 
       // Logging
 
-      if (_logRequest.level <= Level.FINE) {
-        var str = "[${_requestNo}] post parameters:";
-        if (postParams.isNotEmpty) {
-          str += " ${postParams.length} key(s)";
-          str += postParams.toString();
-        } else {
-          str += " none";
-        }
-        _logRequest.fine(str);
+      if (postParams.isNotEmpty && _logRequestParam.level <= Level.FINE) {
+        var str =
+            "[${id}] post: ${postParams.length} key(s): ${postParams.toString()}";
+        _logRequestParam.finer(str);
       }
     }
   }
@@ -189,19 +184,19 @@ class Request {
   /// Internal constructor invoked by [Server] code. Code outside this package
   /// cannot create [Request] objects.
   ///
-  Request._internal(HttpRequest request, int requestNo, Server server)
+  Request._constructor(HttpRequest request, String requestId, Server server)
       : _request = request,
-        _requestNo = requestNo,
+        id = requestId,
         _server = server {
     assert(request != null);
-    assert(requestNo != null);
+    assert(requestId != null);
     assert(server != null);
 
-    _logRequest.fine("[${_requestNo}] ${request.method} ${request.uri}");
+    _logRequest.fine("[${id}] ${request.method} ${request.uri}");
 
     if (_logRequest.level <= Level.FINE) {
       // Log request
-      var str = "[${_requestNo}] HTTP headers:";
+      var str = "[${id}] HTTP headers:";
       request.headers.forEach((name, values) {
         str += "\n  ${name}: ";
         if (values.length == 0) {
@@ -215,7 +210,7 @@ class Request {
           }
         }
       });
-      _logRequest.finest(str);
+      _logRequestHeader.finest(str);
     }
 
     // Check length of URI does not exceed limits
@@ -239,11 +234,10 @@ class Request {
 
     _queryParams = new RequestParams._fromQueryString(request.uri.query);
 
-    if (_queryParams.isNotEmpty && _logRequest.level <= Level.FINE) {
-      var str = "[${_requestNo}] query parameters:";
-      str += " ${queryParams.length} key(s)";
-      str += queryParams.toString();
-      _logRequest.fine(str);
+    if (_queryParams.isNotEmpty && _logRequestParam.level <= Level.FINE) {
+      var str =
+          "[${id}] query: ${queryParams.length} key(s): ${queryParams.toString()}";
+      _logRequestParam.finer(str);
     }
 
     // Determine method used for maintaining (future) sessions
@@ -313,13 +307,13 @@ class Request {
         var candidate = server._sessionFind(sessionId);
 
         if (candidate != null) {
-
           if (await candidate.resume()) {
-            _logSession.finest("[$_requestNo] session resumed: $sessionId");
+            _logSession.finest("[$id] session resumed: $sessionId");
             candidate._refresh(); // restart timeout timer
             this.session = candidate;
           } else {
-            _logSession.finest("[$_requestNo] session could not be resumed: $sessionId");
+            _logSession
+                .finest("[$id] session could not be resumed: $sessionId");
             await candidate._terminate(Session.endByFailureToResume);
             this.session = null;
           }
@@ -327,17 +321,17 @@ class Request {
           return; // found session (but might not have been restored)
 
         } else {
-          _logSession.finest("[$_requestNo] session not found: $sessionId");
+          _logSession.finest("[$id] session not found: $sessionId");
           // fall through to treat as no session found
         }
       } else {
         // Multiple session IDs found: this should not happen
         _logSession.shout(
-            "[$_requestNo] multiple session IDs in request: not restoring any of them");
+            "[$id] multiple session IDs in request: not restoring any of them");
         // fall through to treat as no session found
       }
     } else {
-      _logSession.finest("[$_requestNo] no session ID in request");
+      _logSession.finest("[$id] no session ID in request");
       // fall through to treat as no session found
     }
 
@@ -347,6 +341,13 @@ class Request {
     this._sessionWasSetInRequest = false;
   }
 
+  //----------------------------------------------------------------
+
+  Future _sessionSuspend() async {
+    if (this.session != null) {
+      await this.session.suspend();
+    }
+  }
   //================================================================
 
   /// The HTTP request method.

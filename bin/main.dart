@@ -283,7 +283,7 @@ td p { margin: 0 0 0.5ex 0; }
 Future<Response> handleTestPost(Request req) async {
   assert(req.method == "POST");
 
-  mainLog.fine("Test POST");
+  mainLog.fine("[${req.id}] Test POST");
 /*
   for (var key in req.params.keys()) {
     var values = req.params.mvalues(key, raw: true);
@@ -318,7 +318,7 @@ Future<Response> handleExceptionHandlers(Request req) async {
   p1.exceptionHandler = (eh1) ? exceptionHandlerOnPipe1 : null;
   p2.exceptionHandler = (eh2) ? exceptionHandlerOnPipe2 : null;
 
-  mainLog.fine("setting exception handlers");
+  mainLog.fine("[${req.id}] setting exception handlers");
   var resp = new ResponseBuffered(ContentType.HTML);
   resp.write("""
 <html>
@@ -341,7 +341,7 @@ ${homeButton(req)}
 
 Future<Response> handleStop(Request req) async {
   await webServer.stop();
-  mainLog.fine("stopped");
+  mainLog.fine("[${req.id}] stopped");
   var resp = new ResponseBuffered(ContentType.TEXT);
   resp.write("Web server has been stopped\n");
   return resp;
@@ -350,7 +350,7 @@ Future<Response> handleStop(Request req) async {
 //----------------------------------------------------------------
 
 Future<Response> handleThrow(Request req) async {
-  mainLog.fine("exception test");
+  mainLog.fine("[${req.id}] exception test");
 
   var type = req.pathParams["name"];
 
@@ -797,6 +797,8 @@ Future main(List<String> args) async {
     new Logger("main").level = level;
     new Logger("woomera.server").level = level;
     new Logger("woomera.request").level = level;
+    new Logger("woomera.request.header").level = level;
+    new Logger("woomera.request.param").level = level;
     new Logger("woomera.response").level = level;
     new Logger("woomera.session").level = level;
   }

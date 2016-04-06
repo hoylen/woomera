@@ -152,7 +152,7 @@ class StaticFiles {
 
     var path = baseDir + "/" + components.join("/");
     _logRequest
-        .finer("[${req._requestNo}] static file/directory requested: $path");
+        .finer("[${req.id}] static file/directory requested: $path");
 
     bool wasFilePath = false;
 
@@ -161,7 +161,7 @@ class StaticFiles {
 
       var file = new File(path);
       if (await file.exists()) {
-        _logRequest.finest("[${req._requestNo}] static file found: $path");
+        _logRequest.finest("[${req.id}] static file found: $path");
         return await _serveFile(req, file);
       }
 
@@ -169,7 +169,7 @@ class StaticFiles {
         path += "/"; // append a "/" to try and treat it as a directory
         wasFilePath = true;
       } else {
-        _logRequest.finest("[${req._requestNo}] static file not found");
+        _logRequest.finest("[${req.id}] static file not found");
       }
     }
 
@@ -184,25 +184,25 @@ class StaticFiles {
           var df = new File(dfName);
           if (await df.exists()) {
             _logRequest.finest("[${req
-                ._requestNo}] static directory: default file found: $dfName");
+                .id}] static directory: default file found: $dfName");
             return await _serveFile(req, df);
           }
         }
 
         if (allowDirectoryListing) {
           // List the contents of the directory
-          _logRequest.finest("[${req._requestNo}] returning directory listing");
+          _logRequest.finest("[${req.id}] returning directory listing");
           return await _serveDirectoryListing(req, path);
         } else {
           _logRequest.finest(
-              "[${req._requestNo}] static directory listing not allowed");
+              "[${req.id}] static directory listing not allowed");
         }
       } else {
         if (wasFilePath) {
           _logRequest.finest(
-              "[${req._requestNo}] static file not found (even tried directory)");
+              "[${req.id}] static file not found (even tried directory)");
         } else {
-          _logRequest.finest("[${req._requestNo}] static directory not found");
+          _logRequest.finest("[${req.id}] static directory not found");
         }
       }
     }

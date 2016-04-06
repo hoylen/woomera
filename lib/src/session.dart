@@ -177,6 +177,32 @@ class Session {
   }
 
   //----------------------------------------------------------------
+  /// Suspend
+  ///
+  /// This method is invoked after the HTTP response has been produced
+  /// for a HTTP request.
+  ///
+  /// This method can be implemented by subclasses of [Session] to perform
+  /// operations on the session at the end of using it in handling a HTTP
+  /// request. For example, to persist its state to a database. After this, the
+  /// [Session] will not be used again until it is restored for another HTTP
+  /// request or it is terminated by the timeout timer.
+  ///
+  /// Note: this method is only automatically invoked if the session is set on
+  /// the [Request] at the end of providing the response for it.  If the handler
+  /// removes the session from the [Request], this method is not automatically
+  /// invoked. For example, when a session is cleared because the user has
+  /// logged out.  In that situation, if this method needs to be invoked, the
+  /// handler should explicitly invoke it.
+  ///
+  /// This instance method is intended to be overridden by subclasses of the
+  /// [Session] class.
+
+  Future suspend() async {
+    // do nothing
+  }
+
+  //----------------------------------------------------------------
   /// Resume
   ///
   /// This method is invoked when the session is restored to a HTTP request.
@@ -184,6 +210,16 @@ class Session {
   /// If it returns true, the session is associated with the HTTP request.
   /// Otherwise, the session is treated as no longer being valid and is
   /// terminated.
+  ///
+  /// Note: this method is only automatically invoked when the session is
+  /// automatically restored to a HTTP request. If the handler associates a
+  /// session to the [Request], this method is not automatically invoked.  For
+  /// example, when a new session is created and associated with the [Request]
+  /// because a user has logged in.  In that situation, if this method needs to
+  /// be invoked, the handler should explicitly invoke it.
+  ///
+  /// This instance method is intended to be overridden by subclasses of the
+  /// [Session] class.
 
   Future<bool> resume() async {
     return true;
@@ -195,8 +231,8 @@ class Session {
   /// This method is invoked when the session is ended. The [endReason]
   /// indicates why the session has ended.
   ///
-  /// The implementation of this method in [Session] does nothing, but this
-  /// method can be implemented by subclasses of it.
+  /// This instance method is intended to be overridden by subclasses of the
+  /// [Session] class.
 
   Future finish(int endReason) async {
     // do nothing

@@ -26,6 +26,8 @@
 ///
 /// - woomera.server
 /// - woomera.request
+/// - woomera.request.header
+/// - woomera.request.param
 /// - woomera.response
 /// - woomera.session
 
@@ -62,6 +64,9 @@ part 'src/session.dart';
 ///
 Logger _logServer = new Logger("woomera.server");
 Logger _logRequest = new Logger("woomera.request");
+Logger _logRequestHeader = new Logger("woomera.request.header");
+Logger _logRequestParam = new Logger("woomera.request.param");
+
 Logger _logResponse = new Logger("woomera.response");
 Logger _logSession = new Logger("woomera.session");
 

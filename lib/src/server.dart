@@ -70,6 +70,20 @@ class Server {
 
   int postMaxSize = 10 * 1024 * 1024;
 
+  /// Identity of the server.
+  ///
+  /// This is used as a prefix to the request number to form the [Request.id] to
+  /// identify the [Request]. This is commonly used in log messages:
+  ///
+  ///     mylog.info("[${req.id}] something happened");
+  ///
+  /// The default value of the empty string is usually fine for most
+  /// applications, since most applications are only running one [Server].  But
+  /// if multiple servers are running, give them each a unique [id] so the
+  /// requests can be uniquely identified.
+
+  String id = "";
+
   //----------------------------------------------------------------
 
   /// Bind address for the server.
@@ -246,7 +260,7 @@ class Server {
       // The request processing loop
 
       await for (var request in _svr) {
-        await _handleRequest(request, ++numRequestsReceived);
+        await _handleRequest(request, id + (++numRequestsReceived).toString());
       }
 
       requestLoopCompleter.complete();
@@ -290,13 +304,14 @@ class Server {
   //----------------------------------------------------------------
   // Handles a HTTP request. This method processes the stream of HTTP requests.
 
-  Future _handleRequest(HttpRequest request, int requestNo) async {
+  Future _handleRequest(HttpRequest request, String requestId) async {
     try {
       // Create context
 
-      var req = new Request._internal(request, requestNo, this);
+      var req = new Request._constructor(request, requestId, this);
       await req._postParmsInit(this.postMaxSize);
-      await req._sessionRestore(); // must do this after obtaining the post parameters
+      await req
+          ._sessionRestore(); // must do this after obtaining the post parameters
 
       // Handle the request in its context
 
@@ -312,7 +327,7 @@ class Server {
       var message;
 
       _logRequest
-          .shout("[$requestNo] exception raised outside context: $e\n$s");
+          .shout("[$requestId] exception raised outside context: $e\n$s");
 
       // Since there is no context, the exception handlers cannot be used
       // to generate the response, this will generate a simple HTTP response.
@@ -331,7 +346,7 @@ class Server {
       resp.statusCode = status;
       resp.write("$message\n");
 
-      _logResponse.fine("[$requestNo] status=$status ($message)");
+      _logResponse.fine("[$requestId] status=$status ($message)");
     } finally {
       request.response.close();
     }
@@ -373,21 +388,16 @@ class Server {
 
           handlerFound = true;
 
+          _logRequest.finer("[${req.id}] matched rule: ${rule}");
+
           req._pathParams = params; // set matched path parameters
 
-          if (_logRequest.level <= Level.FINE) {
+          if (params.isNotEmpty && _logRequestParam.level <= Level.FINER) {
             // Log path parameters
-            var str = "[${req._requestNo}] path parameters:";
-            if (params.isNotEmpty) {
-              str += " ${params.length} key(s)";
-              str += params.toString();
-            } else {
-              str += " none";
-            }
-            _logRequest.fine(str);
+            var str =
+                "[${req.id}] path: ${params.length} key(s): ${params.toString()}";
+            _logRequestParam.finer(str);
           }
-
-          _logRequest.fine("[${req._requestNo}] matched rule: ${rule}");
 
           // Invoke the rule's handler
 
@@ -462,6 +472,8 @@ class Server {
             // handler produced a result
             break; // stop looking for further matches in this pipe
           } else {
+            _logRequest.fine(
+                "[${req.id}] handler returned no response, continue matching");
             // handler indicated that processing is to continue processing with
             // the next match in the rule/pipeline.
           }
@@ -516,6 +528,10 @@ class Server {
     // internal finish method.
 
     response._finish(req);
+
+    // Suspend the session (if there is one after the handler has processed the request)
+
+    req._sessionSuspend();
   }
 
 // contentLength -1
@@ -539,7 +555,7 @@ class Server {
       // Report these as "not found" to the requestor.
 
       _logRequest.severe(
-          "[${req._requestNo}] not found: ${req._request.method} ${req._request.uri.path}");
+          "[${req.id}] not found: ${req._request.method} ${req._request.uri.path}");
       assert(st == null);
 
       resp.status = (e.found == NotFoundException.foundNothing)
@@ -563,15 +579,15 @@ class Server {
       // want to expose any internal information.
 
       if (e is! ExceptionHandlerException) {
-        _logResponse.severe(
-            "[${req._requestNo}] exception thrown (${e.runtimeType}): ${e}");
+        _logResponse
+            .severe("[${req.id}] exception thrown (${e.runtimeType}): ${e}");
       } else {
         ExceptionHandlerException wrapper = e;
         _logResponse.severe(
-            "[${req._requestNo}] exception handler threw an exception (${wrapper.exception.runtimeType}): ${wrapper.exception}");
+            "[${req.id}] exception handler threw an exception (${wrapper.exception.runtimeType}): ${wrapper.exception}");
       }
       if (st != null) {
-        _logResponse.finest("[${req._requestNo}] stack trace:\n${st}");
+        _logResponse.finest("[${req.id}] stack trace:\n${st}");
       }
 
       resp.status = HttpStatus.INTERNAL_SERVER_ERROR;
