@@ -522,7 +522,7 @@ class Server {
     // Finish the HTTP response from the "response" by invoking its
     // application-visible finish method.
 
-    await response.finish();
+    await response.finish(req);
 
     // Really finish the HTTP response from the "response" by invoking its
     // internal finish method.

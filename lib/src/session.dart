@@ -198,7 +198,7 @@ class Session {
   /// This instance method is intended to be overridden by subclasses of the
   /// [Session] class.
 
-  Future suspend() async {
+  Future suspend(Request req) async {
     // do nothing
   }
 
@@ -221,7 +221,7 @@ class Session {
   /// This instance method is intended to be overridden by subclasses of the
   /// [Session] class.
 
-  Future<bool> resume() async {
+  Future<bool> resume(Request req) async {
     return true;
   }
 

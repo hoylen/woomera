@@ -307,7 +307,7 @@ class Request {
         var candidate = server._sessionFind(sessionId);
 
         if (candidate != null) {
-          if (await candidate.resume()) {
+          if (await candidate.resume(this)) {
             _logSession.finest("[$id] session resumed: $sessionId");
             candidate._refresh(); // restart timeout timer
             this.session = candidate;
@@ -345,7 +345,7 @@ class Request {
 
   Future _sessionSuspend() async {
     if (this.session != null) {
-      await this.session.suspend();
+      await this.session.suspend(this);
     }
   }
   //================================================================

@@ -160,7 +160,7 @@ abstract class Response {
   /// constructor could produce the common HTML headers and the subclass's
   /// [finish] method could produce the common HTML footers.
 
-  Future finish() async {
+  Future finish(Request req) async {
     // do nothing
   }
 
