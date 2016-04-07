@@ -40,6 +40,9 @@ class ServerRule {
   //----------------------------------------------------------------
 
   List<String> _segments;
+
+  /// The request handler callback method.
+
   RequestHandler handler;
 
   //----------------------------------------------------------------

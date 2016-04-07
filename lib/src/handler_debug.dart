@@ -6,7 +6,7 @@ part of woomera;
 /// This handler is useful for debugging.
 ///
 Future<Response> debugHandler(Request req) async {
-  var str = "HTTP method: ${req._request.method}\n";
+  var str = "HTTP method: ${req.request.method}\n";
   str += "\n";
 
   var hasParams = false;

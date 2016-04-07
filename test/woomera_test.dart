@@ -148,7 +148,7 @@ Server createTestServer() {
 //----------------------------------------------------------------
 
 Future<Response> testHandler(Request req) async {
-  var str = "${req.method};";
+  var str = "${req.request.method};";
 
   for (var key in req.pathParams.keys) {
     for (var value in req.pathParams.values(key, raw: true)) {

@@ -252,7 +252,7 @@ class Server {
 
     // Listen for and process HTTP requests
 
-    int numRequestsReceived = 0;
+    int requestNo = 0;
 
     var requestLoopCompleter = new Completer();
 
@@ -260,7 +260,7 @@ class Server {
       // The request processing loop
 
       await for (var request in _svr) {
-        await _handleRequest(request, id + (++numRequestsReceived).toString());
+        await _handleRequest(request, id.toString() + (++requestNo).toString());
       }
 
       requestLoopCompleter.complete();
@@ -276,11 +276,11 @@ class Server {
     // Finished: it only gets to here if the server stops running (see [stop] method)
 
     _logServer.fine(
-        "${(_isSecure) ? "HTTPS" : "HTTP"} server stopped: ${numRequestsReceived} requests");
+        "${(_isSecure) ? "HTTPS" : "HTTP"} server stopped: ${requestNo} requests");
     _svr = null;
     _isSecure = null;
 
-    return numRequestsReceived;
+    return requestNo;
   }
 
   //----------------------------------------------------------------
@@ -361,7 +361,7 @@ class Server {
     var handlerFound = false;
     Response response;
 
-    var pathSegments = req._request.uri.pathSegments;
+    var pathSegments = req.request.uri.pathSegments;
 
     // Process the request through the pipeline.
 
@@ -373,7 +373,7 @@ class Server {
     // none of the patterns matched it.
 
     for (var pipe in pipelines) {
-      var rules = pipe.rules(req._request.method);
+      var rules = pipe.rules(req.request.method);
       if (rules == null) {
         // This pipe does not support the method
         continue; // skip to next pipe in the pipeline
@@ -491,12 +491,19 @@ class Server {
     if (response == null) {
       // No rule matched or the ones that did match all returned null
 
-      var found = (methodFound)
-          ? ((handlerFound)
-              ? NotFoundException.foundHandler
-              : NotFoundException.foundMethod)
-          : NotFoundException.foundNothing;
-      _logRequest.fine("not found: found=$found");
+      var found;
+      if (handlerFound) {
+        assert(methodFound);
+        found = NotFoundException.foundHandler;
+        _logRequest.fine("[${req.id}] not found: all handler(s) returned null");
+      } else if (methodFound) {
+        found = NotFoundException.foundMethod;
+        _logRequest.fine("[${req.id}] not found: found method but no rule");
+      } else {
+        found = NotFoundException.foundNothing;
+        _logRequest.fine("[${req.id}] not found: method not supported");
+      }
+
       var e = new NotFoundException(found);
 
       // Try reporting this through the server's exception handler
@@ -555,7 +562,7 @@ class Server {
       // Report these as "not found" to the requestor.
 
       _logRequest.severe(
-          "[${req.id}] not found: ${req._request.method} ${req._request.uri.path}");
+          "[${req.id}] not found: ${req.request.method} ${req.request.uri.path}");
       assert(st == null);
 
       resp.status = (e.found == NotFoundException.foundNothing)

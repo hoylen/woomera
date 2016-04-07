@@ -27,12 +27,10 @@ class Session {
 
   /// Session ID
   ///
-  /// Returns a unique identifier for the session which can be used
+  /// The unique identifier for the session which can be used
   /// for logging. It is a UUID.
-  ///
-  String get id => _id;
 
-  final String _id = new Uuid().v4().replaceAll("-", ""); // random session ID
+  final String id = new Uuid().v4().replaceAll("-", ""); // random session ID
 
   final DateTime _created; // When the session was created
 

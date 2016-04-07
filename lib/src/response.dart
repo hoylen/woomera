@@ -18,7 +18,7 @@ abstract class Response {
   /// Default status is 200 "OK", if this method is not used to set it to
   /// a different value.
   ///
-  set status(int value) {
+  void set status(int value) {
     if (_headersOutputted) {
       throw new StateError("Header already outputted");
     }
@@ -121,7 +121,7 @@ abstract class Response {
         var c = new Cookie(req.server.sessionCookieName, req.session.id);
         c.path = req.server.basePath;
         c.httpOnly = true;
-        if (req._server.sessionCookieForceSecure || req._server.isSecure) {
+        if (req.server.sessionCookieForceSecure || req.server.isSecure) {
           c.secure = true; // HTTPS only: better security, but not for testing
         }
         this.cookieAdd(c);
@@ -132,7 +132,7 @@ abstract class Response {
     }
     // Output the status, headers and cookies
 
-    var response = req._request.response;
+    var response = req.request.response;
 
     response.statusCode = _status;
     response.headers.contentType = _contentType;
@@ -224,7 +224,7 @@ class ResponseBuffered extends Response {
     super._outputHeaders(req);
 
     var str = _buf.toString();
-    req._request.response.write(str);
+    req.request.response.write(str);
 
     _logResponse.fine(
         "[${req.id}] status=${_status}, contentSize=${str.length} bytes");
@@ -268,7 +268,7 @@ class ResponseStream extends Response {
     }
 
     super._outputHeaders(req);
-    await req._request.response.addStream(stream);
+    await req.request.response.addStream(stream);
     _contentOutputted = true;
 
     return this;
@@ -349,7 +349,7 @@ class ResponseRedirect extends Response {
 
     header('Location', url);
     super._outputHeaders(req);
-    req._request.response.write("Redirect\n");
+    req.request.response.write("Redirect\n");
     super._finish(req);
   }
 }

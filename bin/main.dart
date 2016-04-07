@@ -281,7 +281,7 @@ td p { margin: 0 0 0.5ex 0; }
 //----------------------------------------------------------------
 
 Future<Response> handleTestPost(Request req) async {
-  assert(req.method == "POST");
+  assert(req.request.method == "POST");
 
   mainLog.fine("[${req.id}] Test POST");
 /*

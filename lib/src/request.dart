@@ -3,23 +3,30 @@ part of woomera;
 //----------------------------------------------------------------
 
 class Request {
+  /// An identity for the request.
+  ///
+  /// This is commonly used in log messages:
+  ///
+  ///     mylog.info("[${req.id}] something happened");
+  ///
+  /// Note: the value is a [String], because it contains the [Server.id] from
+  /// the server, concatinated with the request number.  By default, the server
+  /// ID is an empty string, but the application can change it to a non-empty
+  /// value.
+
   final String id;
 
   /// The server that received this request.
   ///
   /// Identifies the [Server] that received the HTTP request.
 
-  Server get server => _server;
-
-  final Server _server;
+  final Server server;
 
   /// The HTTP request.
   ///
   /// An instance of [HttpRequest] the produced the context.
 
-  HttpRequest get request => _request;
-
-  final HttpRequest _request;
+  final HttpRequest request;
 
   /// The session associated with the context.
   ///
@@ -108,16 +115,16 @@ class Request {
   Future _postParmsInit(int maxPostSize) async {
     // Set post parameters (if any)
 
-    if (_request.method == "POST" &&
-        _request.headers.contentType != null &&
-        _request.headers.contentType.mimeType ==
+    if (request.method == "POST" &&
+        request.headers.contentType != null &&
+        request.headers.contentType.mimeType ==
             "application/x-www-form-urlencoded") {
       // Read in the contents of the request
 
       // TODO: check specification whether this can use AsciiDecoder instead of UTF-8
 
       var buf = new List<int>();
-      await for (var bytes in _request) {
+      await for (var bytes in request) {
         if (maxPostSize < buf.length + bytes.length) {
           throw new PostTooLongException();
         }
@@ -184,10 +191,10 @@ class Request {
   /// Internal constructor invoked by [Server] code. Code outside this package
   /// cannot create [Request] objects.
   ///
-  Request._constructor(HttpRequest request, String requestId, Server server)
-      : _request = request,
+  Request._constructor(HttpRequest httpRequest, String requestId, Server svr)
+      : request = httpRequest,
         id = requestId,
-        _server = server {
+        server = svr {
     assert(request != null);
     assert(requestId != null);
     assert(server != null);
@@ -225,7 +232,7 @@ class Request {
       length += request.uri.fragment.length;
     }
 
-    if (_server.urlMaxSize < length) {
+    if (server.urlMaxSize < length) {
       throw new PathTooLongException();
     }
 
@@ -350,12 +357,6 @@ class Request {
   }
   //================================================================
 
-  /// The HTTP request method.
-  ///
-  /// Returns "GET", "POST", etc.
-
-  String get method => _request.method;
-
   //----------------------------------------------------------------
   /// Returns the request's path as a relative path.
   ///
@@ -365,13 +366,13 @@ class Request {
   String requestPath() {
     var p = this.request.uri.path;
 
-    if (p.startsWith(_server._basePath)) {
+    if (p.startsWith(server._basePath)) {
       // TODO: this needs more work to account for # and ? parameters
 
-      if (p.length <= _server._basePath.length)
+      if (p.length <= server._basePath.length)
         p = "~/";
       else
-        p = "~/" + p.substring(_server._basePath.length);
+        p = "~/" + p.substring(server._basePath.length);
     } else {
       p = "~/";
     }
@@ -441,7 +442,7 @@ class Request {
     if (hasSession && !this._sessionUsingCookies) {
       // Require hidden POST form parameter to preserve session
       return "<input type=\"hidden\" name=\"" +
-          HEsc.attr(_server.sessionParamName) +
+          HEsc.attr(server.sessionParamName) +
           "\" value=\"" +
           HEsc.attr(session.id) +
           "\"/>";
