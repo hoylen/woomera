@@ -25,6 +25,8 @@ class StaticFiles {
     "jpeg": new ContentType("image", "jpeg"),
     "gif": new ContentType("image", "gif"),
     "xml": new ContentType("application", "xml"),
+    "js": new ContentType("application", "javascript"),
+    "dart": new ContentType("application", "dart"),
   };
 
   //================================================================
