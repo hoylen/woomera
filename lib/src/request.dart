@@ -199,7 +199,7 @@ class Request {
     assert(requestId != null);
     assert(server != null);
 
-    _logRequest.fine("[${id}] ${request.method} ${request.uri}");
+    _logRequest.fine("[${id}] ${request.method} ${request.uri.path}");
 
     if (_logRequest.level <= Level.FINE) {
       // Log request
