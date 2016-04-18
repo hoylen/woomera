@@ -1,7 +1,12 @@
 /// Woomera demonstration Web Server.
 ///
+/// This program runs a Web server to demonstrate the features of the Woomera
+/// framework.
 ///
-/// Copyright (c) 2015, Hoylen Sue. All rights reserved. Use of this source code
+/// This program runs a single HTTP Web server (on port 1023), and has defined
+/// two pipelines for processing the HTTP requests.
+///
+/// Copyright (c) 2016, Hoylen Sue. All rights reserved. Use of this source code
 /// is governed by a BSD-style license that can be found in the LICENSE file.
 //----------------------------------------------------------------
 
@@ -33,7 +38,7 @@ Logger mainLog = new Logger("main");
 // Normally these can be local variables, but they are made global
 // so some of the handler functions can access them. They are only
 // manipulated for testing purposes: a normal Web application would
-// not need to manipulate them after they have been setup.
+// usually not need to manipulate them after they have been setup.
 
 Server webServer;
 ServerPipeline p1;
@@ -41,219 +46,282 @@ ServerPipeline p2;
 
 //================================================================
 // Handlers
+//
+// These handlers are used in the rules that are registered in the pipelines
+// (see the [main] method at the end this file).
+
+//----------------------------------------------------------------
+/// Common HTML code for the "home" button that appears on many pages.
 
 String homeButton(Request req) {
-  return "<p><a href='${req.rewriteUrl(
-      "~/")}' style='font-size: large; text-decoration: none;'>&#x21A9;</a></p>";
+  return "<p><a href='${req.rewriteUrl("~/")}' style='font-size: large; text-decoration: none;'>&#x21A9;</a></p>";
 }
 
 //----------------------------------------------------------------
+/// Home page
+///
+/// Main page for the demonstration Web server.
 
 Future<Response> homePage(Request req) async {
   var resp = new ResponseBuffered(ContentType.HTML);
   resp.write("""
+<!doctype html>
 <html>
 <head>
- <title>Woomera demo</title>
- <style type="text/css">
-table { border-collapse: collapse; }
-td { vertical-align: top; padding: 1ex 0.5em; }
-td p { margin: 0 0 0.5ex 0; }
- </style>
+  <meta charset="utf-8">
+  <title>Woomera demo</title>
+  <link rel="stylesheet" href="diskfiles/style/site.css">
 </head>
+
 <body>
-  <h1>Woomera demo</h1>
+  <header>
+    <h1>Woomera demonstration</h1>
+  </header>
 
-  <h2>URL pattern matching</h2>
+  <div class="content">
 
-  <table>
-    <thead>
-      <tr>
-        <th>Pattern</th>
-        <th>Examples</th>
-        <th>Non-matches</th>
-      <tr>
-      </thead>
-    <tbody>
-      <tr>
-        <td><code>/must/all/match</code></td>
-        <td>
-          <p><a href="${req.rewriteUrl("~/must/all/match")}">/must/all/match</a></p>
-        </td>
-        <td>
-          <p><a href="/must">/must</a> missing a component</p>
-          <p><a href="/must/all">/must/all</a> missing a component</p>
-          <p><a href="/must/match">/must/match</a> missing a component</p>
-          <p><a href="/all/match">/all/match</a> missing a component</p>
-          <p><a href="/doesnt/all/match">/doesnt/all/match</a> component does not match</p>
-          <p><a href="/must/some/match">/must/some/match</a> component does not match</p>
-          <p><a href="/must/all/Match">/must/all/Match</a> component does not match (case sensitivity matters)</p>
-          <p><a href="/must/all/match/exactly">/must/all/match/exactly</a> too many components</p>
-          <p><a href="/must/all/match/">/must/all/match/</a> too many components (trailing slash produces another component)</p>
-        </td>
-      </tr>
-      <tr>
-        <td><code>/one/:first</code></td>
-        <td>
-          <p><a href="/one/alpha">/one/alpha</a></p>
-          <p><a href="/one/">/one/</a></p>
-        </td>
-        <td>
-          <p><a href="/one">/one</a> missing parameter</p>
-          <p><a href="/one/alpha/beta">/one/alpha/beta</a> too many parameters</p>
-        </td>
-      </tr>
-      <tr>
-        <td><code>/one/:first/:second</code></td>
-        <td>
-          <p><a href="/two/alpha/beta">/two/alpha/beta</a></p>
-          <p><a href="/two/alpha/">/two/alpha/</a></p>
-          <p><a href="/two//">/two//</a></p>
-          <p><a href="/two/你好/世界">/two/你好/世界</a></p>
-        </td>
-        <td>
-          <p><a href="/two/alpha">/two/alpha</a> insufficient parameters</p>
-          <p><a href="/two/alpha/beta/gamma">/two/alpha/beta/gamma</a> too many parameters</p>
-        </td>
-      </tr>
-      <tr>
-        <td><code>/one/:first/:second/:third</code></td>
-        <td>
-          <p><a href="/three/alpha/beta/gamma">/three/alpha/beta/gamma</a></p>
-          <p><a href="/three/alpha/beta/">/three/alpha/beta/</a></p>
-          <p><a href="/three/alpha//">/three/alpha//</a></p>
-          <p><a href="/three///">/three///</a></p>
-          <p><a href="/three//beta/gamma">/three//beta/gamma</a></p>
-          <p><a href="/three/alpha//gamma">/three/alpha//gamma</a></p>
-          <p><a href="/three//beta/">/three//beta/</a></p>
-          <p><a href="/three///gamma">/three///gamma</a></p>
-        </td>
-      </tr>
-      <tr>
-        <td><code>/double/:name/:name</code></td>
-        <td><a href="/double/alpha/beta">/double/alpha/beta</a></td>
-      </tr>
-      <tr>
-        <td><code>/triple/:name/:name/:name</code></td>
-        <td><a href="/triple/alpha/beta/gamma">/triple/alpha/beta/gamma</a></td>
-      </tr>
-      <tr>
-        <td><code>/wildcard1/*</code></td>
-        <td>
-          <p><a href="/wildcard1/">/wildcard1/</a></p>
-          <p><a href="/wildcard1/alpha">/wildcard1/alpha</a></p>
-          <p><a href="/wildcard1/alpha/beta">/wildcard1/alpha/beta</a></p>
-          <p><a href="/wildcard1/alpha/beta/gamma">/wildcard1/alpha/beta/gamma</a></p>
-        </td>
-      </tr>
+  <div class="section">
+    <h2>Request parameters</h2>
 
-      <tr>
-        <td><code>/wildcard2/*/foo/bar</code></td>
-        <td>
-          <p><a href="/wildcard2/alpha/beta/gamma/foo/bar">/wildcard2/alpha/beta/gamma/foo/bar</a></p>
-        </td>
-        <td>
-          <p><a href="/wildcard2/">/wildcard2/</a></p>
-          <p><a href="/wildcard2/alpha">/wildcard2/foo/bar</a></p>
-        </td>
-      </tr>
+    <p>Three types of parameters can be passed to handlers.</p>
 
-      <tr>
-        <td><code>/wildcard3/*/*</code></td>
-        <td>
-          <p><a href="/wildcard3/alpha/beta">/wildcard3/alpha/beta</a></p>
-          <p><a href="/wildcard3/alpha/beta/gamma">/wildcard3/alpha/beta/gamma</a></p>
-          <p><a href="/wildcard3/alpha/beta/gamma/delta">/wildcard3/alpha/beta/gamma/delta</a></p>
-        </td>
-      </tr>
+    <table class="main">
+      <tbody>
+        <tr>
+          <td>Path parameters</td>
+          <td>
+            <p>Matching to pattern with <a href="/must/all/match">no path parameters</a></p>
+            <p>Matching <a href="/two/hello/world">/two/hello/world</a> to <code>/two/:first/:second</code></p>
+            <p>Matching <a href="/wildcard1/a/b/c">/wildcard1/a/b/c</a> to <code>/wildcard1/*</code></p>
+          </td>
+        <tr>
+          <td>Query parameters</td>
+          <td>
+            <p><a href="/test?foo=bar">?foo=bar</a></p>
+            <p><a href="/test?greeting=hello&name=world">?greeting=hello&name=world</a></p>
+            <p><a href="/test?p=query&p=parameters&p=can+be&p=repeated">?p=query&p=parameters&p=can+be&p=repeated</a></p>
+            <p><a href="/test?note=Unicode+is+supported&value=안녕하세요+세계&value=hello+world">?note=Unicode+is+supported&value=안녕하세요+세계&value=hello+world</a></p>
+          </td>
+        </tr>
+        <tr>
+          <td>POST parameters</td>
+          <td>
+            <p>
+            <form method="POST" action="/test">
+            <input type="text" name="foo"/>
+            &nbsp;
+            <input type="radio" name="r" id="r-A" value="A"/><label for="r-A">A</label>
+            <input type="radio" name="r" id="r-B" value="B"/><label for="r-B">B</label>
+            <input type="radio" name="r" id="r-C" value="C"/><label for="r-C">C</label>
+            &nbsp;
+            <input type="checkbox" id="chk-a" name="chk-a" value="α"/><label for="chk-a">α</label>
+            <input type="checkbox" id="chk-b" name="chk-b" value="β"/><label for="chk-b">β</label>
+            <input type="checkbox" id="chk-c" name="chk-c" value="γ"/><label for="chk-c">γ</label>
+            &nbsp;
+            <input type="submit" value="Submit"/>
+            </form>
+            </p>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
 
-      <tr>
-        <td><code>/wildcard4/*/foo/bar/*/baz</code></td>
-        <td>
-          <p><a href="/wildcard4/alpha/beta/gamma//foo/bar/delta/baz">/wildcard4/alpha/beta/gamma/foo/bar/delta/baz</a></p>
-        </td>
-      </tr>
-
-    </tbody>
-  </table>
-
-  <h2>Query parameters and POST parameters</h2>
-
-  <table>
-    <tbody>
-      <tr>
-        <td>Query parameters</td>
-        <td>
-          <p><a href="/test?foo=bar">?foo=bar</a></p>
-          <p><a href="/test?foo=1&bar=baz">?foo=1&bar=baz</a></p>
-        </td>
-      </tr>
-      <tr>
-        <td>Query parameters can be repeated</td>
-        <td>
-          <p><a href="/test?m=first&m=second&n=안녕하세요+세계&m=third">?m=first&m=second&n=안녕하세요 세계&m=third</a></p>
-        </td>
-      </tr>
-      <tr>
-        <td>POST parameters</td>
-        <td>
-          <p>
-          <form method="POST" action="/test">
-          <input type="text" name="foo"/>
-          &nbsp;
-          <input type="radio" name="r" id="r-A" value="A"/><label for="r-A">A</label>
-          <input type="radio" name="r" id="r-B" value="B"/><label for="r-B">B</label>
-          <input type="radio" name="r" id="r-C" value="C"/><label for="r-C">C</label>
-          &nbsp;
-          <input type="checkbox" id="chk-a" name="chk-a" value="α"/><label for="chk-a">α</label>
-          <input type="checkbox" id="chk-b" name="chk-b" value="β"/><label for="chk-b">β</label>
-          <input type="checkbox" id="chk-c" name="chk-c" value="γ"/><label for="chk-c">γ</label>
-          &nbsp;
-          <input type="submit" value="Submit"/>
-          </form>
-          </p>
-        </td>
-      </tr>
-    </tbody>
-  </table>
-
-  <h2>Stream test</h2>
-
-  <p><a href="/streamTest">Stream test</a></p>
-
-  <h2>Exception handling</h2>
-
-  <p>If the handler throws an exception, Woomera passes it to an exception
-  hander function that was registered with the Server object.</p>
-
-  <ul>
-    <li><a href="/throw/IntegerDivisionByZeroException">IntegerDivisionByZeroException</a></li>
-    <li><a href="/throw/FormatException">FormatException</a> thrown.</li>
-    <li><a href="/throw/StateError">StateError</a> thrown (after 3 seconds).</li>
-  </ul>
-
-  <h2>Sessions</h2>
+  <div class="section">
+    <h2>Pattern matching of path parameters</h2>
+  
+    <p>More examples of path parameter matching.</p>
+  
+    <table class="main">
+      <thead>
+        <tr>
+          <th>Pattern</th>
+          <th>Example matches</th>
+          <th>Example non-matches</th>
+        <tr>
+        </thead>
+      <tbody>
+        <tr>
+          <td><code>/must/all/match</code></td>
+          <td>
+            <p><a href="${req.rewriteUrl("~/must/all/match")}">/must/all/match</a></p>
+          </td>
+          <td>
+            <p><a href="/must">/must</a> missing a component</p>
+            <p><a href="/must/all">/must/all</a> missing a component</p>
+            <p><a href="/must/match">/must/match</a> missing a component</p>
+            <p><a href="/all/match">/all/match</a> missing a component</p>
+            <p><a href="/doesnt/all/match">/doesnt/all/match</a> component does not match</p>
+            <p><a href="/must/some/match">/must/some/match</a> component does not match</p>
+            <p><a href="/must/all/Match">/must/all/Match</a> component does not match (case sensitivity matters)</p>
+            <p><a href="/must/all/match/exactly">/must/all/match/exactly</a> too many components</p>
+            <p><a href="/must/all/match/">/must/all/match/</a> too many components (trailing slash produces another component)</p>
+          </td>
+        </tr>
+        <tr>
+          <td><code>/one/:first</code></td>
+          <td>
+            <p><a href="/one/alpha">/one/alpha</a></p>
+            <p><a href="/one/">/one/</a></p>
+          </td>
+          <td>
+            <p><a href="/one">/one</a> missing parameter</p>
+            <p><a href="/one/alpha/beta">/one/alpha/beta</a> too many parameters</p>
+          </td>
+        </tr>
+        <tr>
+          <td><code>/one/:first/:second</code></td>
+          <td>
+            <p><a href="/two/alpha/beta">/two/alpha/beta</a></p>
+            <p><a href="/two/alpha/">/two/alpha/</a></p>
+            <p><a href="/two//">/two//</a></p>
+            <p><a href="/two/你好/世界">/two/你好/世界</a></p>
+          </td>
+          <td>
+            <p><a href="/two/alpha">/two/alpha</a> insufficient parameters</p>
+            <p><a href="/two/alpha/beta/gamma">/two/alpha/beta/gamma</a> too many parameters</p>
+          </td>
+        </tr>
+        <tr>
+          <td><code>/one/:first/:second/:third</code></td>
+          <td>
+            <p><a href="/three/alpha/beta/gamma">/three/alpha/beta/gamma</a></p>
+            <p><a href="/three/alpha/beta/">/three/alpha/beta/</a></p>
+            <p><a href="/three/alpha//">/three/alpha//</a></p>
+            <p><a href="/three///">/three///</a></p>
+            <p><a href="/three//beta/gamma">/three//beta/gamma</a></p>
+            <p><a href="/three/alpha//gamma">/three/alpha//gamma</a></p>
+            <p><a href="/three//beta/">/three//beta/</a></p>
+            <p><a href="/three///gamma">/three///gamma</a></p>
+          </td>
+        </tr>
+        <tr>
+          <td><code>/double/:name/:name</code></td>
+          <td><a href="/double/alpha/beta">/double/alpha/beta</a></td>
+        </tr>
+        <tr>
+          <td><code>/triple/:name/:name/:name</code></td>
+          <td><a href="/triple/alpha/beta/gamma">/triple/alpha/beta/gamma</a></td>
+        </tr>
+        <tr>
+          <td><code>/wildcard1/*</code></td>
+          <td>
+            <p><a href="/wildcard1/">/wildcard1/</a></p>
+            <p><a href="/wildcard1/alpha">/wildcard1/alpha</a></p>
+            <p><a href="/wildcard1/alpha/beta">/wildcard1/alpha/beta</a></p>
+            <p><a href="/wildcard1/alpha/beta/gamma">/wildcard1/alpha/beta/gamma</a></p>
+          </td>
+        </tr>
+  
+        <tr>
+          <td><code>/wildcard2/*/foo/bar</code></td>
+          <td>
+            <p><a href="/wildcard2/alpha/beta/gamma/foo/bar">/wildcard2/alpha/beta/gamma/foo/bar</a></p>
+          </td>
+          <td>
+            <p><a href="/wildcard2/">/wildcard2/</a></p>
+            <p><a href="/wildcard2/alpha">/wildcard2/foo/bar</a></p>
+          </td>
+        </tr>
+  
+        <tr>
+          <td><code>/wildcard3/*/*</code></td>
+          <td>
+            <p><a href="/wildcard3/alpha/beta">/wildcard3/alpha/beta</a></p>
+            <p><a href="/wildcard3/alpha/beta/gamma">/wildcard3/alpha/beta/gamma</a></p>
+            <p><a href="/wildcard3/alpha/beta/gamma/delta">/wildcard3/alpha/beta/gamma/delta</a></p>
+          </td>
+        </tr>
+  
+        <tr>
+          <td><code>/wildcard4/*/foo/bar/*/baz</code></td>
+          <td>
+            <p><a href="/wildcard4/alpha/beta/gamma//foo/bar/delta/baz">/wildcard4/alpha/beta/gamma/foo/bar/delta/baz</a></p>
+          </td>
+        </tr>
   """);
 
-  if (req.session == null) {
-    // Not logged in
-    resp.write("""
-<ul>
-  <li><a href=\"${req.rewriteUrl("~/session/loginWithCookies")}\">Login using
-      cookies to preserve the session</a> (if the browser uses them)</li>
-  <li><a href=\"${req.rewriteUrl("~/session/login")}\">Login without cookies</a></li>
-</ul>
+  // Static files and directories
+
+  resp.write("""
+        <tr>
+          <td colspan="3"><a name="staticFiles"><h3>Static files and directories from disk</h3></a></td>
+        </tr>
+
+        <tr>
+          <td>No end-slash could be directory: yes;<br/>Directory listing allowed: yes</td>
+          <td>
+            <p><a href="/diskfiles/dir-with-index/">/dir-with-index/index.html</a></p>
+            <p><a href="/diskfiles/dir-with-index/">/dir-with-index/</a></p>
+            <p><a href="/diskfiles/dir-with-index">/dir-with-index</a></p>
+            <p><a href="/diskfiles/dir-no-index/">/dir-no-index/</a></p>
+            <p><a href="/diskfiles/dir-no-index">/dir-no-index</a></p>
+          </td>
+          <td>
+            <p><a href="/diskfiles/no-such-file.html">/no-such-file.html</a></p>
+          </td>
+        </tr>
+
+        <tr>
+          <td>No end-slash could be directory: yes;<br/>Directory listing allowed: no</td>
+          <td>
+             <p><a href="/diskfilesDir1List0/dir-with-index/">/dir-with-index/index.html</a></p>
+             <p><a href="/diskfilesDir1List0/dir-with-index/">/dir-with-index/</a></p>
+             <p><a href="/diskfilesDir1List0/dir-with-index">/dir-with-index</a></p>
+          </td>
+          <td>
+            <p><a href="/diskfilesDir1List0/no-such-file.html">/no-such-file.html</a></p>
+            <p><a href="/diskfilesDir1List0/dir-no-index">/dir-no-index</a></p>
+            <p><a href="/diskfilesDir1List0/dir-no-index/">/dir-no-index/</a></p>
+          </td>
+        </tr>
+
+        <tr>
+          <td>No end-slash could be directory: no;<br/>Directory listing allowed: yes</td>
+          <td>
+            <p><a href="/diskfilesDir0List1/dir-with-index/">/dir-with-index/index.html</a></p>
+            <p><a href="/diskfilesDir0List1/dir-with-index/">/dir-with-index/</a></p>
+            <p><a href="/diskfilesDir0List1/dir-no-index/">/dir-no-index/</a></p>
+          </td>
+          <td>
+            <p><a href="/diskfilesDir0List1/no-such-file.html">/no-such-file.html</a></p>
+            <p><a href="/diskfilesDir0List1/dir-with-index">/dir-with-index</a></p>
+            <p><a href="/diskfilesDir0List1/dir-no-index">/dir-no-index</a></p>
+          </td>
+        </tr>
+
+        <tr>
+          <td>No end-slash could be directory: no;<br/>Directory listing allowed: no</td>
+          <td>
+            <p><a href="/diskfilesDir0List0/dir-with-index/">/dir-with-index/index.html</a></p>
+            <p><a href="/diskfilesDir1List0/dir-with-index/">/dir-with-index/</a></p>
+          </td>
+          <td>
+            <p><a href="/diskfilesDir0List0/no-such-file.html">/no-such-file.html</a></p>
+            <p><a href="/diskfilesDir0List0/dir-with-index">/dir-with-index</a></p>
+            <p><a href="/diskfilesDir0List0/dir-no-index/">/dir-no-index/</a></p>
+            <p><a href="/diskfilesDir0List0/dir-no-index">/dir-no-index</a></p>
+          </td>
+        </tr>
+
+        <tr>
+          <td>Different MIME types</td>
+          <td>
+            <p><a href="/diskfiles/test.html">/test.html</a></p>
+            <p><a href="/diskfiles/test.jpg">/test.jpg</a></p>
+            <p><a href="/diskfiles/test.png">/test.png</a></p>
+            <p><a href="/diskfiles/test.txt">/test.txt</a></p>
+            <p><a href="/diskfiles/test.xml">/test.xml</a></p>
+            <p><a href="/diskfiles/test.dat">/test.dat</a></p>
+          </td>
+        </tr>
+
+      </tbody>
+    </table>
+  </div>
 """);
-  } else {
-    // Logged in
-    resp.write("""
-<ul>
-  <li><a href=\"${req.rewriteUrl("~/session/info")}\">Session information page</a></li>
-  <li><a href=\"${req.rewriteUrl("~/session/logout")}\">Logout</a></li>
-</ul>
-<p style="font-size: smaller">Logged in at: ${req.session["when"]}</p>
-""");
-  }
+
+  // Exception handling
 
   var eh1checked =
       (webServer.exceptionHandler != null) ? "checked='checked'" : "";
@@ -261,16 +329,89 @@ td p { margin: 0 0 0.5ex 0; }
   var eh3checked = (p2.exceptionHandler != null) ? "checked='checked'" : "";
 
   resp.write("""
-  <h2>System control</h2>
+  <div class="section">
+    <h2>Exception handling</h2>
 
-  <form method="POST" action="/system/exceptionHandler">
-    <input type="checkbox" id="eh0" name="eh0" value="on" $eh1checked/><label for="eh0">Server-level</label>
-    <input type="checkbox" id="eh1" name="eh1" value="on" $eh2checked/><label for="eh1">Pipeline 1</label>
-    <input type="checkbox" id="eh2" name="eh2" value="on" $eh3checked/><label for="eh2">Pipeline 2</label>
-    &nbsp;
-   <input type="submit" value="Set Exception Handlers"/>
-   </form>
+    <p>If a handler throws an exception, the exception is passed to an exception
+    hander that was registered (either registered with the pipeline or with the
+    server).</p>
 
+    <ul>
+      <li><a href="/throw/IntegerDivisionByZeroException">IntegerDivisionByZeroException</a></li>
+      <li><a href="/throw/FormatException">FormatException</a> thrown.</li>
+      <li><a href="/throw/StateError">StateError</a> thrown (after 3 seconds).</li>
+    </ul>
+
+    <p>Change which exception handlers have been set:</p>
+
+    <form method="POST" action="/system/exceptionHandler">
+      <input type="checkbox" id="eh0" name="eh0" value="on" $eh1checked/><label for="eh0">Server-level</label>
+      <input type="checkbox" id="eh1" name="eh1" value="on" $eh2checked/><label for="eh1">Pipeline 1</label>
+      <input type="checkbox" id="eh2" name="eh2" value="on" $eh3checked/><label for="eh2">Pipeline 2</label>
+      &nbsp;
+      <input type="submit" value="Set Exception Handlers"/>
+    </form>
+  </div>
+""");
+
+  // Sessions
+
+  resp.write("""
+  <div class="section">
+    <h2>Sessions</h2>
+    <p>Sessions can be used to maintain state between HTTP requests. It can use
+    either session cookies or URL rewriting to remember the current session.</p>
+    """);
+
+  if (req.session == null) {
+    // Not logged in
+    resp.write("""
+  <ul>
+    <li><a href=\"${req.rewriteUrl("~/session/loginWithCookies")}\">Login using
+        cookies to preserve the session</a> (if the browser uses them)</li>
+    <li><a href=\"${req.rewriteUrl("~/session/login")}\">Login without cookies</a></li>
+  </ul>
+  """);
+  } else {
+    // Logged in
+    resp.write("""
+  <ul>
+    <li><a href=\"${req.rewriteUrl("~/session/info")}\">Session information page</a></li>
+    <li><a href=\"${req.rewriteUrl("~/session/logout")}\">Logout</a></li>
+  </ul>
+  <p style="font-size: smaller">Logged in at: ${req.session["when"]}</p>
+  """);
+  }
+
+  resp.write("</div>");
+
+  // Stream response
+
+  resp.write("""
+    <div class="section">
+    <h2>Stream test</h2>
+
+    <p>Responses can be buffered and the HTTP response produced after the
+    handler has completed, or progressively produced in the handler
+    as a stream.</p>
+
+    <ul>
+      <li><a href="/streamTest">Basic stream response</a></li>
+      <li><a href="/streamTest?seconds=1">Stream response with delays</a></li>
+    </ul>
+
+  </div>
+  """);
+
+  // End of content div, and footer
+
+  resp.write("""</div>
+
+  </div>
+
+  <footer>
+    <p><a href="https://pub.dartlang.org/packages/woomera">Woomera Dart Package</a></p>
+  </footer>
 </body>
 </html>
 """);
@@ -427,23 +568,50 @@ Future<ResponseBuffered> oldStyleFuture({bool throwException: false}) {
 
   return c.future;
 }
+
 //----------------------------------------------------------------
+/// Stream handler
+///
+/// This is an example of using a [ResponseStream] to progressively
+/// create the response.
 
 Future<Response> streamTest(Request req) async {
+  // Get parameters
+
+  int numIterations = 10;
+
+  var secs = 0;
+  if (req.queryParams["seconds"].isNotEmpty) {
+    secs = int.parse(req.queryParams["seconds"]);
+  }
+
+  // Produce the stream response
+
   var resp = new ResponseStream(ContentType.TEXT);
   resp.status = HttpStatus.OK;
-
-  await resp.addStream(req, streamSource(req));
+  await resp.addStream(req, _streamSource(req, numIterations, secs));
 
   return resp;
 }
 
-Stream<List<int>> streamSource(Request req) async* {
-  int iterations = 10;
+// The stream that produces the data making up the response.
+//
+// It produces a stream of bytes (List<int>) that make up the contents of
+// the response.
 
-  for (var x = 0; x < iterations; x++) {
+Stream<List<int>> _streamSource(Request req, int iterations, int secs) async* {
+  var delay = new Duration(seconds: secs);
+
+  yield "Stream of $iterations items (delay: $secs seconds)\n".codeUnits;
+
+  for (var x = 1; x <= iterations; x++) {
+    var completer = new Completer();
+    new Timer(delay, () => completer.complete());
+    await completer.future;
+
     yield "Item $x\n".codeUnits;
   }
+  yield "Finished: ${new DateTime.now()}\n".codeUnits;
 }
 
 //----------------------------------------------------------------
@@ -640,7 +808,8 @@ Future<Response> handleLogout(Request req) async {
 """);
 
   if (req.session != null) {
-    await req.session.terminate(); // terminate the session (also removes the timer)
+    await req.session
+        .terminate(); // terminate the session (also removes the timer)
     req.session = null; // clear the session so it is no longer preserved
 
     resp.write("<p>You have been logged out.</p>");
@@ -780,64 +949,101 @@ ${homeButton(req)}
 }
 
 //================================================================
+// Main
 
-Future main(List<String> args) async {
-  // Set up logging
+//----------------------------------------------------------------
+// Set up logging
+//
+// Change this to the level and type of logging desired.
 
+void loggingSetup() {
   hierarchicalLoggingEnabled = true;
   Logger.root.onRecord.listen((LogRecord rec) {
     print('${rec.time}: ${rec.loggerName}: ${rec.level.name}: ${rec.message}');
   });
 
-  Logger.root.level = Level.OFF;
+  Logger.root.level = Level.ALL;
   // Logger.root.level = Level.ALL;
 
   var level = Level.INFO;
   if (true) {
     new Logger("main").level = level;
     new Logger("woomera.server").level = level;
-    new Logger("woomera.request").level = level;
+    new Logger("woomera.request").level = Level.INFO;
     new Logger("woomera.request.header").level = level;
     new Logger("woomera.request.param").level = level;
     new Logger("woomera.response").level = level;
     new Logger("woomera.session").level = level;
   }
+}
 
-  mainLog.fine("started");
+//----------------------------------------------------------------
 
+Server serverSetup() {
   //--------
   // Create a new Web server
+  //
+  // The bind address is setup to listen to any incoming connection from any IP
+  // address (IPv4 or IPv6). If this is not done, by default it only listens
+  // on the loopback interface, which is good for deployment behind a reverse
+  // Web proxy, but might be restrictive for testing.
+  //
+  // Note: normally [webserver], [p1] and [p2] can be local variables. But in
+  // this demo some of the HTTP requests will manipulate the server and
+  // pipelines (which normally doesn't happen in ordinary applications) so
+  // these are global variables so that the handler methods can access them.
 
   webServer = new Server();
   webServer.bindAddress = InternetAddress.ANY_IP_V6;
   webServer.bindPort = 1024;
+
+  // Set server's exception handler
+
   webServer.exceptionHandler = exceptionHandlerOnServer;
 
   //--------
-  // Get the first pipe (which was automatically created by the Server)
+  // Setup the first pipeline
+  //
+  // Get the first pipeline and set the exception handler on it.
 
   p1 = webServer.pipelines.first;
-  //pipe1.exceptionHandler = exceptionHandlerOnPipe1;
+
+  // Set the first pipeline's exception handler
+  //
+  // If an exception is thrown, and is not processed by any pipeline's
+  // exception
+
+  p1.exceptionHandler = exceptionHandlerOnPipe1;
 
   //--------
-  // Create the second pipe
-
-  // A typical server usually only needs one pipeline, but to demonstrate
-  // the use of multiple pipelines, this application will create a second
-  // pipleline where most of the filters will be defined.
+  // Setup the second pipeline
+  //
+  // A typical server usually only needs one pipeline, and all of the rules will
+  // be defined in it. But to demonstrate the use of multiple pipelines, this
+  // application has a second pipleline where most of the rules will be defined.
+  //
+  // Note: the other way to create multiple pipelines is to specify the number
+  // of pipelines when the server is created:
+  //     webServer = new Server(numberOfPipelines: 2);
 
   p2 = new ServerPipeline();
   webServer.pipelines.add(p2);
 
-  // Set up an exception handler on the second pipeline
-  // When an exception occurs in this pipeline, this exception handler
-  // will be passed the exception.
+  // Set the second pipeline's exception handler
+  //
+  // If an exception is thrown by one of the handlers invoked from the second
+  // pipeline, that exception will be passed to this exception handler.
+  //
+  // Applications can define exception handlers on the server, individual
+  // pipelines, or a combination of both.
 
   p2.exceptionHandler = exceptionHandlerOnPipe2;
 
-  // Set up the handlers for the second pipeline
+  // Set up the rules for the second pipeline. A rule consists of the HTTP
+  // request method (e.g. GET or POST), a pattern to match against the request
+  // path and the handler method.
 
-  p2.register("GET", "~/", homePage);
+  p2.get("~/", homePage);
 
   p2.get("~/must/all/match", debugHandler);
   p2.post("~/must/all/match", debugHandler);
@@ -873,27 +1079,81 @@ Future main(List<String> args) async {
   p2.get("~/session/logout", handleLogout);
 
   // Serve static files
+  //
+  // This rule uses the [StaticFiles] class to create a handler that serves
+  // files and directories from a local directory. In this case, the "web"
+  // directory underneath this project's directory. This project's directory
+  // is found as the parent of the directory containing this program file.
+  //
+  // For this demo, only paths under "diskfiles" (i.e. pattern "~/diskfiles/*")
+  // try to match static files. The pattern "~/*" could be used -- if it is made
+  // the very last rule -- so it acts as a catch-all rule to server up the
+  // file/directory if it exists, or to return a not-found exception if there is
+  // no such file/directory. Though, if possible, it is better to use a more
+  // restrictive pattern (e.g. "~/style/*" or "~/images/*").
 
-  var projectDir = FileSystemEntity
-      .parentOf(FileSystemEntity.parentOf(Platform.script.path));
+  var dirContainingThisFile = FileSystemEntity.parentOf(Platform.script.path);
+  var projectDir = FileSystemEntity.parentOf(dirContainingThisFile);
 
-  p2.get(
-      "~/file/*",
-      new StaticFiles(projectDir + "/web",
-              defaultFilenames: ["index.html", "index.htm"],
-              allowDirectoryListing: true,
-              allowFilePathsAsDirectories: true)
-          .handler);
+  // Map paths without an end slash to a directory, allow directory listing
 
-  // Special handlers for testing
+  var staticFiles = new StaticFiles(projectDir + "/web",
+      defaultFilenames: ["index.html", "index.htm"],
+      allowFilePathsAsDirectories: true,
+      allowDirectoryListing: true);
+
+  p2.get("~/diskfiles/*", staticFiles.handler);
+
+  // Do not try to treat paths without an end slash as directories, no listing
+
+  var staticDir0List0 = new StaticFiles(projectDir + "/web",
+      defaultFilenames: ["index.html", "index.htm"],
+      allowFilePathsAsDirectories: false,
+      allowDirectoryListing: false);
+
+  p2.get("~/diskfilesDir0List0/*", staticDir0List0.handler);
+
+  // Maps paths without an end slash to a directory, no directory listing
+
+  var staticDir1List0 = new StaticFiles(projectDir + "/web",
+      defaultFilenames: ["index.html", "index.htm"],
+      allowFilePathsAsDirectories: true,
+      allowDirectoryListing: false);
+
+  p2.get("~/diskfilesDir1List0/*", staticDir1List0.handler);
+
+  // Do not try to treat paths without an end slash as directories, allow listing
+
+  var staticDir0List1 = new StaticFiles(projectDir + "/web",
+      defaultFilenames: ["index.html", "index.htm"],
+      allowFilePathsAsDirectories: false,
+      allowDirectoryListing: true);
+
+  p2.get("~/diskfilesDir0List1/*", staticDir0List1.handler);
+
+  // Special handlers for demonstrating Woomera features
 
   p2.post("~/system/exceptionHandler", handleExceptionHandlers);
   p2.post("~/system/stop", handleStop);
 
-  //--------
-  // Start the server
+  return webServer;
+}
 
-  await webServer.run(); // this returns a Future
+//----------------------------------------------------------------
+
+Future main(List<String> args) async {
+  loggingSetup();
+
+  var server = serverSetup();
+
+  mainLog.fine("started");
+
+  await server.run();
+
+  // The Future returned by the [run] method never gets completed, unless the
+  // server's [stop] method is invoked. Most applications leave the web server
+  // running "forever", so normally the server's [stop] method never gets
+  // invoked.
 
   mainLog.fine("finished");
 }

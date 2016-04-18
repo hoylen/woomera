@@ -88,8 +88,8 @@ class StaticFiles {
 
   StaticFiles(String directory,
       {List<String> defaultFilenames,
-      bool allowDirectoryListing: false,
       bool allowFilePathsAsDirectories: true,
+      bool allowDirectoryListing: false,
       bool throwNotFoundExceptions: true}) {
     if (directory == null) {
       throw new ArgumentError.notNull("directory");
@@ -128,6 +128,7 @@ class StaticFiles {
     } else if (1 < values.length) {
       throw new ArgumentError("Static file handler registered with multiple *");
     }
+
     var components = values[0].split("/");
     var depth = 0;
     while (0 <= depth && depth < components.length) {
@@ -153,10 +154,7 @@ class StaticFiles {
     }
 
     var path = baseDir + "/" + components.join("/");
-    _logRequest
-        .finer("[${req.id}] static file/directory requested: $path");
-
-    bool wasFilePath = false;
+    _logRequest.finer("[${req.id}] static file/directory requested: $path");
 
     if (!path.endsWith("/")) {
       // Probably a file
@@ -165,30 +163,32 @@ class StaticFiles {
       if (await file.exists()) {
         _logRequest.finest("[${req.id}] static file found: $path");
         return await _serveFile(req, file);
-      }
+      } else if (allowFilePathsAsDirectories &&
+          await new Directory(path).exists()) {
+        // A directory exists with the same name
 
-      if (allowFilePathsAsDirectories) {
-        path += "/"; // append a "/" to try and treat it as a directory
-        wasFilePath = true;
+        if (allowDirectoryListing ||
+            await _findDefaultFile(path + "/") != null) {
+          // Can tell the browser to treat it as a directory
+          // Note: must change URL in browser, otherwise relative links break
+          _logRequest.finest("[${req.id}] treating as static directory");
+          return new ResponseRedirect(req.requestPath() + "/");
+        }
       } else {
         _logRequest.finest("[${req.id}] static file not found");
       }
-    }
-
-    if (path.endsWith("/")) {
-      // Try directory
+    } else {
+      // Request for a directory
 
       if (await new Directory(path).exists()) {
         // Try to find one of the default files in that directory
 
-        for (var defaultFilename in defaultFilenames) {
-          var dfName = path + defaultFilename;
-          var df = new File(dfName);
-          if (await df.exists()) {
-            _logRequest.finest("[${req
-                .id}] static directory: default file found: $dfName");
-            return await _serveFile(req, df);
-          }
+        var defaultFile = await _findDefaultFile(path);
+
+        if (defaultFile != null) {
+          _logRequest.finest("[${req
+                .id}] static directory: default file found: $defaultFile");
+          return await _serveFile(req, defaultFile);
         }
 
         if (allowDirectoryListing) {
@@ -196,16 +196,11 @@ class StaticFiles {
           _logRequest.finest("[${req.id}] returning directory listing");
           return await _serveDirectoryListing(req, path);
         } else {
-          _logRequest.finest(
-              "[${req.id}] static directory listing not allowed");
+          _logRequest
+              .finest("[${req.id}] static directory listing not allowed");
         }
       } else {
-        if (wasFilePath) {
-          _logRequest.finest(
-              "[${req.id}] static file not found (even tried directory)");
-        } else {
-          _logRequest.finest("[${req.id}] static directory not found");
-        }
+        _logRequest.finest("[${req.id}] static directory not found");
       }
     }
 
@@ -218,6 +213,16 @@ class StaticFiles {
     }
   }
 
+  Future<File> _findDefaultFile(String path) async {
+    for (var defaultFilename in defaultFilenames) {
+      var dfName = path + defaultFilename;
+      var df = new File(dfName);
+      if (await df.exists()) {
+        return df;
+      }
+    }
+    return null;
+  }
   //----------------------------------------------------------------
 
   Future<Response> _serveDirectoryListing(Request req, String path) async {
@@ -230,15 +235,27 @@ class StaticFiles {
       }
     }
 
+    var components = path.split("/");
+    var title;
+    if (2 <= components.length &&
+        components[components.length - 2].isNotEmpty &&
+        components.last.isEmpty) {
+      title = components[components.length - 2];
+    } else {
+      title = "Listing";
+    }
+
     var str = """
+<!doctype html>
 <html>
-<head>
-<title>Listing</title>
-</head>
+  <head>
+    <meta charset="utf-8"/>
+    <title>${HEsc.text(title)}</title>
+  </head>
 <body>
-<h1>Listing</h1>
-<ul>
-    """;
+  <h1>${HEsc.text(title)}</h1>
+  <ul>
+""";
 
     await for (var entity in dir.list()) {
       var name;
@@ -248,14 +265,14 @@ class StaticFiles {
       } else {
         name = entity.uri.pathSegments.last;
       }
-      str += "<li><a href=\"${name}\">${name}</a></li>\n";
-    } // TODO: HEsc the above href and text
+      str += "<li><a href=\"${HEsc.attr(name)}\">${HEsc.text(name)}</a></li>\n";
+    }
 
     str += """
-</ul>
+  </ul>
 </body>
 </html>
-    """;
+""";
 
     var resp = new ResponseBuffered(ContentType.HTML);
     resp.write(str);
