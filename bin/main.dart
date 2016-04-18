@@ -962,19 +962,17 @@ void loggingSetup() {
     print('${rec.time}: ${rec.loggerName}: ${rec.level.name}: ${rec.message}');
   });
 
-  Logger.root.level = Level.ALL;
-  // Logger.root.level = Level.ALL;
+  Logger.root.level = Level.OFF;
 
-  var level = Level.INFO;
-  if (true) {
-    new Logger("main").level = level;
-    new Logger("woomera.server").level = level;
-    new Logger("woomera.request").level = Level.INFO;
-    new Logger("woomera.request.header").level = level;
-    new Logger("woomera.request.param").level = level;
-    new Logger("woomera.response").level = level;
-    new Logger("woomera.session").level = level;
-  }
+  var commonLevel = Level.INFO;
+
+  new Logger("main").level = commonLevel;
+  new Logger("woomera.server").level = commonLevel;
+  new Logger("woomera.request").level = Level.FINE;
+  new Logger("woomera.request.header").level = commonLevel;
+  new Logger("woomera.request.param").level = commonLevel;
+  new Logger("woomera.response").level = commonLevel;
+  new Logger("woomera.session").level = commonLevel;
 }
 
 //----------------------------------------------------------------

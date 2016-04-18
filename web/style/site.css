@@ -1,0 +1,95 @@
+/* CSS for Woomera demonstration */
+
+/* Structure */
+
+body {
+  margin: 0;
+  border: 0;
+  padding: 0;
+  font-family: sans-serif;
+  background: #ccc;
+}
+
+div.content {
+  margin: 0;
+  border: 0;
+  padding: 1ex 0.5em;
+  background: white;
+}
+
+footer {
+  margin: 0;
+  border: 0;
+  padding: 0;
+  background: #ccc;
+}
+
+footer p {
+  margin: 0;
+  padding: 2ex 1em;
+  text-align: center;
+}
+
+footer a {
+  text-decoration: none;
+  color: #666;
+}
+
+footer a:hover {
+  text-decoration: underline;
+  color: blue;
+}
+
+/* Content */
+
+h1 {
+  margin: 0;
+  border: 0;
+  padding: 1ex 1em;
+  color: white;
+  background: #666;
+}
+
+div.section {
+  padding: 2ex 0;
+}
+
+h2 {
+  margin: 0;
+  border: 0;
+  padding: 0 0 1ex 0;
+}
+
+span.balance {
+  margin-right: 1em;
+}
+
+p.login-logout {
+  position: fixed;
+  top: 2ex;
+  right: 3em;
+}
+p.login-logout a {
+  border: 1px solid white;
+  padding: 1ex 1em;
+  text-transform: uppercase;
+  text-decoration: none;
+  background: #666;
+  color: white;
+}
+p.login-logout a:hover {
+  background: #999;
+  color: black;
+}
+
+p.home {
+  margin-top: 5ex;
+  font-size: smaller;
+  text-transform: uppercase;
+}
+
+/* Home page table */
+
+table.main { border-collapse: collapse; }
+table.main td { vertical-align: top; padding: 1ex 0.5em; }
+table.main td p { margin: 0 0 0.5ex 0; }

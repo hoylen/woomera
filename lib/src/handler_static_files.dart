@@ -194,7 +194,8 @@ class StaticFiles {
         if (allowDirectoryListing) {
           // List the contents of the directory
           _logRequest.finest("[${req.id}] returning directory listing");
-          return await _serveDirectoryListing(req, path);
+          return await _serveDirectoryListing(
+              req, path, (1 < components.length));
         } else {
           _logRequest
               .finest("[${req.id}] static directory listing not allowed");
@@ -225,7 +226,8 @@ class StaticFiles {
   }
   //----------------------------------------------------------------
 
-  Future<Response> _serveDirectoryListing(Request req, String path) async {
+  Future<Response> _serveDirectoryListing(
+      Request req, String path, bool allowLinkToParent) async {
     var dir = new Directory(path);
     if (!await dir.exists()) {
       if (throwNotFoundExceptions) {
@@ -251,21 +253,40 @@ class StaticFiles {
   <head>
     <meta charset="utf-8"/>
     <title>${HEsc.text(title)}</title>
+    <style type="text/css">
+    body { font-family: sans-serif; }
+    ul { font-family: monospace; font-size: larger; list-style-type: none; }
+    a { text-decoration: none; display: inline-block; padding: 0.5ex 0.75em; }
+    a.parent { border-radius: 0 0 2ex 2ex; }
+    a.dir { border-radius: 2ex 2ex 0 0; }
+    a.file { border-radius: 2ex; }
+    a:hover { text-decoration: underline; }
+    a.parent:hover { background: #ddd; }
+    a.dir:hover { background: #ddd; }
+    a.file:hover { background: #eee; }
+    </style>
   </head>
 <body>
   <h1>${HEsc.text(title)}</h1>
   <ul>
 """;
 
+    if (allowLinkToParent) {
+      str +=
+          "<li><a href=\"..\" title=\"Parent\" class=\"parent\">&#x2191;</a></li>\n";
+    }
+
     await for (var entity in dir.list()) {
-      var name;
+      var n;
+      var cl;
       if (entity is Directory) {
-        name =
-            entity.uri.pathSegments[entity.uri.pathSegments.length - 2] + "/";
+        n = entity.uri.pathSegments[entity.uri.pathSegments.length - 2] + "/";
+        cl = "class=\"dir\"";
       } else {
-        name = entity.uri.pathSegments.last;
+        n = entity.uri.pathSegments.last;
+        cl = "class=\"file\"";
       }
-      str += "<li><a href=\"${HEsc.attr(name)}\">${HEsc.text(name)}</a></li>\n";
+      str += "<li><a href=\"${HEsc.attr(n)}\"$cl>${HEsc.text(n)}</a></li>\n";
     }
 
     str += """

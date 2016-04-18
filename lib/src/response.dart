@@ -226,8 +226,7 @@ class ResponseBuffered extends Response {
     var str = _buf.toString();
     req.request.response.write(str);
 
-    _logResponse
-        .fine("[${req.id}] status=${_status}, contentSize=${str.length} bytes");
+    _logResponse.fine("[${req.id}] status=${_status}, size=${str.length}");
     _contentOutputted = true;
 
     super._finish(req);
@@ -296,6 +295,8 @@ class ResponseStream extends Response {
     }
     assert(_streamState == 2);
 
+    _logResponse.fine("[${req.id}] status=${_status}, stream");
+
     super._finish(req);
   }
 }
@@ -360,11 +361,10 @@ class ResponseRedirect extends Response {
 
     var url = (_addr.startsWith("~/")) ? req.rewriteUrl(_addr) : _addr;
 
-    _logResponse.fine("[${req.id}] redirecting to ${url}");
+    _logResponse.fine("[${req.id}] status=${_status}, redirect=${url}");
 
     header('Location', url);
     super._outputHeaders(req);
-    req.request.response.write("Redirect\n");
     super._finish(req);
   }
 }
