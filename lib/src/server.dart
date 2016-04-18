@@ -326,13 +326,16 @@ class Server {
       var status;
       var message;
 
-      _logRequest
-          .shout("[$requestId] exception raised outside context: $e\n$s");
+      _logRequest.shout("[$requestId] exception raised outside context: $e");
+      _logRequest.finest("[$requestId] exception raised outside context: $s");
 
       // Since there is no context, the exception handlers cannot be used
       // to generate the response, this will generate a simple HTTP response.
 
-      if (e is FormatException ||
+      if (e is StateError && e.message == "Header already sent") {
+        // Cannot generate error page, since a page has already been started
+        status = null;
+      } else if (e is FormatException ||
           e is PathTooLongException ||
           e is PostTooLongException) {
         status = HttpStatus.BAD_REQUEST;
@@ -342,11 +345,13 @@ class Server {
         message = "Internal error";
       }
 
-      var resp = request.response;
-      resp.statusCode = status;
-      resp.write("$message\n");
-
-      _logResponse.fine("[$requestId] status=$status ($message)");
+      if (status != null) {
+        // Can generate error page as a response
+        var resp = request.response;
+        resp.statusCode = status;
+        resp.write("$message\n");
+        _logResponse.fine("[$requestId] status=$status ($message)");
+      }
     } finally {
       request.response.close();
     }

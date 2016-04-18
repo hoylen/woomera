@@ -226,8 +226,8 @@ class ResponseBuffered extends Response {
     var str = _buf.toString();
     req.request.response.write(str);
 
-    _logResponse.fine(
-        "[${req.id}] status=${_status}, contentSize=${str.length} bytes");
+    _logResponse
+        .fine("[${req.id}] status=${_status}, contentSize=${str.length} bytes");
     _contentOutputted = true;
 
     super._finish(req);
@@ -246,12 +246,13 @@ class ResponseBuffered extends Response {
 /// using the [String.codeUnits] method.
 
 class ResponseStream extends Response {
-  bool _contentOutputted = false;
+  int _streamState = 0; // 0 = no stream, 1 = set, 2 = finished
 
   ResponseStream(ContentType ct) {
     if (ct != null) {
       _contentType = ct;
     }
+    _streamState = 0;
   }
 
   /// Provide a stream that produces the content.
@@ -259,17 +260,23 @@ class ResponseStream extends Response {
   /// Note: any headers must be defined before this method is called.
   /// Headers cannot be defined after the stream has started.
 
-  Future<ResponseStream> addStream(Request req, Stream<List<int>> stream) async {
+  Future<ResponseStream> addStream(
+      Request req, Stream<List<int>> stream) async {
     if (req == null) {
       throw new ArgumentError.notNull("req");
     }
-    if (_contentOutputted) {
-      throw new StateError("Stream content already added");
+    if (_streamState == 1) {
+      throw new StateError("addStream invoked when stream not finished");
     }
 
-    super._outputHeaders(req);
+    if (_streamState == 0) {
+      // First invocation of addStream
+      super._outputHeaders(req);
+    }
+    _streamState = 1;
+
     await req.request.response.addStream(stream);
-    _contentOutputted = true;
+    _streamState = 2;
 
     return this;
   }
@@ -280,9 +287,15 @@ class ResponseStream extends Response {
     if (req == null) {
       throw new ArgumentError.notNull("req");
     }
-    if (!_contentOutputted) {
-      throw new StateError("Stream content was not added");
+
+    if (_streamState == 0) {
+      throw new StateError("Stream content was never added");
     }
+    if (_streamState == 1) {
+      throw new StateError("Stream content stream source was not finished");
+    }
+    assert(_streamState == 2);
+
     super._finish(req);
   }
 }
@@ -325,10 +338,12 @@ class ResponseRedirect extends Response {
       throw new ArgumentError.notNull("ResponseRedirect.addr");
     }
     if (addr.isEmpty) {
-      throw new ArgumentError.value(addr, "addr", "ResponseRedirect: empty string");
+      throw new ArgumentError.value(
+          addr, "addr", "ResponseRedirect: empty string");
     }
     if (addr.startsWith("/")) {
-      _logResponse.warning("ResponseRedirect address should start with '~/' : $addr");
+      _logResponse
+          .warning("ResponseRedirect address should start with '~/' : $addr");
     }
 
     _addr = addr;
