@@ -68,7 +68,6 @@ Future<Response> homePage(Request req) async {
 <!doctype html>
 <html>
 <head>
-  <meta charset="utf-8">
   <title>Woomera demo</title>
   <link rel="stylesheet" href="diskfiles/style/site.css">
 </head>

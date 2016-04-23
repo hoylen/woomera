@@ -1,6 +1,19 @@
 part of woomera;
 
 //----------------------------------------------------------------
+/// Details of the HTTP request.
+///
+/// Representation of the HTTP request that is passed to the request handlers
+/// and exception handlers.
+///
+/// The different parameters are available via the [pathParams], [queryParams]
+/// and [postParams] properties. The session is in the [session] property.
+///
+/// Custom properties can be added to and retrieved from the request object
+/// using the square bracket operators. This may be useful for passing
+/// information between different request handlers, when the application
+/// has been designed to match on multiple rules (and earlier rules deliberately
+/// do not return a response).
 
 class Request {
   /// An identity for the request.
@@ -9,10 +22,11 @@ class Request {
   ///
   ///     mylog.info("[${req.id}] something happened");
   ///
-  /// Note: the value is a [String], because it contains the [Server.id] from
-  /// the server, concatinated with the request number.  By default, the server
-  /// ID is an empty string, but the application can change it to a non-empty
-  /// value.
+  /// Note: the value is a [String], because its value is the [Server.id] from
+  /// the server (which is a String) concatinated with the request number.
+  /// By default, the server ID is the empty string, so this value looks like
+  /// a number even though it is a String. But the application can set the
+  /// [Server.id] to a non-empty String.
 
   final String id;
 
@@ -256,6 +270,128 @@ class Request {
     }
   }
 
+  //================================================================
+  // Session
+
+  /// Convert an internal URL to a URL that can be used by a browser.
+  ///
+  /// An internal URL is one that starts with "~/". This method converts that
+  /// to a URL that can be presented (e.g. written in a HTML HREF attribute).
+  /// If there is a session and session cookies are not being used, URL
+  /// rewriting is performed (i.e. the session identifier is added as a query
+  /// parameter).
+  ///
+  /// For sessions to be preserved when cookies are not being used, *all*
+  /// URLs referencing the application's pages must be processed by this method.
+  /// If a link is not processed, then the URL rewriting does not occur and
+  /// the session will not be preserved.
+  ///
+  /// The concept of an internal URL serves two purposes. The main purpose is
+  /// to try to force all URLs through this method; making it more difficult to
+  /// forget to rewrite the URL. The second purpose is to make it easy to change
+  /// the path to the entire application by changing the [Server.basePath] of
+  /// the server.
+  ///
+  /// A good way to check if all URLs are internal URLs that have been properly
+  /// processed is to change the [Server.basePath] and test if the application
+  /// still functions properly. If there are broken links, then those links
+  /// were not defined as internal URLs processed through this method.
+  ///
+  /// See [sessionHiddenInputElement] for how to preserve the session when
+  /// using HTML forms.
+  ///
+  /// Note: this method is on the request object, even though it ultimately
+  /// affects the HTTP response. This is because the request object carries the
+  /// context for the request and the response. The session is a part of that
+  /// context.
+
+  String rewriteUrl(String iUrl) {
+    if (!iUrl.startsWith("~/")) {
+      throw new ArgumentError.value(
+          iUrl, "rUrl", "rewriteUrl: does not start with '~/'");
+    }
+
+    var result = server._basePath + (server._basePath.endsWith("/") ? "" : "/");
+
+    if (iUrl != "~/") {
+      result += iUrl.substring(2); // append rUrl without leading "~/"
+    }
+
+    if (session == null || this._sessionUsingCookies) {
+      // Does not need extra query parameter to preserve session
+      return result;
+    } else {
+      // Append extra query parameter to preserve session
+      var separator = (result.contains("?")) ? "&" : "?";
+      return "${result}${separator}${server.sessionParamName}=${session.id}";
+    }
+  }
+
+  //----------------------------------------------------------------
+  /// Returns HTML for a hidden form input for the session parameter.
+  ///
+  /// If there is no session (i.e. [session] is null) or cookies are being used
+  /// to preserve the session, returns the empty string.
+  ///
+  /// This method can be used to maintain the session across form submissions
+  /// when URL rewriting is being used (i.e. cookies are not being used).
+  ///
+  /// There are two ways to preserve the session when using forms. Applications
+  /// must use one of these methods, if it needs to preserve sessions and
+  /// cookies might not be available.
+  ///
+  /// Method 1: Rewrite the method URL, to preserve the session with a query
+  /// parameter.
+  ///
+  /// ```html
+  /// <form method="POST" action="${HEsc.attr(req.rewriteUrl("~/form/processing/url"))}">
+  ///   ...
+  /// </form>
+  /// ```
+  ///
+  /// Method 2: Add a hidden input, to preserve the session with a POST
+  /// parameter.
+  ///
+  /// ```html
+  /// <form method="POST" action="${HEsc.attr("~/form/processing/url")}">
+  ///   ${req.sessionHiddenInputElement()}
+  ///   ...
+  /// </form>
+  /// ```
+  ///
+  /// The first method is consistent with how links are outputted when not
+  /// using forms, but it looks inconsistent to use both query parameters with a
+  /// POST request. The second method does not mix both query and POST
+  /// parameters, but the technical and observant user might be surprised that
+  /// sometimes the URL contains the session identifier and sometimes it
+  /// doesn't.
+  ///
+  /// This is probably not an important issue, since most browsers will be using
+  /// cookies. So there will be very few times where URL rewriting is needed to
+  /// preserve sessions.
+  ///
+  /// **Important:** Do not use both methods. If there is more than one session
+  /// identifier (even if they are the same value), that is treated as
+  /// inconsistent and the session will not be restored.
+  ///
+  /// Note: this method is on the request object, even though it ultimately
+  /// affects the HTTP response. This is because the request object carries the
+  /// context for the request and the response. The session is a part of that
+  /// context.
+
+  String sessionHiddenInputElement() {
+    if (hasSession && !this._sessionUsingCookies) {
+      // Require hidden POST form parameter to preserve session
+      return "<input type=\"hidden\" name=\"" +
+          HEsc.attr(server.sessionParamName) +
+          "\" value=\"" +
+          HEsc.attr(session.id) +
+          "\"/>";
+    } else {
+      return ""; // hidden POST form parameter not required
+    }
+  }
+
   //----------------------------------------------------------------
   /// Attempt to restore the session (if there was one).
   ///
@@ -349,16 +485,22 @@ class Request {
   }
 
   //----------------------------------------------------------------
+  // Invoked by the server at the very end of processing a request (after
+  // the response's `finish` method is invoked.
+  //
+  // Causes the session's suspend method to be invoked, if there is a session.
 
   Future _sessionSuspend() async {
     if (this.session != null) {
       await this.session.suspend(this);
     }
   }
+
   //================================================================
+  // Other methods
 
   //----------------------------------------------------------------
-  /// Returns the request's path as a relative path.
+  /// Returns the request's path as a internal URL.
   ///
   /// That is, starting with "~/" (if possible), otherwise the full path is
   /// returned.
@@ -380,74 +522,25 @@ class Request {
     return p;
   }
 
-  //================================================================
-  // Session
-
-  /// Convert an internal URL to a URL that can be used by a browser.
-  ///
-  /// An internal URL is one that starts with "~/". This method converts that
-  /// to a URL that can be presented (e.g. written in a HTML HREF attribute).
-  /// If there is a session and session cookies are not being used, URL
-  /// rewriting is performed (i.e. the session identifier is added as a query
-  /// parameter).
-  ///
-  /// For sessions to be preserved when cookies are not being used, *all*
-  /// URLs referencing the application's pages must be processed by this method.
-  /// If a link is not processed, then the URL rewriting does not occur and
-  /// the session will not be preserved.
-  ///
-  /// The concept of an internal URL serves two purposes. The main purpose is
-  /// to try to force all URLs through this method; making it more difficult to
-  /// forget to rewrite the URL. The second purpose is to make it easy to change
-  /// the path to the entire application by changing the [Server.basePath] of
-  /// the server.
-  ///
-  /// A good way to check if all URLs are internal URLs that have been properly
-  /// processed is to change the [Server.basePath] and test if the application
-  /// still functions properly. If there are broken links, then those links
-  /// were not defined as internal URLs processed through this method.
-
-  String rewriteUrl(String url) {
-    if (url.startsWith("~/")) {
-      if (url == "~/") {
-        url = server._basePath;
-      } else {
-        url = server._basePath +
-            (server._basePath.endsWith("/") ? "" : "/") +
-            url.substring(2);
-      }
-
-      if (session == null || this._sessionUsingCookies) {
-        // Does not need extra query parameter to preserve session
-        return url;
-      } else {
-        // Append extra query parameter to preserve session
-        var separator = (url.contains("?")) ? "&" : "?";
-        return "${url}${separator}${server.sessionParamName}=${session.id}";
-      }
-    } else {
-      throw new ArgumentError.value(
-          url, "url", "rewriteUrl: does not start with '~/'");
-      return url;
-    }
-  }
-
   //----------------------------------------------------------------
-  /// Returns hidden form parameter input to include the session parameter.
+  /// URL Rewritten for an Attribute.
   ///
-  /// If there is no session (i.e. session is null) or cookies are being used
-  /// to preserve the session, returns the empty string.
+  /// It is very common to rewrite an internal URL and then put its value
+  /// into an attribute. For example,
+  ///
+  /// ```dart
+  /// var link = "~/foo?a=1&b=2";
+  /// resp.write('<a href="${HEsc.attr(req.rewriteUrl(link))}">here</a>');
+  /// ```
+  ///
+  /// This convenience method invokes both [rewriteUrl] and [HEsc.attr] so the
+  /// above can be simply written as:
+  ///
+  /// ```dart
+  /// resp.write('<a href="${req.ura(link)}">here</a>');
+  /// ```
 
-  String sessionFormHiddenParameter() {
-    if (hasSession && !this._sessionUsingCookies) {
-      // Require hidden POST form parameter to preserve session
-      return "<input type=\"hidden\" name=\"" +
-          HEsc.attr(server.sessionParamName) +
-          "\" value=\"" +
-          HEsc.attr(session.id) +
-          "\"/>";
-    } else {
-      return ""; // hidden POST form parameter not required
-    }
+  String ura(String iUrl) {
+    return HEsc.attr(this.rewriteUrl(iUrl));
   }
 }

@@ -18,20 +18,18 @@ part of woomera;
 //----------------------------------------------------------------
 /// A Web server.
 ///
-/// This class is used to implement a Web server.
-///
 /// When its [run] method is called, it listens for HTTP requests on the
 /// [bindPort] on its [bindAddress], and responds to them with HTTP responses.
 ///
-/// Each HTTP request is processed through the [pipelines]. A [ServerPipeline]
+/// Each HTTP request is processed through the [pipelines], which is a [List] of
+/// [ServerPipeline] objects. A ServerPipeline
 /// contains a sequence of rules (consisting of a pattern and a handler).  If
 /// the request matches the pattern, the corresponding handler is invoked.  If
 /// the handler returns a result it is used for the HTTP response, and
 /// subsequent handlers and pipelines are not examined. But if the pipeline has
 /// no matches or the matches do not return a result, then the next pipeline is
 /// examined. If after the request has been through all the pipelines without
-/// producing a result, a [NotFoundException] or [MethodNotFoundException]
-/// is thrown.
+/// producing a result, a [NotFoundException] is thrown.
 ///
 /// If an exception is thrown during processing (either by the application's
 /// callbacks or by the package's code) the exception handlers will be invoked.
@@ -366,167 +364,184 @@ class Server {
     var handlerFound = false;
     Response response;
 
-    var pathSegments = req.request.uri.pathSegments;
+    var pathSegments;
+    try {
+      pathSegments = req.request.uri.pathSegments;
+    } on FormatException catch (_) {
+      // This is usually due to malformed paths, due to malicious attackers
+      pathSegments = null;
+      _logRequest.finest("invalid char encoding in path: request rejected");
+    }
 
-    // Process the request through the pipeline.
+    if (pathSegments != null) {
+      // Good request
+      // Process the request through the pipeline.
 
-    // This section of code guarantees to set the "response" (even if exceptions
-    // are thrown while it is being processed), otherwise it means no matching
-    // handlers were found (or they did not preduce a response) in any of the
-    // pipelines. If the "response" is null, the "unsupportedMethod" indicates
-    // whether there were at least one rule for the request.method, even though
-    // none of the patterns matched it.
+      // This section of code guarantees to set the "response" (even if exceptions
+      // are thrown while it is being processed), otherwise it means no matching
+      // handlers were found (or they did not preduce a response) in any of the
+      // pipelines. If the "response" is null, the "unsupportedMethod" indicates
+      // whether there were at least one rule for the request.method, even though
+      // none of the patterns matched it.
 
-    for (var pipe in pipelines) {
-      var rules = pipe.rules(req.request.method);
-      if (rules == null) {
-        // This pipe does not support the method
-        continue; // skip to next pipe in the pipeline
-      }
-      methodFound = true;
+      for (var pipe in pipelines) {
+        var rules = pipe.rules(req.request.method);
+        if (rules == null) {
+          // This pipe does not support the method
+          continue; // skip to next pipe in the pipeline
+        }
+        methodFound = true;
 
-      for (var rule in rules) {
-        var params = rule._matches(pathSegments);
+        for (var rule in rules) {
+          var params = rule._matches(pathSegments);
 
-        if (params != null) {
-          // A matching rule was found
+          if (params != null) {
+            // A matching rule was found
 
-          handlerFound = true;
+            handlerFound = true;
 
-          _logRequest.finer("[${req.id}] matched rule: ${rule}");
+            _logRequest.finer("[${req.id}] matched rule: ${rule}");
 
-          req._pathParams = params; // set matched path parameters
+            req._pathParams = params; // set matched path parameters
 
-          if (params.isNotEmpty && _logRequestParam.level <= Level.FINER) {
-            // Log path parameters
-            var str =
-                "[${req.id}] path: ${params.length} key(s): ${params.toString()}";
-            _logRequestParam.finer(str);
-          }
-
-          // Invoke the rule's handler
-
-          try {
-            response = await _invokeRequestHandler(rule.handler, req);
-          } catch (initialException, initialStackTrace) {
-            // The request handler threw an exception (or returned null which
-            // caused the InvalidUsage exception to be thrown above).
-
-            assert(response == null);
-
-            var e = initialException;
-            var st = initialStackTrace;
-
-            // Try the pipe's exception handler
-
-            if (pipe.exceptionHandler != null) {
-              // This pipe has an exception handler: pass exception to it
-              try {
-                response = await _invokeExceptionHandler(
-                    pipe.exceptionHandler, req, e, st);
-              } catch (pipeEx, pipeSt) {
-                // The pipe exception handler threw an exception
-                e = new ExceptionHandlerException(e, pipeEx);
-                st = pipeSt;
-              }
+            if (params.isNotEmpty && _logRequestParam.level <= Level.FINER) {
+              // Log path parameters
+              var str = "[${req.id}] path: ${params.length} key(s): ${params
+                  .toString()}";
+              _logRequestParam.finer(str);
             }
 
-            if (response == null) {
-              // The exception was not handled by the pipe exception.
-              // Either there was no exception handler for the pipe, or it
-              // returned null, or it threw another exception.
+            // Invoke the rule's handler
 
-              // Try the server's exception handler
+            try {
+              response = await _invokeRequestHandler(rule.handler, req);
+            } catch (initialException, initialStackTrace) {
+              // The request handler threw an exception (or returned null which
+              // caused the InvalidUsage exception to be thrown above).
 
-              if (this.exceptionHandler != null) {
-                // The server has an exception handler: pass exception to it
+              assert(response == null);
+
+              var e = initialException;
+              var st = initialStackTrace;
+
+              // Try the pipe's exception handler
+
+              if (pipe.exceptionHandler != null) {
+                // This pipe has an exception handler: pass exception to it
                 try {
-                  //response = await this.exceptionHandler(req, e, st);
                   response = await _invokeExceptionHandler(
-                      this.exceptionHandler, req, e, st);
-                } catch (es) {
-                  e = new ExceptionHandlerException(e, es);
+                      pipe.exceptionHandler, req, e, st);
+                } catch (pipeEx, pipeSt) {
+                  // The pipe exception handler threw an exception
+                  e = new ExceptionHandlerException(e, pipeEx);
+                  st = pipeSt;
                 }
               }
+
+              if (response == null) {
+                // The exception was not handled by the pipe exception.
+                // Either there was no exception handler for the pipe, or it
+                // returned null, or it threw another exception.
+
+                // Try the server's exception handler
+
+                if (this.exceptionHandler != null) {
+                  // The server has an exception handler: pass exception to it
+                  try {
+                    //response = await this.exceptionHandler(req, e, st);
+                    response = await _invokeExceptionHandler(
+                        this.exceptionHandler, req, e, st);
+                  } catch (es) {
+                    e = new ExceptionHandlerException(e, es);
+                  }
+                }
+              }
+
+              if (response == null) {
+                // The exception was not handled by the pipe exception handler
+                // nor the server exception handler.
+                //
+                // Either the pipe exception handler did not handle it (see
+                // above for reasons), there was no exception handler for the
+                // server, the server handler returned null, or the server
+                // handler threw an exception.
+
+                // Resort to using the built-in default exception handler.
+
+                // response = await _defaultExceptionHandler(req, e, st);
+                response = await _invokeExceptionHandler(
+                    _defaultExceptionHandler, req, e, st);
+              }
+
+              assert(response != null);
             }
 
-            if (response == null) {
-              // The exception was not handled by the pipe exception handler
-              // nor the server exception handler.
-              //
-              // Either the pipe exception handler did not handle it (see
-              // above for reasons), there was no exception handler for the
-              // server, the server handler returned null, or the server
-              // handler threw an exception.
+            // At this point a response has been produced (either by the
+            // request handler or one of the exception handlers) or the
+            // handler returned null.
 
-              // Resort to using the built-in default exception handler.
-
-              // response = await _defaultExceptionHandler(req, e, st);
-              response = await _invokeExceptionHandler(
-                  _defaultExceptionHandler, req, e, st);
+            if (response != null) {
+              // handler produced a result
+              break; // stop looking for further matches in this pipe
+            } else {
+              _logRequest.fine("[${req
+                      .id}] handler returned no response, continue matching");
+              // handler indicated that processing is to continue processing with
+              // the next match in the rule/pipeline.
             }
+          } // pattern match found in this pipeline
 
-            assert(response != null);
-          }
+        }
+        // for all rules in the pipeline
 
-          // At this point a response has been produced (either by the
-          // request handler or one of the exception handlers) or the
-          // handler returned null.
-
-          if (response != null) {
-            // handler produced a result
-            break; // stop looking for further matches in this pipe
-          } else {
-            _logRequest.fine(
-                "[${req.id}] handler returned no response, continue matching");
-            // handler indicated that processing is to continue processing with
-            // the next match in the rule/pipeline.
-          }
-        } // pattern match found in this pipeline
-
-      } // for all rules in the pipeline
-
-      if (response != null) {
-        break; // stop looking for further matches in subsequent pipelines
-      }
-    } // for all pipes in pipeline
-
-    // Handle no match
-
-    if (response == null) {
-      // No rule matched or the ones that did match all returned null
-
-      var found;
-      if (handlerFound) {
-        assert(methodFound);
-        found = NotFoundException.foundHandler;
-        _logRequest.fine("[${req.id}] not found: all handler(s) returned null");
-      } else if (methodFound) {
-        found = NotFoundException.foundMethod;
-        _logRequest.fine("[${req.id}] not found: found method but no rule");
-      } else {
-        found = NotFoundException.foundNothing;
-        _logRequest.fine("[${req.id}] not found: method not supported");
-      }
-
-      var e = new NotFoundException(found);
-
-      // Try reporting this through the server's exception handler
-
-      if (this.exceptionHandler != null) {
-        try {
-          response = await this.exceptionHandler(req, e, null);
-        } catch (es) {
-          e = new ExceptionHandlerException(e, es);
+        if (response != null) {
+          break; // stop looking for further matches in subsequent pipelines
         }
       }
+      // for all pipes in pipeline
+
+      // Handle no match
 
       if (response == null) {
-        // Server exception handler returned null, or it threw an exception
-        // Resort to using the internal default exception handler.
-        response = await _defaultExceptionHandler(req, e, null);
-        assert(response != null);
+        // No rule matched or the ones that did match all returned null
+
+        var found;
+        if (handlerFound) {
+          assert(methodFound);
+          found = NotFoundException.foundHandler;
+          _logRequest
+              .fine("[${req.id}] not found: all handler(s) returned null");
+        } else if (methodFound) {
+          found = NotFoundException.foundMethod;
+          _logRequest.fine("[${req.id}] not found: found method but no rule");
+        } else {
+          found = NotFoundException.foundNothing;
+          _logRequest.fine("[${req.id}] not found: method not supported");
+        }
+
+        var e = new NotFoundException(found);
+
+        // Try reporting this through the server's exception handler
+
+        if (this.exceptionHandler != null) {
+          try {
+            response = await this.exceptionHandler(req, e, null);
+          } catch (es) {
+            e = new ExceptionHandlerException(e, es);
+          }
+        }
+
+        if (response == null) {
+          // Server exception handler returned null, or it threw an exception
+          // Resort to using the internal default exception handler.
+          response = await _defaultExceptionHandler(req, e, null);
+          assert(response != null);
+        }
       }
+    } else {
+      // Path segments raised FormatException: malformed request
+      var nfe = new NotFoundException(NotFoundException.foundNothing);
+      response = await _defaultExceptionHandler(req, nfe, null);
     }
 
     assert(response != null);
@@ -543,7 +558,7 @@ class Server {
 
     // Suspend the session (if there is one after the handler has processed the request)
 
-    req._sessionSuspend();
+    await req._sessionSuspend();
   }
 
 // contentLength -1
@@ -561,7 +576,9 @@ class Server {
 
   static Future<Response> _defaultExceptionHandler(
       Request req, Object e, StackTrace st) async {
-    var resp = new ResponseBuffered(ContentType.HTML);
+    var status = HttpStatus.INTERNAL_SERVER_ERROR;
+    var title;
+    var message;
 
     if (e is NotFoundException) {
       // Report these as "not found" to the requestor.
@@ -570,21 +587,11 @@ class Server {
           "[${req.id}] not found: ${req.request.method} ${req.request.uri.path}");
       assert(st == null);
 
-      resp.status = (e.found == NotFoundException.foundNothing)
+      status = (e.found == NotFoundException.foundNothing)
           ? HttpStatus.METHOD_NOT_ALLOWED
           : HttpStatus.NOT_FOUND;
-      resp.write("""
-<html>
-<head>
-<title>Error: not found</title>
-<style type="text/css">body { background: #333; color: #fff; }</style>
-</head>
-<body>
-<h1>Not found</h1>
-<p>The requested page was not found.</p>
-</body>
-</html>
-""");
+      title = "Error: Not found";
+      message = "Sorry, the page you were looking for was not found.";
     } else {
       // Everything else is reported to the requester as an internal error
       // since the problem can only be fixed by the developer and we don't
@@ -602,27 +609,51 @@ class Server {
         _logResponse.finest("[${req.id}] stack trace:\n${st}");
       }
 
-      resp.status = HttpStatus.INTERNAL_SERVER_ERROR;
-      resp.write("""
-<html>
-<head>
-<title>Error: server error</title>
-<style type="text/css">body { background: #333; color: #c00; }</style>
-</head>
-<body>
-<h1>Server error</h1>
-<p>An error occured while trying to process the request.</p>
-</body>
-</html>
-""");
+      status = HttpStatus.INTERNAL_SERVER_ERROR;
+      title = "Error";
+      message = "Sorry, an error occured while processing the request.";
     }
 
+    var resp = new ResponseBuffered(ContentType.HTML);
+    resp.status = status;
+    resp.write("""
+<!doctype html>
+<html>
+  <head>
+    <title>$title</title>
+    <style type="text/css">h1 { color: #c00; }</style>
+  </head>
+  <body>
+    <h1>$title</h1>
+    <p>$message</p>
+  </body>
+</html>
+""");
     return resp;
   }
 
   //================================================================
 
   /// The base path under which all patterns are under.
+  ///
+  /// Paths and patterns in this framework are always considered to be
+  /// relative to this _base path_. All paths and patterns used internally must
+  /// start with "~/". This is a visual reminder it is relative to the base
+  /// path; and the APIs will reject paths and patterns without it.
+  ///
+  /// The main purpose of these relative paths, is to ensure all paths are
+  /// processed through the [Request.rewriteUrl] method before presenting it
+  /// to the client. This mechanism ensure that all URLs get rewritten, so the
+  /// sessions are preserved (if cookies are not being used to preserve
+  /// sessions).
+  ///
+  /// Another benefit is to change the URLs for all the pages in the server by
+  /// simply changing the base path.
+  ///
+  /// For example, if the base path is "/site/version/1", then the page
+  /// "~/index.html" might be mapped to http:example.com:1024/site/version/1/index.html.
+  ///
+  /// The default value is "/".
 
   String get basePath => _basePath;
 

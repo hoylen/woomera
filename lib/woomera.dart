@@ -59,9 +59,8 @@ part 'src/server.dart';
 part 'src/session.dart';
 
 //----------------------------------------------------------------
+// Loggers used in the Woomera package.
 
-/// Loggers used in the Woomera package.
-///
 Logger _logServer = new Logger("woomera.server");
 Logger _logRequest = new Logger("woomera.request");
 Logger _logRequestHeader = new Logger("woomera.request.header");
@@ -69,10 +68,3 @@ Logger _logRequestParam = new Logger("woomera.request.param");
 
 Logger _logResponse = new Logger("woomera.response");
 Logger _logSession = new Logger("woomera.session");
-
-
-// Some documents:
-// HttpServer: https://www.dartlang.org/docs/tutorials/httpserver/
-// Shelf: https://pub.dartlang.org/packages/shelf
-
-// https://www.owasp.org/index.php/Guide_Table_of_Contents

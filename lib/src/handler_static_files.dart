@@ -3,9 +3,20 @@ part of woomera;
 //================================================================
 /// Handler for returning a static files under a local directory.
 ///
+/// The [handler] expects a single wildcard path parameter, which it uses
+/// to determine which file/directory under the base directory to return.
+///
+/// Example:
+///
+/// ```dart
+/// var sf = new StaticFiles("/var/www/myfiles",
+///                          defaultFilenames: ["index.html", "index.htm"]);
+///
+/// srv.pipelines.first.get("~/myfiles/*", sf.handler);
+/// ```
 
 class StaticFiles {
-  /// Global MIME types.
+  /// Default MIME types.
   ///
   /// This is used for matching file extensions to MIME types. The file
   /// extensions are strings without the full stop (e.g. "png").
@@ -13,8 +24,12 @@ class StaticFiles {
   /// This list is only examined if a match was not found in the
   /// local [mimeTypes]. If a match could not be found in this global map,
   /// the default of [ContentType.BINARY] is used.
+  ///
+  /// This list contains values for extensions such as: txt, html, htm, json,
+  /// css, png, jpg, jpeg, gif, xml, js, dart. Note: only lowercase extensions
+  /// will match.
 
-  static Map<String, ContentType> globalMimeTypes = {
+  static Map<String, ContentType> defaultMimeTypes = {
     "txt": ContentType.TEXT,
     "html": ContentType.HTML,
     "htm": ContentType.HTML,
@@ -31,8 +46,12 @@ class StaticFiles {
 
   //================================================================
   /// The directory under which to look for files.
+  ///
+  /// This is set by the constructor.
 
-  String baseDir;
+  String get baseDir => _baseDir;
+
+  String _baseDir;
 
   /// Names of files to try to find if a directory is requested.
   ///
@@ -60,21 +79,41 @@ class StaticFiles {
 
   bool allowFilePathsAsDirectories;
 
-  /// Throws not found exceptions.
+  /// Controls whether "not found exceptions" are thrown or not.
   ///
-  /// If true, the handler will thrown a [StaticNotFoundException] if the
+  /// If true, the [handler] will thrown a [NotFoundException] if the
   /// file or directory could not produce a result.
   ///
   /// If false, the handler will return null.
+  ///
+  /// Its default value is true.
+  ///
+  /// Normally, the application will want these exceptions to be thrown, so it
+  /// can handle the missing file/directory just like any other missing
+  /// resource (i.e. process it in an exception handler and generate an error
+  /// page back to the client).
 
-  bool throwNotFoundExceptions;
+  bool throwNotFoundExceptions = true;
 
-  /// Local MIME types.
+  /// Local MIME types specific to this object.
   ///
   /// This is used for matching file extensions to MIME types. The file
-  /// extensions are strings without the full stop (e.g. "png").
+  /// extensions are strings without the full stop.
   ///
-  /// This list is examined in preference to the [globalMimeTypes] map.
+  /// This list is examined in preference to the [defaultMimeTypes] map. If a
+  /// match is found in this property, defaultMimeTypes is not examined.
+  /// Otherwise it is examined.
+  ///
+  /// Example:
+  /// ```dart
+  /// var sf =  new StaticFiles("/var/show/assets/publish");
+  /// sf.mimeTypes["rss"] = new ContentType("application", "rss+xml");
+  /// sf.mimeTypes["mp3"] = new ContentType("audio", "mpeg");
+  ///
+  /// pipeline.get("~/podcast/*", sf.handler);
+  /// ```
+  ///
+  /// This map is initially empty.
 
   Map<String, ContentType> mimeTypes = new Map<String, ContentType>();
 
@@ -86,39 +125,53 @@ class StaticFiles {
   /// exists), otherwise if [allowDirectoryListing] is true
   /// a listing of the directory is produced, otherwise an exception is thrown.
 
-  StaticFiles(String directory,
+  StaticFiles(String baseDir,
       {List<String> defaultFilenames,
       bool allowFilePathsAsDirectories: true,
-      bool allowDirectoryListing: false,
-      bool throwNotFoundExceptions: true}) {
-    if (directory == null) {
-      throw new ArgumentError.notNull("directory");
-    }
-    if (directory.isEmpty) {
-      throw new ArgumentError.value(directory, "directory", "Empty string");
-    }
-    baseDir = directory;
-
-    if (defaultFilenames != null) {
-      this.defaultFilenames = defaultFilenames;
-    } else {
-      this.defaultFilenames = []; // empty list
-    }
-    this.allowDirectoryListing = allowDirectoryListing;
-    this.allowFilePathsAsDirectories = allowFilePathsAsDirectories;
-    this.throwNotFoundExceptions = throwNotFoundExceptions;
-  }
-
-  //----------------------------------------------------------------
-  /// Handler
-
-  Future<Response> handler(Request req) async {
+      bool allowDirectoryListing: false}) {
+    // Check if directory is usable.
     if (baseDir == null) {
       throw new ArgumentError.notNull("baseDir");
     }
     if (baseDir.isEmpty) {
-      throw new ArgumentError.value(baseDir, "baseDir", "Empty string");
+      throw new ArgumentError.value(
+          baseDir, "baseDir", "empty string not permitted for StaticFiles");
     }
+    while (baseDir.endsWith("/")) {
+      // Remove all trailing slashes
+      baseDir = baseDir.substring(0, baseDir.length - 1);
+    }
+    if (baseDir.isEmpty) {
+      throw new ArgumentError.value(
+          "/", "baseDir", "not permitted for StaticFiles");
+    }
+    if (["/bin", "/etc", "/home", "/lib", "/tmp", "/var"].contains(baseDir)) {
+      throw new ArgumentError.value(
+          baseDir, "baseDir", "not permitted for StaticFiles");
+    }
+    if (!new Directory(baseDir).existsSync()) {
+      throw new ArgumentError.value(
+          baseDir, "baseDir", "directory does not exist for StaticFiles");
+    }
+    assert(baseDir.isNotEmpty);
+
+    this._baseDir = baseDir;
+    this.defaultFilenames = defaultFilenames ?? [];
+    this.allowDirectoryListing = allowDirectoryListing;
+    this.allowFilePathsAsDirectories = allowFilePathsAsDirectories;
+  }
+
+  //----------------------------------------------------------------
+  /// Request andler.
+  ///
+  /// Register this request handler with the server's pipeline using a pattern
+  /// with a single wildcard pattern. That path parameter will be used
+  /// as the relative path underneath the [baseDir] to find the file or
+  /// directory.
+
+  Future<Response> handler(Request req) async {
+    assert(_baseDir != null);
+    assert(_baseDir.isNotEmpty);
 
     // Get the relative path
 
@@ -153,7 +206,7 @@ class StaticFiles {
       }
     }
 
-    var path = baseDir + "/" + components.join("/");
+    var path = _baseDir + "/" + components.join("/");
     _logRequest.finer("[${req.id}] static file/directory requested: $path");
 
     if (!path.endsWith("/")) {
@@ -180,7 +233,9 @@ class StaticFiles {
     } else {
       // Request for a directory
 
-      if (await new Directory(path).exists()) {
+      var dir = new Directory(path);
+
+      if (await dir.exists()) {
         // Try to find one of the default files in that directory
 
         var defaultFile = await _findDefaultFile(path);
@@ -194,8 +249,7 @@ class StaticFiles {
         if (allowDirectoryListing) {
           // List the contents of the directory
           _logRequest.finest("[${req.id}] returning directory listing");
-          return await _serveDirectoryListing(
-              req, path, (1 < components.length));
+          return await directoryListing(req, dir, (1 < components.length));
         } else {
           _logRequest
               .finest("[${req.id}] static directory listing not allowed");
@@ -225,19 +279,23 @@ class StaticFiles {
     return null;
   }
   //----------------------------------------------------------------
+  /// Method used to generate a directory listing.
+  ///
+  /// This method is invoked by the [handler] if the request is for a
+  /// directory, the directory exists, the directory does not have any of the
+  /// default files, and [allowDirectoryListing] is true.
+  ///
+  /// It is passed the [Request], [Directory] and [allowLinkToParent] is true
+  /// if a link to the parent directory is permitted (i.e. this is not the
+  /// directory registered with the [StaticFiles]).
+  ///
+  /// Applications can create a subclass of [StaticFiles] and implement their
+  /// own [directoryListing] method, if they want to create their own directory
+  /// listings.
 
-  Future<Response> _serveDirectoryListing(
-      Request req, String path, bool allowLinkToParent) async {
-    var dir = new Directory(path);
-    if (!await dir.exists()) {
-      if (throwNotFoundExceptions) {
-        throw new NotFoundException(NotFoundException.foundStaticHandler);
-      } else {
-        return null;
-      }
-    }
-
-    var components = path.split("/");
+  Future<Response> directoryListing(
+      Request req, Directory dir, bool allowLinkToParent) async {
+    var components = dir.path.split("/");
     var title;
     if (2 <= components.length &&
         components[components.length - 2].isNotEmpty &&
@@ -251,7 +309,6 @@ class StaticFiles {
 <!doctype html>
 <html>
   <head>
-    <meta charset="utf-8"/>
     <title>${HEsc.text(title)}</title>
     <style type="text/css">
     body { font-family: sans-serif; }
@@ -315,7 +372,7 @@ class StaticFiles {
         // Dot is in the last segment
         var suffix = p.substring(dotIndex + 1);
         suffix = suffix.toLowerCase();
-        contentType = mimeTypes[suffix] ?? globalMimeTypes[suffix];
+        contentType = mimeTypes[suffix] ?? defaultMimeTypes[suffix];
       }
     }
 
