@@ -1,7 +1,7 @@
 name: woomera
-version: 1.0.0
+version: 1.0.1
 description: HTTP request dispatch and session manager
-homepage: https://github.com/hoylen/dart-woomera
+homepage: https://github.com/hoylen/woomera
 author: Hoylen Sue <hoylen@hoylen.com>
 environment:
   sdk: '>=1.13.0 <2.0.0'
