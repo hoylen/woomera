@@ -121,7 +121,8 @@ abstract class Response {
         var c = new Cookie(req.server.sessionCookieName, req.session.id);
         c.path = req.server.basePath;
         c.httpOnly = true;
-        if (req.server.sessionCookieForceSecure || req.server.isSecure) {
+        if (req.server.sessionCookieForceSecure ||
+            (req.server.isSecure != null && req.server.isSecure)) {
           c.secure = true; // HTTPS only: better security, but not for testing
         }
         this.cookieAdd(c);

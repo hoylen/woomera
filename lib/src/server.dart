@@ -332,7 +332,7 @@ class Server {
       var message;
 
       _logRequest.shout("[$requestId] exception raised outside context: $e");
-      _logRequest.finest("[$requestId] exception raised outside context: $s");
+      _logRequest.finest("[$requestId] exception stack trace:\n$s");
 
       // Since there is no context, the exception handlers cannot be used
       // to generate the response, this will generate a simple HTTP response.
