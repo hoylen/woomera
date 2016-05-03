@@ -7,14 +7,12 @@
 library main;
 
 import 'dart:async';
-import 'dart:convert' show UTF8, JSON;
+import 'dart:convert' show UTF8;
 import 'dart:io'
     show
         ContentType,
-        HttpStatus,
         HttpClient,
         HttpClientResponse,
-        InternetAddress,
         stderr,
         exit;
 

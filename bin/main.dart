@@ -20,7 +20,7 @@ import 'dart:io'
         Platform;
 import 'dart:async';
 
-import 'dart:convert' show UTF8, JSON;
+import 'dart:convert' show JSON;
 
 import 'package:logging/logging.dart';
 

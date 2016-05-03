@@ -258,15 +258,22 @@ class Server {
       // The request processing loop
 
       await for (var request in _svr) {
-        await _handleRequest(request, id.toString() + (++requestNo).toString());
+        try {
+          await _handleRequest(
+              request, id.toString() + (++requestNo).toString());
+        } catch (e, s) {
+          _logServer.shout("uncaught exception (${e.runtimeType}): ${e}", s);
+        }
       }
 
       requestLoopCompleter.complete();
     }, onError: (e, s) {
       // The event processing code uses async try/catch, so something very wrong
       // must have happened for an exception to have been thrown outside that.
-      _logServer.shout("uncaught exception (${e.runtimeType}): ${e}", s);
-      requestLoopCompleter.complete();
+      _logServer.shout("uncaught exception {${e.runtimeType}}: ${e}", s);
+      if (!requestLoopCompleter.isCompleted) {
+        requestLoopCompleter.complete();
+      }
     });
 
     await requestLoopCompleter.future;
