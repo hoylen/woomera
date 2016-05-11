@@ -1,5 +1,5 @@
 name: woomera
-version: 1.0.2
+version: 1.0.3
 description: HTTP request dispatch and session manager
 homepage: https://github.com/hoylen/woomera
 author: Hoylen Sue <hoylen@hoylen.com>

@@ -1,8 +1,14 @@
 # Changelog
 
+## 1.0.3
+
+2016-05-11
+
+- Fixed potential issue with URL rewriting in Chrome with GET forms.
+
 ## 1.0.2
 
-2016-05-03
+2016-05-06
 
 - Improved exception catching in request processing loop.
 

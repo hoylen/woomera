@@ -297,15 +297,22 @@ class Request {
   /// still functions properly. If there are broken links, then those links
   /// were not defined as internal URLs processed through this method.
   ///
-  /// See [sessionHiddenInputElement] for how to preserve the session when
-  /// using HTML forms.
+  /// The [includeSession] parameter indicates if the session is added as
+  /// a query parameter. The default value of "null" causes it to be only
+  /// added if there is a session and cookies are not being used. If it is
+  /// false, it is never added. If it is true, it is always added.
+  ///
+  /// The [includeSession[ should be left as null in all situations, except
+  /// when used for the "method" attribute of a HTML form element. In that
+  /// situation, set it to false and use [sessionHiddenInputElement] to
+  /// preserve the session. See [sessionHiddenInputElement] for details.
   ///
   /// Note: this method is on the request object, even though it ultimately
   /// affects the HTTP response. This is because the request object carries the
   /// context for the request and the response. The session is a part of that
   /// context.
 
-  String rewriteUrl(String iUrl) {
+  String rewriteUrl(String iUrl, {bool includeSession: null}) {
     if (!iUrl.startsWith("~/")) {
       throw new ArgumentError.value(
           iUrl, "rUrl", "rewriteUrl: does not start with '~/'");
@@ -353,26 +360,27 @@ class Request {
   /// parameter.
   ///
   /// ```html
-  /// <form method="POST" action="${HEsc.attr("~/form/processing/url")}">
+  /// <form method="POST" action="${HEsc.rewriteUrl("~/form/processing/url", includeSession: false)}">
   ///   ${req.sessionHiddenInputElement()}
   ///   ...
   /// </form>
   /// ```
   ///
   /// The first method is consistent with how links are outputted when not
-  /// using forms, but it looks inconsistent to use both query parameters with a
+  /// using forms, but it is inconsistent to use both query parameters with a
   /// POST request. The second method does not mix both query and POST
-  /// parameters, but the technical and observant user might be surprised that
-  /// sometimes the URL contains the session identifier and sometimes it
-  /// doesn't.
+  /// parameters. Both methods work on most browsers with the "POST" method.
   ///
-  /// This is probably not an important issue, since most browsers will be using
-  /// cookies. So there will be very few times where URL rewriting is needed to
-  /// preserve sessions.
+  /// The second method **must** be used when the method is "GET". This is
+  /// because the Chrome browser drops the query parameters found in the
+  /// "action" attribute when the method is "GET".
   ///
-  /// **Important:** Do not use both methods. If there is more than one session
-  /// identifier (even if they are the same value), that is treated as
-  /// inconsistent and the session will not be restored.
+  /// The second method is recommended, because the pattern will be consistent
+  /// between POST and GET methods, even though it is slightly different from
+  /// when a URL is used outside a form's method attribute.
+  ///
+  /// If cookies are being used to preserve the session, either method will
+  /// produce the same HTML.
   ///
   /// Note: this method is on the request object, even though it ultimately
   /// affects the HTTP response. This is because the request object carries the
@@ -406,30 +414,48 @@ class Request {
   /// application never sees them. But any session cookie(s) are not removed
   /// (since the list is read only).
   ///
-  /// Note: it is an error for multiple session parameters to be defined. If
-  /// that happens, a severe error is logged to the "woomera.session" logger
-  /// and they are all ignored (i.e. no session is restored).
+  /// Note: it is an error for multiple session parameters with different values
+  /// to be defined. If that happens, a severe error is logged to the
+  /// "woomera.session" logger and they are all ignored (i.e. no session is
+  /// restored). However, multiple session parameters with the same value is
+  /// permitted (this could happen if the program uses
+  /// [sessionHiddenInputElement] and did not set includeSession to false when
+  /// rewriting the URL for the "action" attribute of the form element).
 
   Future _sessionRestore() async {
     // Attempt to retrieve a session ID from the request.
 
     var sessionId = null;
-    var numIdsFound = 0;
+    var conflictingSessionId;
 
     // First, try finding a session cookie
 
     for (var cookie in request.cookies) {
       if (cookie.name == server.sessionCookieName) {
-        sessionId = cookie.value;
-        numIdsFound++;
+        if (sessionId == null) {
+          sessionId = cookie.value;
+          assert(conflictingSessionId == null);
+          conflictingSessionId = false;
+        } else {
+          if (sessionId != cookie.value) {
+            conflictingSessionId = true;
+          }
+        }
       }
     }
 
     // Second, try query parameters (i.e. URL rewriting)
 
     for (var value in queryParams.values(server.sessionParamName)) {
-      sessionId = value;
-      numIdsFound++;
+      if (sessionId == null) {
+        sessionId = value;
+        assert(conflictingSessionId == null);
+        conflictingSessionId = false;
+      } else {
+        if (sessionId != value) {
+          conflictingSessionId = true;
+        }
+      }
     }
     queryParams._removeAll(server.sessionParamName);
 
@@ -437,8 +463,15 @@ class Request {
 
     if (postParams != null) {
       for (var value in postParams.values(server.sessionParamName)) {
-        sessionId = value;
-        numIdsFound++;
+        if (sessionId == null) {
+          sessionId = value;
+          assert(conflictingSessionId == null);
+          conflictingSessionId = false;
+        } else {
+          if (sessionId != value) {
+            conflictingSessionId = true;
+          }
+        }
       }
       postParams._removeAll(server.sessionParamName);
     }
@@ -446,7 +479,7 @@ class Request {
     // Retrieve session (if any)
 
     if (sessionId != null) {
-      if (numIdsFound == 1) {
+      if (! conflictingSessionId) {
         var candidate = server._sessionFind(sessionId);
 
         if (candidate != null) {
@@ -468,9 +501,9 @@ class Request {
           // fall through to treat as no session found
         }
       } else {
-        // Multiple session IDs found: this should not happen
+        // Multiple session IDs of different values found: this should not happen
         _logSession.shout(
-            "[$id] multiple session IDs in request: not restoring any of them");
+            "[$id] multiple different session IDs in request: not restoring any of them");
         // fall through to treat as no session found
       }
     } else {
@@ -539,8 +572,12 @@ class Request {
   /// ```dart
   /// resp.write('<a href="${req.ura(link)}">here</a>');
   /// ```
+  ///
+  /// If used for the method attribute of a HTML form element, set
+  /// [includeSession] to false and use the [sessionHiddenInputElement] method
+  /// inside the form element. See [sessionHiddenInputElement] for more details.
 
-  String ura(String iUrl) {
-    return HEsc.attr(this.rewriteUrl(iUrl));
+  String ura(String iUrl, {bool includeSession: null}) {
+    return HEsc.attr(this.rewriteUrl(iUrl, includeSession: includeSession));
   }
 }
