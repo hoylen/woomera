@@ -81,7 +81,6 @@ Future<Response> handler1(Request req) async {
   var resp = new ResponseBuffered(ContentType.TEXT);
   resp.write("Test 1");
   throw "test1";
-  return resp;
 }
 
 //----------------------------------------------------------------
@@ -93,11 +92,6 @@ Future<Response> handler2(Request req) {
 
     completer.completeError("test2");
     throw new StateError("bar");
-    var _ = int.parse("baz");
-
-    var resp = new ResponseBuffered(ContentType.TEXT);
-    resp.write("Test 2: this should not be seen\n");
-    completer.complete(resp);
   });
 
   return completer.future;

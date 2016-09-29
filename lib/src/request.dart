@@ -300,7 +300,7 @@ class Request {
   /// The [includeSession] parameter indicates if the session is added as
   /// a query parameter. The default value of "null" causes it to be only
   /// added if there is a session and cookies are not being used. If it is
-  /// false, it is never added. If it is true, it is always added.
+  /// false, it is never added. There is no good reason to ever use it with true.
   ///
   /// The [includeSession[ should be left as null in all situations, except
   /// when used for the "method" attribute of a HTML form element. In that
@@ -324,8 +324,14 @@ class Request {
       result += iUrl.substring(2); // append rUrl without leading "~/"
     }
 
-    if (session == null || this._sessionUsingCookies) {
-      // Does not need extra query parameter to preserve session
+    if (session == null ||
+        (this._sessionUsingCookies && includeSession != true) ||
+        includeSession == false) {
+      // Don't include the extra query parameter, because:
+      // - there is no session to preserve;
+      // - there is a session, but cookies are being used to preserve the
+      //   session (and includeSession is not explicitly true); or
+      // - invoker explicitly asked to not include it.
       return result;
     } else {
       // Append extra query parameter to preserve session
@@ -479,7 +485,7 @@ class Request {
     // Retrieve session (if any)
 
     if (sessionId != null) {
-      if (! conflictingSessionId) {
+      if (!conflictingSessionId) {
         var candidate = server._sessionFind(sessionId);
 
         if (candidate != null) {

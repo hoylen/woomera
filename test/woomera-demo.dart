@@ -603,6 +603,8 @@ Stream<List<int>> _streamSource(Request req, int iterations, int secs) async* {
 
   yield "Stream of $iterations items (delay: $secs seconds)\n".codeUnits;
 
+  yield "Started: ${new DateTime.now()}\n".codeUnits;
+
   for (var x = 1; x <= iterations; x++) {
     var completer = new Completer();
     new Timer(delay, () => completer.complete());

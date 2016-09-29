@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.0.4
+
+2016-09-29
+
+- Fixed bug with parallel processing of HTTP requests.
+
 ## 1.0.3
 
 2016-05-11

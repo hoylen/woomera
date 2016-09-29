@@ -259,10 +259,13 @@ class Server {
 
       await for (var request in _svr) {
         try {
-          await _handleRequest(
-              request, id.toString() + (++requestNo).toString());
+          // Note: although _handleRequest returns a Future that completes when
+          // the request is fully processed, this does NOT wait for it to
+          // complete, so that multiple requests can be handled in parallel.
+          _handleRequest(request, id.toString() + (++requestNo).toString());
         } catch (e, s) {
-          _logServer.shout("uncaught try/catch exception (${e.runtimeType}): ${e}", e, s);
+          _logServer.shout(
+              "uncaught try/catch exception (${e.runtimeType}): ${e}", e, s);
         }
       }
 
@@ -270,7 +273,8 @@ class Server {
     }, onError: (e, s) {
       // The event processing code uses async try/catch, so something very wrong
       // must have happened for an exception to have been thrown outside that.
-      _logServer.shout("uncaught onError exception (${e.runtimeType}): ${e}", e, s);
+      _logServer.shout(
+          "uncaught onError exception (${e.runtimeType}): ${e}", e, s);
       if (!requestLoopCompleter.isCompleted) {
         requestLoopCompleter.complete();
       }
@@ -315,8 +319,7 @@ class Server {
 
       var req = new Request._constructor(request, requestId, this);
       await req._postParmsInit(this.postMaxSize);
-      await req
-          ._sessionRestore(); // must do this after obtaining the post parameters
+      await req._sessionRestore(); // must be after POST parameters gotten
 
       // Handle the request in its context
 
