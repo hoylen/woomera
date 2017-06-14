@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.0.5
+
+- Upgraded version dependency on uuid package.
+
 ## 1.0.4
 
 2016-09-29
