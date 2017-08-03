@@ -88,21 +88,40 @@ class Server {
   ///
   /// Can be a String containing a hostname or IP address, or one of these
   /// values from the [InternetAddress] class: [LOOPBACK_IP_V4],
-  /// [LOOPBACK_IP_V6], [ANY_IP_V4] or [ANY_IP_V6].  The default value is
-  /// LOOPBACK_IP_V6, which means it listens for either IPv4 or IPv6 protocol on
-  /// the loopback address.  That is, the server can only be contacted from the
-  /// same machine it is running on, which is the normal setup when deploying
-  /// the Web server with a reverse proxy (e.g Nginx or Apache) in front of it.
+  /// [LOOPBACK_IP_V6], [ANY_IP_V4] or [ANY_IP_V6].
+  ///
+  /// The default value is LOOPBACK_IP_V4, which means it only listens on the
+  /// IPv4 loopback address of 127.0.0.1. This option is usually used when
+  /// the service is run behind a reverse proxy server (e.g. Apache or Nginx).
+  /// The server can only be contacted over IPv4 from the same machine.
+  ///
   /// If deployed without a reverse proxy, this value needs to be change
   /// otherwise clients external to the machine will not be allowed to connect
   /// to the Web server.
+  ///
+  /// If it is set to [ANY_IP_V6], it listens to any IPv4 or IPv6 address,
+  /// unless [v6Only] is set to true (in which case it only listens on any IPv6
+  /// address).
 
-  var bindAddress = InternetAddress.LOOPBACK_IP_V6;
+  var bindAddress = InternetAddress.LOOPBACK_IP_V4;
+
+  /// Indicates how a [bindAddress] value of [ANY_IP_V6] treats IPv4 addresses.
+  ///
+  /// The default is false, which means it listens to any IPv4 or IPv6
+  /// addresses.
+  ///
+  /// If set to true, it only listens on any IPv6 address. That is, it will not
+  /// listen on any IPv4 address.
+  ///
+  /// This value has no effect if the [bindAddress] is not [ANY_IP_V6].
+
+  var v6Only = false;
 
   /// Port number for the server.
   ///
   /// Set this to the port the server will listen on. The default value of null
-  /// means uses 80 for HTTP and 443 for HTTPS.
+  /// means uses 80 for HTTP and 443 for HTTPS. HTTPS or HTTP is used depending
+  /// on if [run] is invoked with a private key and certificate, or not.
   ///
   /// Since port numbers below 1024 are reserved, normally the port will have to
   /// be set to a value of 1024 or larger before starting the server. Otherwise,
@@ -222,7 +241,7 @@ class Server {
     if (certificateName == null || certificateName.isEmpty) {
       // Normal HTTP bind
       _isSecure = false;
-      _svr = await HttpServer.bind(bindAddress, bindPort ?? 80);
+      _svr = await HttpServer.bind(bindAddress, bindPort ?? 80, v6Only: v6Only);
     } else {
       // Secure HTTPS bind
       //
@@ -234,7 +253,7 @@ class Server {
         ..usePrivateKey(privateKeyFilename);
       _svr = await HttpServer.bindSecure(
           bindAddress, bindPort ?? 443, securityContext,
-          backlog: 5);
+          v6Only: v6Only, backlog: 5);
     }
 
     // Log that it started

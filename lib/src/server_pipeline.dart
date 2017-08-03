@@ -77,6 +77,33 @@ class ServerPipeline {
     register("POST", path, handler);
   }
 
+  //----------------------------------------------------------------
+  /// Register a PUT request handler.
+  ///
+  /// Shorthand for calling [register] with the method set to "PUT".
+  ///
+  void put(String path, RequestHandler handler) {
+    register("PUT", path, handler);
+  }
+
+  //----------------------------------------------------------------
+  /// Register a PATCH request handler.
+  ///
+  /// Shorthand for calling [register] with the method set to "PATCH".
+  ///
+  void patch(String path, RequestHandler handler) {
+    register("PATCH", path, handler);
+  }
+
+  //----------------------------------------------------------------
+  /// Register a DELETE request handler.
+  ///
+  /// Shorthand for calling [register] with the method set to "DELETE".
+  ///
+  void delete(String path, RequestHandler handler) {
+    register("DELETE", path, handler);
+  }
+
   //================================================================
   // Retrieval methods
 

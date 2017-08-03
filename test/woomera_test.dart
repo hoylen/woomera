@@ -8,13 +8,7 @@ library main;
 
 import 'dart:async';
 import 'dart:convert' show UTF8;
-import 'dart:io'
-    show
-        ContentType,
-        HttpClient,
-        HttpClientResponse,
-        stderr,
-        exit;
+import 'dart:io' show ContentType, HttpClient, HttpClientResponse, stderr, exit;
 
 import 'package:test/test.dart';
 import 'package:logging/logging.dart';
@@ -412,25 +406,8 @@ void loggingSetup() {
 
 //----------------------------------------------------------------
 
-Future main(List<String> args) async {
-  if (args.isNotEmpty) {
-    for (var arg in args) {
-      switch (arg) {
-        case "-v":
-        case "--verbose":
-          loggingSetup();
-          break;
-        case "-h":
-        case "--help":
-          print("Usage: progname [-v | -h]");
-          exit(0);
-          break;
-        default:
-          stderr.writeln("Unknown argument/option: $arg (see -h for help)");
-          exit(1);
-      }
-    }
-  }
+Future main() async {
+  // loggingSetup(); // TODO: Uncomment if you want logging
 
   var mainLogger = new Logger("main");
 

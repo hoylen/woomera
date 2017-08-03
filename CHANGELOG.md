@@ -1,5 +1,9 @@
 # Changelog
 
+## 2.0.0
+
+- Changed default bindAddress from LOOPBACK_IP_V6 to LOOPBACK_IP_V4.
+
 ## 1.0.5
 
 - Upgraded version dependency on uuid package.

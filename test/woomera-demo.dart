@@ -984,8 +984,8 @@ Server serverSetup() {
   //
   // The bind address is setup to listen to any incoming connection from any IP
   // address (IPv4 or IPv6). If this is not done, by default it only listens
-  // on the loopback interface, which is good for deployment behind a reverse
-  // Web proxy, but might be restrictive for testing.
+  // on the IPv4 loopback interface, which is good for deployment behind a
+  // reverse Web proxy, but might be restrictive for testing.
   //
   // Note: normally [webserver], [p1] and [p2] can be local variables. But in
   // this demo some of the HTTP requests will manipulate the server and
@@ -994,6 +994,7 @@ Server serverSetup() {
 
   webServer = new Server();
   webServer.bindAddress = InternetAddress.ANY_IP_V6;
+  webServer.v6Only = false; // false = listen to any IPv4 and any IPv6 address
   webServer.bindPort = 1024;
 
   // Set server's exception handler
