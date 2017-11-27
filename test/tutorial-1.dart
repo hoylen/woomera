@@ -8,26 +8,24 @@ import 'package:woomera/woomera.dart';
 Future main() async {
   // Create and configure server
 
-  var ws = new Server();
-  ws.bindAddress = InternetAddress.ANY_IP_V6;
-  ws.bindPort = 1024;
+  final ws = new Server()
+    ..bindAddress = InternetAddress.ANY_IP_V6
+    ..bindPort = 1024;
 
   // Register rules
 
-  var p = ws.pipelines.first;
-  p.get("~/", handleTopLevel);
+  ws.pipelines.first..get("~/", _handleTopLevel);
 
   // Run the server
 
   await ws.run();
 }
 
-Future<Response> handleTopLevel(Request req) async {
+Future<Response> _handleTopLevel(Request req) async {
   var name = req.queryParams["name"];
   name = (name.isEmpty) ? "world" : name;
 
-  var resp = new ResponseBuffered(ContentType.HTML);
-  resp.write("""
+  final resp = new ResponseBuffered(ContentType.HTML)..write("""
 <html>
   <head>
     <title>Woomera Tutorial</title>

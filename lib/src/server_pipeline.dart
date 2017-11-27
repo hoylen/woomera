@@ -21,20 +21,18 @@ part of woomera;
 /// stops with the first handler that doesn't return null.
 
 class ServerPipeline {
-
   /// Pipeline level exception handler.
 
   ExceptionHandler exceptionHandler;
 
-  final Map<String, List<ServerRule>> _rulesByMethod =
-      new Map<String, List<ServerRule>>();
+  final Map<String, List<ServerRule>> _rulesByMethod = {};
 
   //================================================================
 
   /// Register a request [handler] when a [method] request asks for [path].
 
   void register(String method, String path, RequestHandler handler) {
-    _logServer.config("register: ${method} ${path}");
+    _logServer.config("register: $method $path");
 
     if (method == null) {
       throw new ArgumentError.notNull("method");
@@ -50,7 +48,7 @@ class ServerPipeline {
 
     var methodRules = _rulesByMethod[method];
     if (methodRules == null) {
-      methodRules = new List<ServerRule>();
+      methodRules = []; // new List<ServerRule>();
       _rulesByMethod[method] = methodRules;
     }
 
@@ -110,14 +108,10 @@ class ServerPipeline {
   //----------------------------------------------------------------
   /// Returns the methods in the pipeline
   ///
-  List<String> methods() {
-    return _rulesByMethod.keys;
-  }
+  Iterable<String> methods() => _rulesByMethod.keys;
 
   //----------------------------------------------------------------
   /// Returns the rules in the pipeline for a given [method].
 
-  List<ServerRule> rules(String method) {
-    return _rulesByMethod[method];
-  }
+  List<ServerRule> rules(String method) => _rulesByMethod[method];
 }

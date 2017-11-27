@@ -13,8 +13,8 @@ part of woomera;
 ///
 /// Examples:
 /// ```dart
-/// var alpha = "Don't use <blink>Flash</blink> & \"stuff\".";
-/// var beta = "First line\nsecond line\nthird line";
+/// var alpha = 'Don't use <blink>Flash</blink> & "stuff" in HTML.';
+/// var beta = "1. First line\n2. second line\n3. third line";
 ///
 /// resp.write("""
 /// <div title="${HEsc.attr(alpha)}">
@@ -29,26 +29,27 @@ part of woomera;
 /// <div title="Don&apos;t use &lt;blink&gt;Flash&lt;/blink&gt; &amp; &quot;stuff&quot;.">
 ///   <p>Don't use &lt;blink&gt;Flash&lt;/blink&gt; &amp; other "stuff".</p>
 ///   <p>123</p>
-///   <p>First line<br/>second line<br/>third line</p>
+///   <p>1. First line<br/>2. second line<br/>3. third line</p>
 /// </div>
 /// ```
 
 abstract class HEsc {
   // Disable default constructor, since this class is not to be instantiated.
-  HEsc._internal() {}
+  HEsc._internal() {
+    assert(false);
+  }
 
   //----------------------------------------------------------------
   /// Escape values for placement inside a HTML or XML attribute.
   ///
-  /// The string value of [obj] is obtained (by invoking its toString method)
-  /// and any &, <, >, ' and " in the string is replaced by its HTML entities.
+  /// Returns a string where all characters &, <, >, ' and " in [str] is
+  /// replaced by its HTML entities.
   ///
-  /// If [obj] is null, the empty string is returned.
+  /// If [str] is null, the empty string is returned.
 
-  static String attr(var obj) {
-    if (obj != null) {
-      String s = obj.toString();
-      s = s.replaceAll("&", "&amp;");
+  static String attr(String str) {
+    if (str != null) {
+      var s = str.replaceAll("&", "&amp;");
       s = s.replaceAll("<", "&lt;");
       s = s.replaceAll(">", "&gt;");
       s = s.replaceAll("'", "&apos;");
@@ -62,15 +63,14 @@ abstract class HEsc {
   //----------------------------------------------------------------
   /// Escape values for placement inside the contents of a HTML or XML element.
   ///
-  /// The string value of [obj] is obtained (by invoking its toString method)
-  /// and any &, < and > in the string is replaced by its HTML entities.
+  /// Returns a string where all characters &, < and > in [str] is
+  /// replaced by its HTML entities.
   ///
-  /// If [obj] is null, the empty string is returned.
+  /// If [str] is null, the empty string is returned.
 
-  static String text(var obj) {
-    if (obj != null) {
-      String s = obj.toString();
-      s = s.replaceAll("&", "&amp;");
+  static String text(String str) {
+    if (str != null) {
+      var s = str.replaceAll("&", "&amp;");
       s = s.replaceAll("<", "&lt;");
       s = s.replaceAll(">", "&gt;");
       return s;
@@ -82,19 +82,18 @@ abstract class HEsc {
   //----------------------------------------------------------------
   /// Format multi-line text for placement inside a HTML element.
   ///
-  /// The string value of [obj] is obtained (by invoking its toString method)
-  /// and any line breaks in the string is replaced by a `<br/>` break element.
+  /// Any line breaks in the string is replaced by a `<br/>` break element.
   /// Each line is escaped using [text]. If there is only one line (i.e.
   /// there is no new line) no break elements are added.
   ///
-  /// If [obj] is null, the empty string is returned.
+  /// If [s] is null, the empty string is returned.
 
-  static String lines(var obj) {
-    if (obj != null) {
-      StringBuffer buf = new StringBuffer();
-      bool started = false;
+  static String lines(String s) {
+    if (s != null) {
+      final buf = new StringBuffer();
+      var started = false;
 
-      for (var line in obj.toString().split("\n")) {
+      for (var line in s.split("\n")) {
         if (started) {
           buf.write("<br/>");
         } else {
@@ -110,7 +109,7 @@ abstract class HEsc {
 
   //----------------------------------------------------------------
   // Implementation should have used something like this, but this doesn't
-  // work as expected. It has/had an unusualy interpretation of which characters
+  // work as expected. It has/had an unusually interpretation of which characters
   // needed to be escaped and which didn't.
 
   // static HtmlEscape _escape_CDATA = new HtmlEscape(HtmlEscapeMode.ELEMENT);

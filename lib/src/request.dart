@@ -59,7 +59,7 @@ class Request {
   /// if a session cookie was presented in the HTTP request, it will be deleted
   /// by the HTTP response.
   ///
-  /// Note: sessions should be set/cleared before calling [rewriteURL].
+  /// Note: sessions should be set/cleared before calling rewriteURL.
 
   Session session;
 
@@ -91,147 +91,42 @@ class Request {
 
   bool _sessionWasSetInRequest;
 
-  /// Indicates if the request has a session or not.
-
-  bool get hasSession => session != null;
-
-  //================================================================
-  /// The three different sources of parameters.
-  ///
-  /// - path - from matching components in the request path
-  /// - query - URI query parameters
-  /// - post - from POST requests
-  ///
-  /// For example:
-  ///     POST http://example.com/foo/bar/baz?a=1&b=2
-  ///     x=8&y=9
-  ///
-
-  /// The parameters from the URL path.
-
-  RequestParams get pathParams => _pathParams;
-
   RequestParams _pathParams;
-
-  //================================================================
-
-  /// The parameters from the POST request.
-  ///
-  /// Is null if this context is not from a POST request.
-  ///
-
-  RequestParams get postParams => _postParams;
-
-  RequestParams _postParams; // set by setPostParams method
-
-  //----------------------------------------------------------------
-
-  Future _postParmsInit(int maxPostSize) async {
-    // Set post parameters (if any)
-
-    if (request.method == "POST" &&
-        request.headers.contentType != null &&
-        request.headers.contentType.mimeType ==
-            "application/x-www-form-urlencoded") {
-      // Read in the contents of the request
-
-      // TODO: check specification whether this can use AsciiDecoder instead of UTF-8
-
-      var buf = new List<int>();
-      await for (var bytes in request) {
-        if (maxPostSize < buf.length + bytes.length) {
-          throw new PostTooLongException();
-        }
-        buf.addAll(bytes);
-      }
-
-      // Convert the contents into a string
-
-      var str = UTF8.decoder.convert(buf);
-
-      // Parse the string into parameters
-
-      _postParams = new RequestParams._fromQueryString(str);
-
-      // Logging
-
-      if (postParams.isNotEmpty && _logRequestParam.level <= Level.FINE) {
-        var str =
-            "[${id}] post: ${postParams.length} key(s): ${postParams.toString()}";
-        _logRequestParam.finer(str);
-      }
-    }
-  }
-
-  //================================================================
-
-  /// The parameters from the URL's query parameters.
-  ///
-  /// This is never null when the context is created, but there is nothing
-  /// stopping a filter from modifying it.
-  ///
-  /// The parameters from the URL path.
-
-  RequestParams get queryParams => _queryParams;
 
   RequestParams _queryParams; // initially set by constructor
 
-  //================================================================
-  // Properties
-
-  final Map<String, Object> _properties = new Map<String, Object>();
-
-  /// Set a property on the request.
-  ///
-  /// The application can use properties to associate arbitrary values
-  /// with the context.
-
-  void operator []=(String key, var value) {
-    assert(key != null);
-    _properties[key] = value;
-  }
-
-  /// Lookup a property on the request.
-
-  Object operator [](String key) {
-    assert(key != null);
-    return _properties[key];
-  }
+  RequestParams _postParams; // set by setPostParams method
 
   //================================================================
-
   /// Constructor
   ///
   /// Internal constructor invoked by [Server] code. Code outside this package
   /// cannot create [Request] objects.
   ///
-  Request._constructor(HttpRequest httpRequest, String requestId, Server svr)
-      : request = httpRequest,
-        id = requestId,
-        server = svr {
+  Request._constructor(this.request, this.id, this.server) {
     assert(request != null);
-    assert(requestId != null);
+    assert(id != null);
     assert(server != null);
 
-    _logRequest.fine("[${id}] ${request.method} ${request.uri.path}");
+    _logRequest.fine("[$id] ${request.method} ${request.uri.path}");
 
     if (_logRequest.level <= Level.FINE) {
       // Log request
-      var str = "[${id}] HTTP headers:";
+      final buf = new StringBuffer("[$id] HTTP headers:");
       request.headers.forEach((name, values) {
-        str += "\n  ${name}: ";
-        if (values.length == 0) {
-          str += "<noValue>";
+        buf.write("\n  $name: ");
+        if (values.isEmpty) {
+          buf.write("<noValue>");
         } else if (values.length == 1) {
-          str += "${values[0]}";
+          buf.write("${values[0]}");
         } else {
           var index = 1;
           for (var v in values) {
-            str += "\n  [${index++}] $v";
+            buf.write("\n  [${index++}] $v");
           }
         }
       });
-      _logRequestHeader.finest(str);
+      _logRequestHeader.finest(buf.toString());
     }
 
     // Check length of URI does not exceed limits
@@ -256,8 +151,7 @@ class Request {
     _queryParams = new RequestParams._fromQueryString(request.uri.query);
 
     if (_queryParams.isNotEmpty && _logRequestParam.level <= Level.FINE) {
-      var str =
-          "[${id}] query: ${queryParams.length} key(s): ${queryParams.toString()}";
+      final str = "[$id] query: ${queryParams.length} key(s): $queryParams";
       _logRequestParam.finer(str);
     }
 
@@ -268,6 +162,111 @@ class Request {
     } else {
       _sessionUsingCookies = false; // don't know, so assume browser doesn't
     }
+  }
+
+  //================================================================
+  // Accessors
+
+  //----------------------------------------------------------------
+  /// Indicates if the request has a session or not.
+
+  bool get hasSession => session != null;
+
+  //----------------------------------------------------------------
+  /// The three different sources of parameters.
+  ///
+  /// - path - from matching components in the request path
+  /// - query - URI query parameters
+  /// - post - from POST requests
+  ///
+  /// For example:
+  ///     POST http://example.com/foo/bar/baz?a=1&b=2
+  ///     x=8&y=9
+  ///
+  ///
+  /// The parameters from the URL path.
+
+  RequestParams get pathParams => _pathParams;
+
+  //----------------------------------------------------------------
+  /// The parameters from the POST request.
+  ///
+  /// Is null if this context is not from a POST request.
+  ///
+
+  RequestParams get postParams => _postParams;
+
+  //----------------------------------------------------------------
+  /// The parameters from the URL's query parameters.
+  ///
+  /// This is never null when the context is created, but there is nothing
+  /// stopping a filter from modifying it.
+  ///
+  /// The parameters from the URL path.
+
+  RequestParams get queryParams => _queryParams;
+
+  //================================================================
+  // Internal methods
+
+  //----------------------------------------------------------------
+
+  Future _postParmsInit(int maxPostSize) async {
+    // Set post parameters (if any)
+
+    if (request.method == "POST" &&
+        request.headers.contentType != null &&
+        request.headers.contentType.mimeType ==
+            "application/x-www-form-urlencoded") {
+      // Read in the contents of the request
+
+      // TODO: check specification whether this can use AsciiDecoder instead of UTF-8
+
+      final buf = <int>[];
+      await for (var bytes in request) {
+        if (maxPostSize < buf.length + bytes.length) {
+          throw new PostTooLongException();
+        }
+        buf.addAll(bytes);
+      }
+
+      // Convert the contents into a string
+
+      final str = UTF8.decoder.convert(buf);
+
+      // Parse the string into parameters
+
+      _postParams = new RequestParams._fromQueryString(str);
+
+      // Logging
+
+      if (postParams.isNotEmpty && _logRequestParam.level <= Level.FINE) {
+        final str = "[$id] post: ${postParams.length} key(s): $postParams";
+        _logRequestParam.finer(str);
+      }
+    }
+  }
+
+  //================================================================
+  // Properties
+
+  final Map<String, Object> _properties = {};
+
+  /// Set a property on the request.
+  ///
+  /// The application can use properties to associate arbitrary values
+  /// with the context.
+
+  void operator []=(String key, dynamic value) {
+    assert(key != null);
+    _properties[key] = value;
+  }
+
+  /// Lookup a property on the request.
+
+  Object operator [](String key) {
+    assert(key != null);
+    return _properties[key];
   }
 
   //================================================================
@@ -318,25 +317,29 @@ class Request {
           iUrl, "rUrl", "rewriteUrl: does not start with '~/'");
     }
 
-    var result = server._basePath + (server._basePath.endsWith("/") ? "" : "/");
+    final buf = new StringBuffer(server._basePath);
+    if (!server._basePath.endsWith("/")) {
+      buf.write("/");
+    }
 
     if (iUrl != "~/") {
-      result += iUrl.substring(2); // append rUrl without leading "~/"
+      buf.write(iUrl.substring(2)); // append rUrl without leading "~/"
     }
 
     if (session == null ||
-        (this._sessionUsingCookies && includeSession != true) ||
+        (_sessionUsingCookies && includeSession != true) ||
         includeSession == false) {
       // Don't include the extra query parameter, because:
       // - there is no session to preserve;
       // - there is a session, but cookies are being used to preserve the
       //   session (and includeSession is not explicitly true); or
       // - invoker explicitly asked to not include it.
-      return result;
+      return buf.toString();
     } else {
       // Append extra query parameter to preserve session
-      var separator = (result.contains("?")) ? "&" : "?";
-      return "${result}${separator}${server.sessionParamName}=${session.id}";
+      final result = buf.toString();
+      final separator = (result.contains("?")) ? "&" : "?";
+      return "$result$separator${server.sessionParamName}=${session.id}";
     }
   }
 
@@ -394,13 +397,11 @@ class Request {
   /// context.
 
   String sessionHiddenInputElement() {
-    if (hasSession && !this._sessionUsingCookies) {
+    if (hasSession && !_sessionUsingCookies) {
       // Require hidden POST form parameter to preserve session
-      return "<input type=\"hidden\" name=\"" +
-          HEsc.attr(server.sessionParamName) +
-          "\" value=\"" +
-          HEsc.attr(session.id) +
-          "\"/>";
+      final name = HEsc.attr(server.sessionParamName);
+      final value = HEsc.attr(session.id);
+      return '<input type="hidden" name="$name" value="$value"/>';
     } else {
       return ""; // hidden POST form parameter not required
     }
@@ -431,8 +432,8 @@ class Request {
   Future _sessionRestore() async {
     // Attempt to retrieve a session ID from the request.
 
-    var sessionId = null;
-    var conflictingSessionId;
+    String sessionId;
+    bool conflictingSessionId;
 
     // First, try finding a session cookie
 
@@ -486,20 +487,20 @@ class Request {
 
     if (sessionId != null) {
       if (!conflictingSessionId) {
-        var candidate = server._sessionFind(sessionId);
+        final candidate = server._sessionFind(sessionId);
 
         if (candidate != null) {
           if (await candidate.resume(this)) {
             _logSession.finest("[$id] session resumed: $sessionId");
             candidate._refresh(); // restart timeout timer
-            this.session = candidate;
+            session = candidate;
           } else {
             _logSession
                 .finest("[$id] session could not be resumed: $sessionId");
             await candidate._terminate(Session.endByFailureToResume);
-            this.session = null;
+            session = null;
           }
-          this._sessionWasSetInRequest = true;
+          _sessionWasSetInRequest = true;
           return; // found session (but might not have been restored)
 
         } else {
@@ -519,8 +520,8 @@ class Request {
 
     // No session found
 
-    this.session = null;
-    this._sessionWasSetInRequest = false;
+    session = null;
+    _sessionWasSetInRequest = false;
   }
 
   //----------------------------------------------------------------
@@ -530,8 +531,8 @@ class Request {
   // Causes the session's suspend method to be invoked, if there is a session.
 
   Future _sessionSuspend() async {
-    if (this.session != null) {
-      await this.session.suspend(this);
+    if (session != null) {
+      await session.suspend(this);
     }
   }
 
@@ -545,7 +546,7 @@ class Request {
   /// returned.
 
   String requestPath() {
-    var p = this.request.uri.path;
+    var p = request.uri.path;
 
     if (p.startsWith(server._basePath)) {
       // TODO: this needs more work to account for # and ? parameters
@@ -553,7 +554,7 @@ class Request {
       if (p.length <= server._basePath.length)
         p = "~/";
       else
-        p = "~/" + p.substring(server._basePath.length);
+        p = "~/${p.substring(server._basePath.length)}";
     } else {
       p = "~/";
     }
@@ -583,7 +584,6 @@ class Request {
   /// [includeSession] to false and use the [sessionHiddenInputElement] method
   /// inside the form element. See [sessionHiddenInputElement] for more details.
 
-  String ura(String iUrl, {bool includeSession: null}) {
-    return HEsc.attr(this.rewriteUrl(iUrl, includeSession: includeSession));
-  }
+  String ura(String iUrl, {bool includeSession: null}) =>
+      HEsc.attr(rewriteUrl(iUrl, includeSession: includeSession));
 }

@@ -19,22 +19,6 @@ class ServerRule {
   static const String _splat = "*";
   static const String _optionalSuffix = "?";
 
-  //----------------------------------------------------------------
-
-  static bool _isWildcard(String s) => (s == _splat);
-
-  static bool _isVariable(String s) => s.startsWith(_variablePrefix);
-
-  static String _variableName(String s) {
-    s = s.substring(_variablePrefix.length);
-    if (_isOptional(s)) {
-      s = s.substring(0, s.length - _optionalSuffix.length);
-    }
-    return s;
-  }
-
-  static bool _isOptional(String s) => s.endsWith(_optionalSuffix);
-
   //================================================================
 
   //----------------------------------------------------------------
@@ -69,14 +53,15 @@ class ServerRule {
   /// "/foo/*"
   /// "/foo/bar?/baz"
 
-  ServerRule(String pathPattern, RequestHandler handler) {
+  ServerRule(String pathPattern, this.handler) {
     if (pathPattern == null) {
       throw new ArgumentError.notNull("ServerRule.pathPattern");
     }
     _segments = pathPattern.split(_pathSeparator);
 
     if (_segments.isEmpty || _segments[0] != "~") {
-      throw new ArgumentError.value(pathPattern, "pathPattern", "ServerRule: does not start with '~'");
+      throw new ArgumentError.value(
+          pathPattern, "pathPattern", "ServerRule: does not start with '~'");
     }
     _segments.removeAt(0); // remove the leading "~".
 
@@ -90,19 +75,33 @@ class ServerRule {
     //  "/foo -> "foo"
     //  "/foo/bar -> "foo", "bar"
     //  "/foo/bar/" -> "foo", "bar", ""
-
-    this.handler = handler;
   }
+
+  //================================================================
+
+  static bool _isWildcard(String s) => (s == _splat);
+
+  static bool _isVariable(String s) => s.startsWith(_variablePrefix);
+
+  static String _variableName(String str) {
+    var s = str.substring(_variablePrefix.length);
+    if (_isOptional(s)) {
+      s = s.substring(0, s.length - _optionalSuffix.length);
+    }
+    return s;
+  }
+
+  static bool _isOptional(String s) => s.endsWith(_optionalSuffix);
 
   //----------------------------------------------------------------
 
   RequestParams _matches(List<String> components) {
-    var result = new RequestParams._internalConstructor();
+    final result = new RequestParams._internalConstructor();
 
-    int componentIndex = 0;
-    int segmentIndex = 0;
+    var componentIndex = 0;
+    var segmentIndex = 0;
     for (var segment in _segments) {
-      var component;
+      String component;
       if (components.length <= componentIndex) {
         if (_isWildcard(segment)) {
           component = null; // wildcard can match no components
@@ -119,8 +118,9 @@ class ServerRule {
         componentIndex++;
       } else if (_isWildcard(segment)) {
         // Wildcard segment
-        var numSegmentsLeft = _segments.length - segmentIndex - 1;
-        var numConsumed = components.length - componentIndex - numSegmentsLeft;
+        final numSegmentsLeft = _segments.length - segmentIndex - 1;
+        final numConsumed =
+            components.length - componentIndex - numSegmentsLeft;
         if (numConsumed < 0) {
           return null; // insufficient components to satisfy rest of pattern
         }
@@ -155,11 +155,12 @@ class ServerRule {
 
   /// Prints the pattern
   ///
+  @override
   String toString() {
     if (_segments.isEmpty) {
       return "~/";
     } else {
-      return "~" + _pathSeparator + _segments.join(_pathSeparator);
+      return "~$_pathSeparator${_segments.join(_pathSeparator)}";
     }
   }
 }

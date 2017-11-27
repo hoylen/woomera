@@ -35,9 +35,9 @@ library woomera;
 
 //----------------------------------------------------------------
 
-import 'dart:io';
 import 'dart:async';
 import 'dart:convert' show Encoding, UTF8;
+import 'dart:io';
 
 import 'package:logging/logging.dart';
 import 'package:uuid/uuid.dart';

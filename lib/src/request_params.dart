@@ -11,6 +11,7 @@ part of woomera;
 /// processing sets of checkboxes or radio buttons.
 
 class RequestParams {
+
   //================================================================
 
   // Stores the parameter keys and values.
@@ -21,27 +22,18 @@ class RequestParams {
   // implementation. If a multi-map implementation is added to the
   // core Dart packages, this can be reconsidered.
 
-  Map<String, List<String>> _data = new Map<String, List<String>>();
+  final Map<String, List<String>> _data = {};
 
   //================================================================
+  // Constructors
 
-  // Returns true if there are no keys.
-  bool get isEmpty => _data.isEmpty;
+  //----------------------------------------------------------------
 
-  // Returns true if there is at least one key.
-  bool get isNotEmpty => _data.isNotEmpty;
-
-  // The number of keys.
-  int get length => _data.length;
-
-  /// All the keys.
-  Iterable<String> get keys => _data.keys;
-
-  //================================================================
-
-  /// Default constructor
+  /// Default constructor (for internal use only)
   ///
-  RequestParams._internalConstructor() {}
+  RequestParams._internalConstructor();
+
+  //----------------------------------------------------------------
 
   /// Constructor from a query string.
   ///
@@ -53,40 +45,54 @@ class RequestParams {
   /// (e.g. foo=123,foo=456) which the Dart Uri.splitQueryString implementation
   /// does not handle.
   ///
-  /**
-   *
-   * [HTML 4.01 specification section 17.13.4]
-   * (http://www.w3.org/TR/REC-html40/interact/forms.html#h-17.13.4
-   * "HTML 4.01 section 17.13.4"). Each key and value in the returned
-   * map has been decoded. If the [query]
-   * is the empty string an empty map is returned.
-   *
-   * Keys in the query string that have no value are mapped to the
-   * empty string.
-   *
-   * Each query component will be decoded using [encoding]. The default encoding
-   * is UTF-8.
-   */
+  /// [HTML 4.01 specification section 17.13.4]
+  /// (http://www.w3.org/TR/REC-html40/interact/forms.html#h-17.13.4
+  /// "HTML 4.01 section 17.13.4"). Each key and value in the returned
+  /// map has been decoded. If the [query]
+  /// is the empty string an empty map is returned.
+  ///
+  /// Keys in the query string with no value are mapped to the empty string.
+  ///
+  /// Each query component will be decoded using [encoding]. The default encoding
+  /// is UTF-8.
+  ///
   RequestParams._fromQueryString(String query, {Encoding encoding: UTF8}) {
     for (var pair in query.split("&")) {
       if (pair.isNotEmpty) {
-        int index = pair.indexOf("=");
+        final index = pair.indexOf("=");
         if (index == -1) {
           // no "=": use whole string as key and the value is empty string
-          var key = Uri.decodeQueryComponent(pair, encoding: encoding);
-          this._add(key, ""); // no "=" found, treat value as empty string
+          final key = Uri.decodeQueryComponent(pair, encoding: encoding);
+          _add(key, ""); // no "=" found, treat value as empty string
         } else if (index != 0) {
-          var key = pair.substring(0, index);
-          var value = pair.substring(index + 1);
-          this._add(Uri.decodeQueryComponent(key, encoding: encoding),
+          final key = pair.substring(0, index);
+          final value = pair.substring(index + 1);
+          _add(Uri.decodeQueryComponent(key, encoding: encoding),
               Uri.decodeQueryComponent(value, encoding: encoding));
         } else {
           // Has "=", but is first character: key is empty string
-          this._add("", Uri.decodeQueryComponent(pair, encoding: encoding));
+          _add("", Uri.decodeQueryComponent(pair, encoding: encoding));
         }
       }
     }
   }
+
+  //================================================================
+  // Getters and setters
+
+  /// Returns true if there are no keys.
+  bool get isEmpty => _data.isEmpty;
+
+  /// Returns true if there is at least one key.
+  bool get isNotEmpty => _data.isNotEmpty;
+
+  /// The number of keys.
+  int get length => _data.length;
+
+  /// All the keys.
+  Iterable<String> get keys => _data.keys;
+
+  //================================================================
 
   //----------------------------------------------------------------
   /// Adds a value to the parameters.
@@ -97,7 +103,7 @@ class RequestParams {
   void _add(String key, String value) {
     var values = _data[key];
     if (values == null) {
-      values = new List<String>();
+      values = [];
       _data[key] = values;
     }
     values.add(value);
@@ -146,7 +152,7 @@ class RequestParams {
   /// are required.
 
   String operator [](String key) {
-    var values = _data[key];
+    final values = _data[key];
     if (values == null) {
       return ""; // no value for key
     } else if (values.length == 1) {
@@ -169,56 +175,57 @@ class RequestParams {
   List<String> values(String key, {bool raw: false}) {
     assert(key != null);
 
-    var values = _data[key];
+    final values = _data[key];
 
     if (values == null) {
       // Return empty list
-      return new List<String>();
+      return <String>[];
     } else if (raw) {
       // Return list of raw values
       return values;
     } else {
       // Return list of trimmed values
-      return new List.from(values.map((e) => _sanitize(e)));
+      final x = values.map((s) => _sanitize(s));
+      return new List<String>.from(x);
     }
   }
 
   //================================================================
   // Sanitize section
 
-  static final _WHITESPACES_REGEX = new RegExp(r"\s+");
+  static final _whitespacesRegex = new RegExp(r"\s+");
 
   static String _sanitize(String str) {
     assert(str != null);
 
-    str = str.trim();
-    str = str.replaceAll(_WHITESPACES_REGEX, " ");
-    return str;
+    final s = str.trim();
+    return s.replaceAll(_whitespacesRegex, " ");
   }
 
   //================================================================
 
+  @override
   String toString() {
-    var str = "";
+    final buf = new StringBuffer();
 
     for (var key in _data.keys) {
-      if (str.isNotEmpty) {
-        str += ", ";
+      if (buf.isNotEmpty) {
+        buf.write(", ");
       }
-      str += "$key=[";
+      buf.write("$key=[");
 
       var first = true;
       for (var value in _data[key]) {
         if (first) {
           first = false;
         } else {
-          str += ", ";
+          buf.write(", ");
         }
-        str += "\"${value}\"";
+        buf.write('"$value"');
       }
-      str += "]";
+      buf.write("]");
     }
 
-    return str;
+    return buf.toString();
   }
 }

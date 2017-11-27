@@ -45,11 +45,6 @@ class StaticFiles {
   };
 
   //================================================================
-  /// The directory under which to look for files.
-  ///
-  /// This is set by the constructor.
-
-  String get baseDir => _baseDir;
 
   String _baseDir;
 
@@ -65,8 +60,8 @@ class StaticFiles {
   /// Permit listing of directory contents.
   ///
   /// If a request arrives for a directory, the default file could not be
-  /// used (i.e. [defaultFilename] is null or a file with that name could not
-  /// be found in the directory), then this member indicates whether a
+  /// used (i.e. [defaultFilenames] is null or a file with any of the names
+  /// could not be found in the directory), then this member indicates whether a
   /// listing of the directory is returned or [NotFoundException] is raised.
 
   bool allowDirectoryListing;
@@ -115,20 +110,20 @@ class StaticFiles {
   ///
   /// This map is initially empty.
 
-  Map<String, ContentType> mimeTypes = new Map<String, ContentType>();
+  Map<String, ContentType> mimeTypes = {};
 
   //----------------------------------------------------------------
   /// Constructor
   ///
   /// Requests for a directory (i.e. path ending in "/")
-  /// returns the [defaultFile] in the directory (if it is set and that file
-  /// exists), otherwise if [allowDirectoryListing] is true
+  /// returns one of the [defaultFilenames] in the directory (if it is set and
+  /// a file exists), otherwise if [allowDirectoryListing] is true
   /// a listing of the directory is produced, otherwise an exception is thrown.
 
   StaticFiles(String baseDir,
       {List<String> defaultFilenames,
-      bool allowFilePathsAsDirectories: true,
-      bool allowDirectoryListing: false}) {
+      this.allowFilePathsAsDirectories: true,
+      this.allowDirectoryListing: false}) {
     // Check if directory is usable.
     if (baseDir == null) {
       throw new ArgumentError.notNull("baseDir");
@@ -155,14 +150,20 @@ class StaticFiles {
     }
     assert(baseDir.isNotEmpty);
 
-    this._baseDir = baseDir;
+    _baseDir = baseDir;
     this.defaultFilenames = defaultFilenames ?? [];
-    this.allowDirectoryListing = allowDirectoryListing;
-    this.allowFilePathsAsDirectories = allowFilePathsAsDirectories;
   }
 
+  //================================================================
+
+  /// The directory under which to look for files.
+  ///
+  /// This is set by the constructor.
+
+  String get baseDir => _baseDir;
+
   //----------------------------------------------------------------
-  /// Request andler.
+  /// Request handler.
   ///
   /// Register this request handler with the server's pipeline using a pattern
   /// with a single wildcard pattern. That path parameter will be used
@@ -175,17 +176,17 @@ class StaticFiles {
 
     // Get the relative path
 
-    var values = req.pathParams.values("*");
-    if (values.length < 1) {
+    final values = req.pathParams.values("*");
+    if (values.isEmpty) {
       throw new ArgumentError("Static file handler registered with no *");
     } else if (1 < values.length) {
       throw new ArgumentError("Static file handler registered with multiple *");
     }
 
-    var components = values[0].split("/");
+    final components = values[0].split("/");
     var depth = 0;
     while (0 <= depth && depth < components.length) {
-      var c = components[depth];
+      final c = components[depth];
       if (c == "..") {
         components.removeAt(depth);
         depth--;
@@ -206,13 +207,13 @@ class StaticFiles {
       }
     }
 
-    var path = _baseDir + "/" + components.join("/");
+    final path = "$_baseDir/${components.join("/")}";
     _logRequest.finer("[${req.id}] static file/directory requested: $path");
 
     if (!path.endsWith("/")) {
       // Probably a file
 
-      var file = new File(path);
+      final file = new File(path);
       if (await file.exists()) {
         _logRequest.finest("[${req.id}] static file found: $path");
         return await _serveFile(req, file);
@@ -220,12 +221,11 @@ class StaticFiles {
           await new Directory(path).exists()) {
         // A directory exists with the same name
 
-        if (allowDirectoryListing ||
-            await _findDefaultFile(path + "/") != null) {
+        if (allowDirectoryListing || await _findDefaultFile("$path/") != null) {
           // Can tell the browser to treat it as a directory
           // Note: must change URL in browser, otherwise relative links break
           _logRequest.finest("[${req.id}] treating as static directory");
-          return new ResponseRedirect(req.requestPath() + "/");
+          return new ResponseRedirect("${req.requestPath()}/");
         }
       } else {
         _logRequest.finest("[${req.id}] static file not found");
@@ -233,12 +233,12 @@ class StaticFiles {
     } else {
       // Request for a directory
 
-      var dir = new Directory(path);
+      final dir = new Directory(path);
 
       if (await dir.exists()) {
         // Try to find one of the default files in that directory
 
-        var defaultFile = await _findDefaultFile(path);
+        final defaultFile = await _findDefaultFile(path);
 
         if (defaultFile != null) {
           _logRequest.finest("[${req
@@ -270,8 +270,8 @@ class StaticFiles {
 
   Future<File> _findDefaultFile(String path) async {
     for (var defaultFilename in defaultFilenames) {
-      var dfName = path + defaultFilename;
-      var df = new File(dfName);
+      final dfName = "$path$defaultFilename";
+      final df = new File(dfName);
       if (await df.exists()) {
         return df;
       }
@@ -295,8 +295,8 @@ class StaticFiles {
 
   Future<Response> directoryListing(
       Request req, Directory dir, bool allowLinkToParent) async {
-    var components = dir.path.split("/");
-    var title;
+    final components = dir.path.split("/");
+    String title;
     if (2 <= components.length &&
         components[components.length - 2].isNotEmpty &&
         components.last.isEmpty) {
@@ -305,7 +305,7 @@ class StaticFiles {
       title = "Listing";
     }
 
-    var str = """
+    final buf = new StringBuffer("""
 <!doctype html>
 <html>
   <head>
@@ -326,34 +326,33 @@ class StaticFiles {
 <body>
   <h1>${HEsc.text(title)}</h1>
   <ul>
-""";
+""");
 
     if (allowLinkToParent) {
-      str +=
-          "<li><a href=\"..\" title=\"Parent\" class=\"parent\">&#x2191;</a></li>\n";
+      buf.write(
+          "<li><a href='..' title='Parent' class='parent'>&#x2191;</a></li>\n");
     }
 
     await for (var entity in dir.list()) {
-      var n;
-      var cl;
+      String n;
+      String cl;
       if (entity is Directory) {
-        n = entity.uri.pathSegments[entity.uri.pathSegments.length - 2] + "/";
+        n = "${entity.uri.pathSegments[entity.uri.pathSegments.length - 2]}/";
         cl = "class=\"dir\"";
       } else {
         n = entity.uri.pathSegments.last;
         cl = "class=\"file\"";
       }
-      str += "<li><a href=\"${HEsc.attr(n)}\"$cl>${HEsc.text(n)}</a></li>\n";
+      buf.write("<li><a href='${HEsc.attr(n)}'$cl>${HEsc.text(n)}</a></li>\n");
     }
 
-    str += """
+    buf.write("""
   </ul>
 </body>
 </html>
-""";
+""");
 
-    var resp = new ResponseBuffered(ContentType.HTML);
-    resp.write(str);
+    final resp = new ResponseBuffered(ContentType.HTML)..write(buf.toString());
     return resp;
   }
 
@@ -362,12 +361,12 @@ class StaticFiles {
   Future<Response> _serveFile(Request req, File file) async {
     // Determine content type
 
-    var contentType;
+    ContentType contentType;
 
-    var p = file.path;
-    var dotIndex = p.lastIndexOf(".");
+    final p = file.path;
+    final dotIndex = p.lastIndexOf(".");
     if (0 < dotIndex) {
-      var slashIndex = p.lastIndexOf("/");
+      final slashIndex = p.lastIndexOf("/");
       if (slashIndex < dotIndex) {
         // Dot is in the last segment
         var suffix = p.substring(dotIndex + 1);
@@ -380,7 +379,7 @@ class StaticFiles {
 
     // Return contents of file
 
-    var resp = new ResponseStream(contentType);
+    final resp = new ResponseStream(contentType);
     return await resp.addStream(req, file.openRead());
   }
 }

@@ -9,8 +9,8 @@ part of woomera;
 abstract class Response {
   int _status = HttpStatus.OK;
   ContentType _contentType = ContentType.BINARY;
-  var _headers = new Map<String, List<String>>();
-  var _cookies = new List<Cookie>();
+  final _headers = <String, List<String>>{};
+  final _cookies = <Cookie>[];
   bool _headersOutputted = false;
 
   /// Sets the HTTP status code
@@ -18,7 +18,7 @@ abstract class Response {
   /// Default status is 200 "OK", if this method is not used to set it to
   /// a different value.
   ///
-  void set status(int value) {
+  set status(int value) {
     if (_headersOutputted) {
       throw new StateError("Header already outputted");
     }
@@ -43,7 +43,7 @@ abstract class Response {
 
     var values = _headers[name];
     if (values == null) {
-      values = new List<String>();
+      values = <String>[];
       _headers[name] = values;
     }
     _headers[name].add(value);
@@ -65,10 +65,10 @@ abstract class Response {
   /// Note: the name and value of the cookie cannot contain whitespace.
   /// Cookie names are case sensitive
   ///
-  /// Typically, the [Cookies.path] should be set to the server's [Server.basePath].
-  /// For improved security, the [Cookies.httpOnly] should be set to true.
+  /// Typically, the [io.Cookies.path] should be set to the server's [Server.basePath].
+  /// For improved security, the [io.Cookies.httpOnly] should be set to true.
   ///
-  /// The [Cookies.name] must not be the same as the server's [Server.sessionCookieName].
+  /// The [io.Cookies.name] must not be the same as the server's [Server.sessionCookieName].
   ///
   /// A refresher on cookies:
   ///
@@ -85,15 +85,17 @@ abstract class Response {
     _cookies.add(cookie);
   }
 
+  /// Delete a cookie.
+  ///
   void cookieDelete(String name, [String path, String domain]) {
     if (_headersOutputted) {
       throw new StateError("Header already outputted");
     }
-    var delCookie = new Cookie(name, "");
-    delCookie.path = path;
-    delCookie.domain = domain;
-    delCookie.expires = new DateTime.utc(1970, 1, 1, 0, 0, 1, 0);
-    delCookie.maxAge = 0;
+    final delCookie = new Cookie(name, "")
+      ..path = path
+      ..domain = domain
+      ..expires = new DateTime.utc(1970, 1, 1, 0, 0, 1, 0)
+      ..maxAge = 0;
     return cookieAdd(delCookie);
   }
 
@@ -105,7 +107,7 @@ abstract class Response {
     }
 
     // Check that application has not tried to use the session cookie
-    var sessionCookieName = req.server.sessionCookieName;
+    final sessionCookieName = req.server.sessionCookieName;
     for (var c in _cookies) {
       if (c.name == sessionCookieName) {
         throw new ArgumentError.value(
@@ -118,14 +120,14 @@ abstract class Response {
 
       if (req.session != null) {
         // Need to set the session cookie
-        var c = new Cookie(req.server.sessionCookieName, req.session.id);
-        c.path = req.server.basePath;
-        c.httpOnly = true;
+        final c = new Cookie(req.server.sessionCookieName, req.session.id)
+          ..path = req.server.basePath
+          ..httpOnly = true;
         if (req.server.sessionCookieForceSecure ||
             (req.server.isSecure != null && req.server.isSecure)) {
           c.secure = true; // HTTPS only: better security, but not for testing
         }
-        this.cookieAdd(c);
+        cookieAdd(c);
       } else if (req._sessionWasSetInRequest) {
         // Need to clear the session cookie
         cookieDelete(req.server.sessionCookieName, req.server.basePath);
@@ -133,15 +135,13 @@ abstract class Response {
     }
     // Output the status, headers and cookies
 
-    var response = req.request.response;
-
-    response.statusCode = _status;
-    response.headers.contentType = _contentType;
-    response.cookies.addAll(_cookies);
+    req.request.response.statusCode = _status;
+    req.request.response.headers.contentType = _contentType;
+    req.request.response.cookies.addAll(_cookies);
 
     for (var name in _headers.keys) {
       for (var value in _headers[name]) {
-        response.headers.add(name, value);
+        req.request.response.headers.add(name, value);
       }
     }
 
@@ -195,9 +195,11 @@ abstract class Response {
 /// [ResponseStream] for those types of responses.
 
 class ResponseBuffered extends Response {
-  StringBuffer _buf = new StringBuffer();
+  final StringBuffer _buf = new StringBuffer();
   bool _contentOutputted = false;
 
+  /// Constructor
+  ///
   ResponseBuffered(ContentType ct) {
     if (ct != null) {
       _contentType = ct;
@@ -215,6 +217,7 @@ class ResponseBuffered extends Response {
 
   /// Produce the response.
   ///
+  @override
   void _finish(Request req) {
     if (req == null) {
       throw new ArgumentError.notNull("req");
@@ -224,10 +227,10 @@ class ResponseBuffered extends Response {
     }
     super._outputHeaders(req);
 
-    var str = _buf.toString();
+    final str = _buf.toString();
     req.request.response.write(str);
 
-    _logResponse.fine("[${req.id}] status=${_status}, size=${str.length}");
+    _logResponse.fine("[${req.id}] status=$_status, size=${str.length}");
     _contentOutputted = true;
 
     super._finish(req);
@@ -248,6 +251,8 @@ class ResponseBuffered extends Response {
 class ResponseStream extends Response {
   int _streamState = 0; // 0 = no stream, 1 = set, 2 = finished
 
+  /// Constructor.
+  ///
   ResponseStream(ContentType ct) {
     if (ct != null) {
       _contentType = ct;
@@ -283,6 +288,7 @@ class ResponseStream extends Response {
 
   /// Produce the response.
   ///
+  @override
   void _finish(Request req) {
     if (req == null) {
       throw new ArgumentError.notNull("req");
@@ -296,7 +302,7 @@ class ResponseStream extends Response {
     }
     assert(_streamState == 2);
 
-    _logResponse.fine("[${req.id}] status=${_status}, stream");
+    _logResponse.fine("[${req.id}] status=$_status, stream");
 
     super._finish(req);
   }
@@ -355,14 +361,15 @@ class ResponseRedirect extends Response {
 
   /// Produce the response.
   ///
+  @override
   void _finish(Request req) {
     if (req == null) {
       throw new ArgumentError.notNull("req");
     }
 
-    var url = (_addr.startsWith("~/")) ? req.rewriteUrl(_addr) : _addr;
+    final url = (_addr.startsWith("~/")) ? req.rewriteUrl(_addr) : _addr;
 
-    _logResponse.fine("[${req.id}] status=${_status}, redirect=${url}");
+    _logResponse.fine("[${req.id}] status=$_status, redirect=$url");
 
     header('Location', url);
     super._outputHeaders(req);

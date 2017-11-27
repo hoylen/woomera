@@ -87,8 +87,9 @@ class Server {
   /// Bind address for the server.
   ///
   /// Can be a String containing a hostname or IP address, or one of these
-  /// values from the [InternetAddress] class: [LOOPBACK_IP_V4],
-  /// [LOOPBACK_IP_V6], [ANY_IP_V4] or [ANY_IP_V6].
+  /// values from the [InternetAddress] class: [InternetAddress.LOOPBACK_IP_V4],
+  /// [InternetAddress.LOOPBACK_IP_V6], [InternetAddress.ANY_IP_V4] or
+  /// [InternetAddress.ANY_IP_V6].
   ///
   /// The default value is LOOPBACK_IP_V4, which means it only listens on the
   /// IPv4 loopback address of 127.0.0.1. This option is usually used when
@@ -99,13 +100,13 @@ class Server {
   /// otherwise clients external to the machine will not be allowed to connect
   /// to the Web server.
   ///
-  /// If it is set to [ANY_IP_V6], it listens to any IPv4 or IPv6 address,
+  /// If it is set to [InternetAddress.ANY_IP_V6], it listens to any IPv4 or IPv6 address,
   /// unless [v6Only] is set to true (in which case it only listens on any IPv6
   /// address).
 
-  var bindAddress = InternetAddress.LOOPBACK_IP_V4;
+  InternetAddress bindAddress = InternetAddress.LOOPBACK_IP_V4;
 
-  /// Indicates how a [bindAddress] value of [ANY_IP_V6] treats IPv4 addresses.
+  /// Indicates how a [bindAddress] value of [InternetAddress.ANY_IP_V6] treats IPv4 addresses.
   ///
   /// The default is false, which means it listens to any IPv4 or IPv6
   /// addresses.
@@ -113,9 +114,9 @@ class Server {
   /// If set to true, it only listens on any IPv6 address. That is, it will not
   /// listen on any IPv4 address.
   ///
-  /// This value has no effect if the [bindAddress] is not [ANY_IP_V6].
+  /// This value has no effect if the [bindAddress] is not [InternetAddress.ANY_IP_V6].
 
-  var v6Only = false;
+  bool v6Only = false;
 
   /// Port number for the server.
   ///
@@ -128,7 +129,7 @@ class Server {
   /// a "permission denied" [SocketException] will be thrown when trying to
   /// start the server and it is not running with with root privileges.
 
-  int bindPort = null;
+  int bindPort;
 
   /// The handler pipeline.
   ///
@@ -145,7 +146,7 @@ class Server {
   ///     var p2 = new Pipeline();
   ///     s.pipelines.add(p2);
 
-  final List<ServerPipeline> pipelines = new List<ServerPipeline>();
+  final List<ServerPipeline> pipelines = <ServerPipeline>[];
 
   /// Server level exception handler.
   ///
@@ -163,18 +164,14 @@ class Server {
 
   ExceptionHandler exceptionHandler;
 
-  /// Indicates if the Web server is running secured HTTPS or unsecured HTTP.
-  ///
-  /// True means it is listening for requests over HTTPS. False means it is
-  /// listening for requests over HTTP. Null means it is not running.
-
-  bool get isSecure => _isSecure;
-
   bool _isSecure;
 
   // Set when the server is running (i.e. is listening for requests).
 
-  HttpServer _svr = null;
+  HttpServer _svr;
+
+  //================================================================
+  // Constructors
 
   //----------------------------------------------------------------
   /// Constructor
@@ -205,6 +202,16 @@ class Server {
       pipelines.add(new ServerPipeline());
     }
   }
+
+  //================================================================
+  // Getters and setters
+
+  /// Indicates if the Web server is running secured HTTPS or unsecured HTTP.
+  ///
+  /// True means it is listening for requests over HTTPS. False means it is
+  /// listening for requests over HTTP. Null means it is not running.
+
+  bool get isSecure => _isSecure;
 
   //----------------------------------------------------------------
   /// Starts the Web server.
@@ -248,7 +255,7 @@ class Server {
       // Note: this uses the TLS libraries in Dart 1.13 or later.
       // https://dart-lang.github.io/server/tls-ssl.html
       _isSecure = true;
-      var securityContext = new SecurityContext()
+      final securityContext = new SecurityContext()
         ..useCertificateChain(certChainFilename)
         ..usePrivateKey(privateKeyFilename);
       _svr = await HttpServer.bindSecure(
@@ -258,20 +265,22 @@ class Server {
 
     // Log that it started
 
-    var url = (_isSecure) ? "https://" : "http://";
-    url += (_svr.address.isLoopback) ? "localhost" : _svr.address.host;
+    final buf = new StringBuffer()
+      ..write((_isSecure) ? "https://" : "http://")
+      ..write((_svr.address.isLoopback) ? "localhost" : _svr.address.host);
     if (_svr.port != null) {
-      url += ":${_svr.port}";
+      buf.write(":${_svr.port}");
     }
+    final url = buf.toString();
 
     _logServer.fine(
-        "${(_isSecure) ? "HTTPS" : "HTTP"} server started: ${_svr.address} port ${_svr.port} <${url}>");
+        "${(_isSecure) ? "HTTPS" : "HTTP"} server started: ${_svr.address} port ${_svr.port} <$url>");
 
     // Listen for and process HTTP requests
 
-    int requestNo = 0;
+    var requestNo = 0;
 
-    var requestLoopCompleter = new Completer();
+    final requestLoopCompleter = new Completer<int>();
 
     runZoned(() async {
       // The request processing loop
@@ -281,22 +290,27 @@ class Server {
           // Note: although _handleRequest returns a Future that completes when
           // the request is fully processed, this does NOT wait for it to
           // complete, so that multiple requests can be handled in parallel.
-          _handleRequest(request, id.toString() + (++requestNo).toString());
+          _handleRequest(request, "$id${++requestNo}");
         } catch (e, s) {
           _logServer.shout(
-              "uncaught try/catch exception (${e.runtimeType}): ${e}", e, s);
+              "uncaught try/catch exception (${e.runtimeType}): $e", e, s);
         }
       }
 
-      requestLoopCompleter.complete();
-    }, onError: (e, s) {
+      requestLoopCompleter.complete(0);
+    }, onError: (Object e, StackTrace s) {
       // The event processing code uses async try/catch, so something very wrong
       // must have happened for an exception to have been thrown outside that.
-      _logServer.shout(
-          "uncaught onError exception (${e.runtimeType}): ${e}", e, s);
-      if (!requestLoopCompleter.isCompleted) {
-        requestLoopCompleter.complete();
-      }
+      _logServer.shout("uncaught onError (${e.runtimeType}): $e", e, s);
+
+      // Note: this can happen in situations where a handler uses both
+      // completeError() to set an error and also throws an exception.
+      // Will get a Bad state: Future already completed.
+
+      // Abort server?
+      //if (!requestLoopCompleter.isCompleted) {
+      //  requestLoopCompleter.complete(0);
+      //}
     });
 
     await requestLoopCompleter.future;
@@ -304,7 +318,7 @@ class Server {
     // Finished: it only gets to here if the server stops running (see [stop] method)
 
     _logServer.fine(
-        "${(_isSecure) ? "HTTPS" : "HTTP"} server stopped: ${requestNo} requests");
+        "${(_isSecure) ? "HTTPS" : "HTTP"} server stopped: $requestNo requests");
     _svr = null;
     _isSecure = null;
 
@@ -324,6 +338,7 @@ class Server {
   /// If [force] is true, active connections will be closed immediately.
 
   Future stop({bool force: false}) async {
+    _logServer.fine("stop");
     if (_svr != null) {
       await _svr.close(force: force);
     }
@@ -336,8 +351,8 @@ class Server {
     try {
       // Create context
 
-      var req = new Request._constructor(request, requestId, this);
-      await req._postParmsInit(this.postMaxSize);
+      final req = new Request._constructor(request, requestId, this);
+      await req._postParmsInit(postMaxSize);
       await req._sessionRestore(); // must be after POST parameters gotten
 
       // Handle the request in its context
@@ -349,12 +364,13 @@ class Server {
       // The following catch statements deal with that situation, or if the
       // context could not be created (which is also very bad).
 
-    } catch (e, s) {
-      var status;
-      var message;
+    } on dynamic catch (e, s) {
+      int status;
+      String message;
 
-      _logRequest.shout("[$requestId] exception raised outside context: $e");
-      _logRequest.finest("[$requestId] exception stack trace:\n$s");
+      _logRequest
+        ..shout("[$requestId] exception raised outside context: $e")
+        ..finest("[$requestId] exception stack trace:\n$s");
 
       // Since there is no context, the exception handlers cannot be used
       // to generate the response, this will generate a simple HTTP response.
@@ -374,13 +390,13 @@ class Server {
 
       if (status != null) {
         // Can generate error page as a response
-        var resp = request.response;
-        resp.statusCode = status;
-        resp.write("$message\n");
+        request.response
+          ..statusCode = status
+          ..write("$message\n");
         _logResponse.fine("[$requestId] status=$status ($message)");
       }
     } finally {
-      request.response.close();
+      await request.response.close(); // always close the response
     }
   }
 
@@ -393,7 +409,7 @@ class Server {
     var handlerFound = false;
     Response response;
 
-    var pathSegments;
+    List<String> pathSegments;
     try {
       pathSegments = req.request.uri.pathSegments;
     } on FormatException catch (_) {
@@ -414,7 +430,7 @@ class Server {
       // none of the patterns matched it.
 
       for (var pipe in pipelines) {
-        var rules = pipe.rules(req.request.method);
+        final rules = pipe.rules(req.request.method);
         if (rules == null) {
           // This pipe does not support the method
           continue; // skip to next pipe in the pipeline
@@ -422,20 +438,20 @@ class Server {
         methodFound = true;
 
         for (var rule in rules) {
-          var params = rule._matches(pathSegments);
+          final params = rule._matches(pathSegments);
 
           if (params != null) {
             // A matching rule was found
 
             handlerFound = true;
 
-            _logRequest.finer("[${req.id}] matched rule: ${rule}");
+            _logRequest.finer("[${req.id}] matched rule: $rule");
 
             req._pathParams = params; // set matched path parameters
 
             if (params.isNotEmpty && _logRequestParam.level <= Level.FINER) {
               // Log path parameters
-              var str = "[${req.id}] path: ${params.length} key(s): ${params
+              final str = "[${req.id}] path: ${params.length} key(s): ${params
                   .toString()}";
               _logRequestParam.finer(str);
             }
@@ -444,13 +460,13 @@ class Server {
 
             try {
               response = await _invokeRequestHandler(rule.handler, req);
-            } catch (initialException, initialStackTrace) {
+            } on dynamic catch (initialObjectThrown, initialStackTrace) {
               // The request handler threw an exception (or returned null which
               // caused the InvalidUsage exception to be thrown above).
 
               assert(response == null);
 
-              var e = initialException;
+              Object e = initialObjectThrown; // not necessarily an Exception
               var st = initialStackTrace;
 
               // Try the pipe's exception handler
@@ -460,7 +476,7 @@ class Server {
                 try {
                   response = await _invokeExceptionHandler(
                       pipe.exceptionHandler, req, e, st);
-                } catch (pipeEx, pipeSt) {
+                } on dynamic catch (pipeEx, pipeSt) {
                   // The pipe exception handler threw an exception
                   e = new ExceptionHandlerException(e, pipeEx);
                   st = pipeSt;
@@ -474,13 +490,13 @@ class Server {
 
                 // Try the server's exception handler
 
-                if (this.exceptionHandler != null) {
+                if (exceptionHandler != null) {
                   // The server has an exception handler: pass exception to it
                   try {
                     //response = await this.exceptionHandler(req, e, st);
                     response = await _invokeExceptionHandler(
-                        this.exceptionHandler, req, e, st);
-                  } catch (es) {
+                        exceptionHandler, req, e, st);
+                  } on dynamic catch (es) {
                     e = new ExceptionHandlerException(e, es);
                   }
                 }
@@ -534,7 +550,7 @@ class Server {
       if (response == null) {
         // No rule matched or the ones that did match all returned null
 
-        var found;
+        int found;
         if (handlerFound) {
           assert(methodFound);
           found = NotFoundException.foundHandler;
@@ -548,14 +564,14 @@ class Server {
           _logRequest.fine("[${req.id}] not found: method not supported");
         }
 
-        var e = new NotFoundException(found);
+        Exception e = new NotFoundException(found);
 
         // Try reporting this through the server's exception handler
 
-        if (this.exceptionHandler != null) {
+        if (exceptionHandler != null) {
           try {
             response = await this.exceptionHandler(req, e, null);
-          } catch (es) {
+          } on dynamic catch (es) {
             e = new ExceptionHandlerException(e, es);
           }
         }
@@ -569,7 +585,7 @@ class Server {
       }
     } else {
       // Path segments raised FormatException: malformed request
-      var nfe = new NotFoundException(NotFoundException.foundNothing);
+      final nfe = new NotFoundException(NotFoundException.foundNothing);
       response = await _defaultExceptionHandler(req, nfe, null);
     }
 
@@ -604,19 +620,19 @@ class Server {
   // handler threw an exception. It generates a "last resort" error page.
 
   static Future<Response> _defaultExceptionHandler(
-      Request req, Object e, StackTrace st) async {
+      Request req, Object thrownObject, StackTrace st) async {
     var status = HttpStatus.INTERNAL_SERVER_ERROR;
-    var title;
-    var message;
+    String title;
+    String message;
 
-    if (e is NotFoundException) {
+    if (thrownObject is NotFoundException) {
       // Report these as "not found" to the requestor.
 
       _logRequest.severe(
           "[${req.id}] not found: ${req.request.method} ${req.request.uri.path}");
       assert(st == null);
 
-      status = (e.found == NotFoundException.foundNothing)
+      status = (thrownObject.found == NotFoundException.foundNothing)
           ? HttpStatus.METHOD_NOT_ALLOWED
           : HttpStatus.NOT_FOUND;
       title = "Error: Not found";
@@ -626,16 +642,16 @@ class Server {
       // since the problem can only be fixed by the developer and we don't
       // want to expose any internal information.
 
-      if (e is! ExceptionHandlerException) {
-        _logResponse
-            .severe("[${req.id}] exception thrown (${e.runtimeType}): ${e}");
-      } else {
-        ExceptionHandlerException wrapper = e;
+      if (thrownObject is ExceptionHandlerException) {
+        final ex = thrownObject.exception;
         _logResponse.severe(
-            "[${req.id}] exception handler threw an exception (${wrapper.exception.runtimeType}): ${wrapper.exception}");
+            "[${req.id}] exception handler threw (${ex.runtimeType}): $ex");
+      } else {
+        _logResponse.severe(
+            "[${req.id}] exception thrown (${thrownObject.runtimeType}): $thrownObject");
       }
       if (st != null) {
-        _logResponse.finest("[${req.id}] stack trace:\n${st}");
+        _logResponse.finest("[${req.id}] stack trace:\n$st");
       }
 
       status = HttpStatus.INTERNAL_SERVER_ERROR;
@@ -643,9 +659,9 @@ class Server {
       message = "Sorry, an error occured while processing the request.";
     }
 
-    var resp = new ResponseBuffered(ContentType.HTML);
-    resp.status = status;
-    resp.write("""
+    final resp = new ResponseBuffered(ContentType.HTML)
+      ..status = status
+      ..write("""
 <!doctype html>
 <html>
   <head>
@@ -693,7 +709,7 @@ class Server {
   /// The base path is prepended to all patterns and is a simple
   /// way to "move" all the URLs to a different root.
 
-  void set basePath(String value) {
+  set basePath(String value) {
     if (value == null || value.isEmpty) {
       _basePath = "/";
     } else if (value.startsWith("/")) {
@@ -709,8 +725,8 @@ class Server {
 
   /// The default expiry time for sessions in this server.
   ///
-  /// The [Session.refresh] method refreshes the session to expire in this
-  /// amount of time, if no explicit value was passed to it. If this value
+  /// The [woomera.Session.refresh] method refreshes the session to expire in
+  /// this amount of time, if no explicit value was passed to it. If this value
   /// is not set (null), an internal default expiry time is used.
   ///
   /// When a [Server] is created this is initially not set.
@@ -760,7 +776,7 @@ class Server {
 
   Iterable<Session> get sessions => _allSessions.values;
 
-  Map<String, Session> _allSessions = new Map<String, Session>();
+  final Map<String, Session> _allSessions = {};
 
   //----------------------------------------------------------------
 
@@ -780,7 +796,5 @@ class Server {
   /// Returns null if the session does not exist. This would be the case if
   /// a session with that id never existed, was terminated or timed-out.
 
-  Session _sessionFind(String id) {
-    return _allSessions[id];
-  }
+  Session _sessionFind(String id) => _allSessions[id];
 }

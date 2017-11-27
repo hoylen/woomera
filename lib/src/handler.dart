@@ -20,8 +20,7 @@ typedef Future<Response> RequestHandler(Request req);
 /// Create server exception handler or pipeline exception
 /// handlers matching this type.
 
-typedef Future<Response> ExceptionHandler(
-    Request req, Object ex, StackTrace st);
+typedef Future<Response> ExceptionHandler(Request r, Object ex, StackTrace st);
 
 //----------------------------------------------------------------
 
@@ -29,11 +28,10 @@ typedef Future<Response> ExceptionHandler(
 ///
 Future<Response> _invokeRequestHandler(
     RequestHandler handler, Request req) async {
-  var result;
-  var exception;
+  Object thrownObject; // can be any object, not just Exception or Error
   // var stacktrace;
 
-  var hCompleter = new Completer();
+  final hCompleter = new Completer<Response>();
 
   // Invoke the handler in its own zone, so all exceptions are captured
   // (both those thrown from async methods and those thrown from methods
@@ -41,25 +39,29 @@ Future<Response> _invokeRequestHandler(
   // would only catch exceptions thrown from async methods.
 
   runZoned(() async {
-    result = await handler(req); // call the handler
-
-    hCompleter.complete();
-  }, onError: (e, s) {
-    exception = e;
+    final result = await handler(req); // call the handler
+    hCompleter.complete(result);
+  }, onError: (Object e, StackTrace s) {
+    thrownObject = e;
     // stacktrace = s;
-    hCompleter.complete(e);
+    if (! hCompleter.isCompleted) {
+      _logRequest.finest("[${req.id}] handler onError (${e.runtimeType}): $e");
+      hCompleter.complete(null);
+    } else {
+      _logRequest.finest("[${req.id}] handler onError ignored (${e.runtimeType}): $e");
+    }
   });
 
   // Wait for invocation to finish
 
-  await hCompleter.future;
+  final resp = await hCompleter.future;
 
   // Return result or throw the exception
 
-  if (exception != null) {
-    throw exception;
+  if (thrownObject != null) {
+    throw thrownObject;
   }
-  return result; // which could be null
+  return resp; // which could be null (i.e. handler could not process request)
 }
 
 //----------------------------------------------------------------
@@ -68,11 +70,10 @@ Future<Response> _invokeRequestHandler(
 ///
 Future<Response> _invokeExceptionHandler(
     ExceptionHandler eh, Request req, Object ex, StackTrace st) async {
-  var result;
-  var exception;
+  Object thrownObject; // can be any object, not just Exception or Error
   // var stacktrace;
 
-  var hCompleter = new Completer();
+  final hCompleter = new Completer<Response>();
 
   // Invoke the handler in its own zone, so all exceptions are captured
   // (both those thrown from async methods and those thrown from methods
@@ -80,23 +81,22 @@ Future<Response> _invokeExceptionHandler(
   // would only catch exceptions thrown from async methods.
 
   runZoned(() async {
-    result = await eh(req, ex, st); // call the exception handler
-
-    hCompleter.complete();
-  }, onError: (e, s) {
-    exception = e;
+    final result = await eh(req, ex, st); // call the exception handler
+    hCompleter.complete(result);
+  }, onError: (Object e, StackTrace s) {
+    thrownObject = e;
     // stacktrace = s;
-    hCompleter.complete(e);
+    hCompleter.complete(null);
   });
 
   // Wait for invocation to finish
 
-  await hCompleter.future;
+  final resp = await hCompleter.future;
 
   // Return result or throw the exception
 
-  if (exception != null) {
-    throw exception;
+  if (thrownObject != null) {
+    throw thrownObject;
   }
-  return result; // which could be null
+  return resp; // which could be null
 }

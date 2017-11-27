@@ -11,47 +11,45 @@ part of woomera;
 /// using _curl_).
 
 Future<Response> debugHandler(Request req) async {
-  var str = "HTTP method: ${req.request.method}\n";
-  str += "\n";
+  final buf = new StringBuffer("HTTP method: ${req.request.method}\n\n");
 
   var hasParams = false;
   for (var key in req.pathParams.keys) {
     for (var value in req.pathParams.values(key, raw: true)) {
-      str += "Path parameter: ${key} = \"${value}\"\n";
+      buf.write('Path parameter: key = "$value"\n');
       hasParams = true;
     }
   }
   if (hasParams) {
-    str += "\n";
+    buf.write("\n");
   }
 
   hasParams = false;
   for (var key in req.queryParams.keys) {
     for (var value in req.queryParams.values(key, raw: true)) {
-      str += "Query parameter: ${key} = \"${value}\"\n";
+      buf.write('Query parameter: key = "$value"\n');
       hasParams = true;
     }
   }
   if (hasParams) {
-    str += "\n";
+    buf.write("\n");
   }
 
   hasParams = false;
   if (req.postParams != null) {
     for (var key in req.postParams.keys) {
       for (var value in req.postParams.values(key, raw: true)) {
-        str += "POST parameter: ${key} = \"${value}\"\n";
+        buf.write('POST parameter: $key = "$value"\n');
         hasParams = true;
       }
     }
   }
   if (hasParams) {
-    str += "\n";
+    buf.write("\n");
   }
 
-  str += "Time: " + new DateTime.now().toString();
+  buf.write("Time: ${new DateTime.now().toString()}");
 
-  var resp = new ResponseBuffered(ContentType.TEXT);
-  resp.write(str);
+  final resp = new ResponseBuffered(ContentType.TEXT)..write(buf.toString());
   return resp;
 }

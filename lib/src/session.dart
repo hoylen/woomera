@@ -174,7 +174,8 @@ class Session {
   /// The unique identifier for the session which can be used
   /// for logging. It is a UUID.
 
-  final String id = new Uuid().v4().replaceAll("-", ""); // random session ID
+  final String id =
+      (new Uuid().v4() as String).replaceAll("-", ""); // random session ID
 
   final DateTime _created; // When the session was created
 
@@ -192,13 +193,13 @@ class Session {
   ///
   /// Creates a new session and associate it to the [server].
   ///
-  /// The [expiry] is the duration the session remains alive, before it
+  /// The [timeout] is the duration the session remains alive, before it
   /// is automatically terminated. The timeout timer is restarted when a new
   /// HTTP request is received that is associated with the session.
   ///
-  /// The [expiry] duration cannot be null.
+  /// The [timeout] duration cannot be null.
   ///
-  /// The expiry duration can be changed using the [expirySet] method.
+  /// The expiry duration can be changed using the [timeout] method.
 
   Session(Server server, Duration timeout)
       : _server = server,
@@ -219,10 +220,10 @@ class Session {
 
     // Register it in the Web server's list of all sessions
 
-    assert(!_server._allSessions.containsKey(this.id));
+    assert(!_server._allSessions.containsKey(id));
     server._sessionRegister(this);
 
-    _logSession.fine("[session:${id}]: created");
+    _logSession.fine("[session:$id]: created");
   }
 
   //----------------------------------------------------------------
@@ -251,7 +252,7 @@ class Session {
   /// memory and explicit terminate usually can't be guaranteed, they must
   /// expire otherwise the server could run out of memory.
 
-  void set timeout(Duration newTimeout) {
+  set timeout(Duration newTimeout) {
     if (newTimeout == null) {
       throw new ArgumentError.notNull("timeout");
     }
@@ -262,14 +263,14 @@ class Session {
   //================================================================
   // Properties
 
-  final Map<String, Object> _properties = new Map<String, Object>();
+  final Map<String, Object> _properties = {};
 
   /// Set a property on the session.
   ///
   /// The application can use properties to associate arbitrary values
   /// with the session.
 
-  void operator []=(String key, var value) {
+  void operator []=(String key, dynamic value) {
     assert(key != null);
     _properties[key] = value;
   }
@@ -302,7 +303,7 @@ class Session {
   //----------------------------------------------------------------
   /// Refreshes the expiry time of the session.
   ///
-  /// The session is set to expire in [keepAlive].
+  /// The session is set to expire in [_timeout].
 
   void _refresh() {
     if (_expiryTimer != null) {
@@ -315,7 +316,7 @@ class Session {
     // Create a new timer
 
     if (_timeout != null) {
-      _expiryTimer = new Timer(_timeout, () async => await _terminate(endByTimeout));
+      _expiryTimer = new Timer(_timeout, () => _terminate(endByTimeout));
     }
   }
 
@@ -324,8 +325,8 @@ class Session {
   // that terminates a session (i.e. terminate and the refresh timeout).
 
   Future _terminate(int endReason) async {
-    var duration = new DateTime.now().difference(_created);
-    var r;
+    final duration = new DateTime.now().difference(_created);
+    String r;
     switch (endReason) {
       case endByTerminate:
         r = "terminated";
@@ -340,7 +341,7 @@ class Session {
         r = "?";
         break;
     }
-    _logSession.fine("[session:$id]: ${r} after ${duration.inSeconds}s");
+    _logSession.fine("[session:$id]: $r after ${duration.inSeconds}s");
 
     _server._sessionUnregister(this);
     await finish(endReason);
@@ -395,9 +396,7 @@ class Session {
   /// This instance method is intended to be overridden by subclasses of the
   /// [Session] class.
 
-  Future<bool> resume(Request req) async {
-    return true;
-  }
+  Future<bool> resume(Request req) async => true;
 
   //----------------------------------------------------------------
   /// Invoked when a session is terminated.

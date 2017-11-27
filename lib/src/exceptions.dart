@@ -41,7 +41,6 @@ class PostTooLongException extends WoomeraException {}
 /// Exception indicating a response could not be created.
 ///
 class NotFoundException extends WoomeraException {
-
   /// Value for [found] when no handlers for the HTTP method were found.
 
   static int foundNothing = 0;
@@ -55,9 +54,9 @@ class NotFoundException extends WoomeraException {
 
   static int foundHandler = 2;
 
-  /// Value for [found] when a [StaticFile] handler failed to produce a response.
+  /// Value for [found] when a StaticFile handler failed to produce a response.
   ///
-  /// The [StaticFile.handler] failed to find a file or directory. In the case
+  /// The StaticFile.handler failed to find a file or directory. In the case
   /// of a directory, this could be because the directory could not be read,
   /// the default file in the directory could not be read, or an automatic
   /// listing of the directory was not permitted.
@@ -76,9 +75,9 @@ class NotFoundException extends WoomeraException {
 
   int found;
 
-  NotFoundException(int found) {
-    this.found = found;
-  }
+  /// Constructor.
+  ///
+  NotFoundException(this.found);
 }
 
 //================================================================
@@ -96,10 +95,15 @@ class NotFoundException extends WoomeraException {
 /// in processing an exception.
 ///
 class ExceptionHandlerException extends WoomeraException {
+  /// Exception object that was being processed by exception handler.
+  ///
   Object previousException;
 
-  /// The exception that the exception handler was processing.
+  /// The exception that thrown by the exception handler.
+  ///
   Object exception;
 
+  /// Constructor.
+  ///
   ExceptionHandlerException(this.previousException, this.exception);
 }

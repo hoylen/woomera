@@ -10,6 +10,8 @@
 /// is governed by a BSD-style license that can be found in the LICENSE file.
 //----------------------------------------------------------------
 
+import 'dart:async';
+import 'dart:convert' show JSON;
 import 'dart:io'
     show
         ContentType,
@@ -18,9 +20,6 @@ import 'dart:io'
         InternetAddress,
         FileSystemEntity,
         Platform;
-import 'dart:async';
-
-import 'dart:convert' show JSON;
 
 import 'package:logging/logging.dart';
 
@@ -29,7 +28,7 @@ import 'package:woomera/woomera.dart';
 //================================================================
 // Globals
 
-// Application logger.
+/// Application logger.
 
 Logger mainLog = new Logger("main");
 
@@ -40,8 +39,16 @@ Logger mainLog = new Logger("main");
 // manipulated for testing purposes: a normal Web application would
 // usually not need to manipulate them after they have been setup.
 
+/// Web server
+///
 Server webServer;
+
+/// First pipeline
+///
 ServerPipeline p1;
+
+/// Second pipeline
+///
 ServerPipeline p2;
 
 //================================================================
@@ -53,9 +60,8 @@ ServerPipeline p2;
 //----------------------------------------------------------------
 /// Common HTML code for the "home" button that appears on many pages.
 
-String homeButton(Request req) {
-  return "<p><a href='${req.rewriteUrl("~/")}' style='font-size: large; text-decoration: none;'>&#x21A9;</a></p>";
-}
+String homeButton(Request req) =>
+    "<p><a href='${req.rewriteUrl("~/")}' style='font-size: large; text-decoration: none;'>&#x21A9;</a></p>";
 
 //----------------------------------------------------------------
 /// Home page
@@ -63,8 +69,8 @@ String homeButton(Request req) {
 /// Main page for the demonstration Web server.
 
 Future<Response> homePage(Request req) async {
-  var resp = new ResponseBuffered(ContentType.HTML);
-  resp.write("""
+  final resp = new ResponseBuffered(ContentType.HTML)
+    ..write("""
 <!doctype html>
 <html>
 <head>
@@ -238,11 +244,11 @@ Future<Response> homePage(Request req) async {
             <p><a href="/wildcard4/alpha/beta/gamma//foo/bar/delta/baz">/wildcard4/alpha/beta/gamma/foo/bar/delta/baz</a></p>
           </td>
         </tr>
-  """);
+  """)
 
-  // Static files and directories
+    // Static files and directories
 
-  resp.write("""
+    ..write("""
         <tr>
           <td colspan="3"><a name="staticFiles"><h3>Static files and directories from disk</h3></a></td>
         </tr>
@@ -322,12 +328,13 @@ Future<Response> homePage(Request req) async {
 
   // Exception handling
 
-  var eh1checked =
+  final eh1checked =
       (webServer.exceptionHandler != null) ? "checked='checked'" : "";
-  var eh2checked = (p1.exceptionHandler != null) ? "checked='checked'" : "";
-  var eh3checked = (p2.exceptionHandler != null) ? "checked='checked'" : "";
+  final eh2checked = (p1.exceptionHandler != null) ? "checked='checked'" : "";
+  final eh3checked = (p2.exceptionHandler != null) ? "checked='checked'" : "";
 
-  resp.write("""
+  resp
+    ..write("""
   <div class="section">
     <h2>Exception handling</h2>
 
@@ -351,11 +358,11 @@ Future<Response> homePage(Request req) async {
       <input type="submit" value="Set Exception Handlers"/>
     </form>
   </div>
-""");
+""")
 
-  // Sessions
+    // Sessions
 
-  resp.write("""
+    ..write("""
   <div class="section">
     <h2>Sessions</h2>
     <p>Sessions can be used to maintain state between HTTP requests. It can use
@@ -382,11 +389,12 @@ Future<Response> homePage(Request req) async {
   """);
   }
 
-  resp.write("</div>");
+  resp
+    ..write("</div>")
 
-  // Stream response
+    // Stream response
 
-  resp.write("""
+    ..write("""
     <div class="section">
     <h2>Stream test</h2>
 
@@ -400,11 +408,11 @@ Future<Response> homePage(Request req) async {
     </ul>
 
   </div>
-  """);
+  """)
 
-  // End of content div, and footer
+    // End of content div, and footer
 
-  resp.write("""</div>
+    ..write("""</div>
 
   </div>
 
@@ -419,7 +427,8 @@ Future<Response> homePage(Request req) async {
 }
 
 //----------------------------------------------------------------
-
+/// Handler for post operation
+///
 Future<Response> handleTestPost(Request req) async {
   assert(req.request.method == "POST");
 
@@ -442,25 +451,24 @@ Future<Response> handleTestPost(Request req) async {
   }
 */
 
-  var resp = new ResponseBuffered(ContentType.TEXT);
-  resp.write("Test post\n");
+  final resp = new ResponseBuffered(ContentType.TEXT)..write("Test post\n");
   return resp;
 }
 
 //----------------------------------------------------------------
-
+/// Exception handler
+///
 Future<Response> handleExceptionHandlers(Request req) async {
-  var eh0 = req.postParams["eh0"] == "on";
-  var eh1 = req.postParams["eh1"] == "on";
-  var eh2 = req.postParams["eh2"] == "on";
+  final eh0 = req.postParams["eh0"] == "on";
+  final eh1 = req.postParams["eh1"] == "on";
+  final eh2 = req.postParams["eh2"] == "on";
 
   webServer.exceptionHandler = (eh0) ? exceptionHandlerOnServer : null;
   p1.exceptionHandler = (eh1) ? exceptionHandlerOnPipe1 : null;
   p2.exceptionHandler = (eh2) ? exceptionHandlerOnPipe2 : null;
 
   mainLog.fine("[${req.id}] setting exception handlers");
-  var resp = new ResponseBuffered(ContentType.HTML);
-  resp.write("""
+  final resp = new ResponseBuffered(ContentType.HTML)..write("""
 <html>
 <head></head>
 <body>
@@ -478,33 +486,35 @@ ${homeButton(req)}
 }
 
 //----------------------------------------------------------------
-
+/// Handler to stop the Web server.
+///
 Future<Response> handleStop(Request req) async {
   await webServer.stop();
   mainLog.fine("[${req.id}] stopped");
-  var resp = new ResponseBuffered(ContentType.TEXT);
-  resp.write("Web server has been stopped\n");
+  final resp = new ResponseBuffered(ContentType.TEXT)
+    ..write("Web server has been stopped\n");
   return resp;
 }
 
 //----------------------------------------------------------------
-
+/// Handler that throws exceptions.
+///
 Future<Response> handleThrow(Request req) async {
   mainLog.fine("[${req.id}] exception test");
 
-  var type = req.pathParams["name"];
+  final type = req.pathParams["name"];
 
   switch (type) {
     case "":
       break;
     case "0":
     case "IntegerDivisionByZeroException":
-      var _ = 42 ~/ 0;
+      final _ = 42 ~/ 0;
       break;
 
     case "1":
     case "FormatException":
-      var _ = int.parse("16C");
+      final _ = int.parse("16C");
       break;
 
     case "2":
@@ -512,12 +522,12 @@ Future<Response> handleThrow(Request req) async {
       return await oldStyleFuture(throwException: true);
 
     default:
-      throw type;
+      throw new ArgumentError("Unknown name: $type");
   }
 
-  var resp = new ResponseBuffered(ContentType.HTML);
-  resp.status = HttpStatus.NOT_ACCEPTABLE;
-  resp.write("""
+  final resp = new ResponseBuffered(ContentType.HTML)
+    ..status = HttpStatus.NOT_ACCEPTABLE
+    ..write("""
 <html>
 <head><title>Exception test</title></head>
 <body>
@@ -546,12 +556,14 @@ can be accidently leaked.</body>
   return resp;
 }
 
+/// Method that throws an exception some time in the future.
+///
 Future<ResponseBuffered> oldStyleFuture({bool throwException: false}) {
-  var duration = new Duration(seconds: 3);
+  const duration = const Duration(seconds: 3);
 
-  var c = new Completer<ResponseBuffered>();
+  final c = new Completer<ResponseBuffered>();
 
-  var _ = new Timer(duration, () {
+  final _ = new Timer(duration, () {
     if (throwException) {
       // This exception is thrown from a function that is not using the new
       // async/await syntax. This means it won't be caught by the try/catch
@@ -559,9 +571,9 @@ Future<ResponseBuffered> oldStyleFuture({bool throwException: false}) {
       throw new StateError(new DateTime.now().toString());
     }
 
-    var resp = new ResponseBuffered(ContentType.TEXT);
-    resp.status = HttpStatus.NOT_ACCEPTABLE;
-    resp.write("""This worked, but it should not have.""");
+    final resp = new ResponseBuffered(ContentType.TEXT)
+      ..status = HttpStatus.NOT_ACCEPTABLE
+      ..write("""This worked, but it should not have.""");
     c.complete(resp);
   });
 
@@ -577,7 +589,7 @@ Future<ResponseBuffered> oldStyleFuture({bool throwException: false}) {
 Future<Response> streamTest(Request req) async {
   // Get parameters
 
-  int numIterations = 10;
+  final numIterations = 10;
 
   var secs = 0;
   if (req.queryParams["seconds"].isNotEmpty) {
@@ -586,8 +598,7 @@ Future<Response> streamTest(Request req) async {
 
   // Produce the stream response
 
-  var resp = new ResponseStream(ContentType.TEXT);
-  resp.status = HttpStatus.OK;
+  final resp = new ResponseStream(ContentType.TEXT)..status = HttpStatus.OK;
   await resp.addStream(req, _streamSource(req, numIterations, secs));
 
   return resp;
@@ -599,15 +610,15 @@ Future<Response> streamTest(Request req) async {
 // the response.
 
 Stream<List<int>> _streamSource(Request req, int iterations, int secs) async* {
-  var delay = new Duration(seconds: secs);
+  final delay = new Duration(seconds: secs);
 
   yield "Stream of $iterations items (delay: $secs seconds)\n".codeUnits;
 
   yield "Started: ${new DateTime.now()}\n".codeUnits;
 
   for (var x = 1; x <= iterations; x++) {
-    var completer = new Completer();
-    new Timer(delay, () => completer.complete());
+    final completer = new Completer<int>();
+    new Timer(delay, () => completer.complete(0));
     await completer.future;
 
     yield "Item $x\n".codeUnits;
@@ -616,16 +627,16 @@ Stream<List<int>> _streamSource(Request req, int iterations, int secs) async* {
 }
 
 //----------------------------------------------------------------
-
+/// Handler that returns JSON in the response.
+///
 Future<Response> handleJson(Request req) async {
-  Map data = {'name': "John Citizen", 'address': "foo"};
+  final data = {'name': "John Citizen", 'address': "foo"};
 
   // response.headers.contentType = ContentType.JSON
   print(JSON.encode(data));
   // JSON.decode(str);
 
-  var resp = new ResponseBuffered(ContentType.TEXT);
-  resp.write("JSON test");
+  final resp = new ResponseBuffered(ContentType.TEXT)..write("JSON test");
   return resp;
 }
 
@@ -642,6 +653,7 @@ Future<Response> handleJson(Request req) async {
 
 Future<Response> exceptionHandlerOnServer(
     Request req, Object exception, StackTrace st) {
+  assert(req != null);
   return _exceptionHandler(req, exception, st, "server");
 }
 
@@ -678,7 +690,7 @@ Future<Response> _exceptionHandler(
     Request req, Object exception, StackTrace st, String who) async {
   // Create a response
 
-  var resp = new ResponseBuffered(ContentType.HTML);
+  final resp = new ResponseBuffered(ContentType.HTML);
 
   // Set the status depending on the type of exception
 
@@ -700,19 +712,19 @@ Future<Response> _exceptionHandler(
 <body>
 <h1 style="color: red">Exception thrown</h1>
 
-An exception was thrown and was handled by the <strong>${who}</strong> exception handler.
+An exception was thrown and was handled by the <strong>$who</strong> exception handler.
 
 <h2>Exception</h2>
 
 <p>Exception object type: <code>${exception.runtimeType}</code></p>
-<p>String representation of object: <strong>${exception}</strong></p>
+<p>String representation of object: <strong>$exception</strong></p>
 """);
 
   if (st != null) {
     resp.write("""
 <h2>Stack trace</h2>
 <pre>
-${st}
+$st
 </pre>
     """);
   }
@@ -728,17 +740,16 @@ ${homeButton(req)}
 //================================================================
 // Session
 
-const String testCookieName = "browser-test";
+const String _testCookieName = "browser-test";
 
-Future<Response> handleLoginWithCookies(Request req) async {
-  var resp = new ResponseBuffered(ContentType.HTML);
+Future<Response> _handleLoginWithCookies(Request req) async {
+  final testCookie = new Cookie(_testCookieName, "cookies_work!")
+    ..path = req.server.basePath
+    ..httpOnly = true;
 
-  var testCookie = new Cookie(testCookieName, "cookies_work!");
-  testCookie.path = req.server.basePath;
-  testCookie.httpOnly = true;
-  resp.cookieAdd(testCookie);
-
-  resp.write("""
+  final resp = new ResponseBuffered(ContentType.HTML)
+    ..cookieAdd(testCookie)
+    ..write("""
 <html>
 <head></head>
 <body>
@@ -766,18 +777,16 @@ they have been disabled, or if the login page is visited directly
 
 //----------------------------------------------------------------
 
-Future<Response> handleLogin(Request req) async {
-  var keepAlive = new Duration(minutes: 1);
+Future<Response> _handleLogin(Request req) async {
+  const keepAlive = const Duration(minutes: 1);
 
   req.session = new Session(webServer, keepAlive);
 
   req.session["when"] = new DateTime.now();
 
-  var resp = new ResponseBuffered(ContentType.HTML);
-
-  resp.cookieDelete(testCookieName, req.server.basePath);
-
-  resp.write("""
+  final resp = new ResponseBuffered(ContentType.HTML)
+    ..cookieDelete(_testCookieName, req.server.basePath)
+    ..write("""
 <html>
 <head></head>
 <body>
@@ -799,9 +808,8 @@ ${homeButton(req)}
 
 //----------------------------------------------------------------
 
-Future<Response> handleLogout(Request req) async {
-  var resp = new ResponseBuffered(ContentType.HTML);
-  resp.write("""
+Future<Response> _handleLogout(Request req) async {
+  final resp = new ResponseBuffered(ContentType.HTML)..write("""
 <html>
 <head></head>
 <body>
@@ -828,9 +836,8 @@ ${homeButton(req)}
 
 //----------------------------------------------------------------
 
-Future<Response> handleSessionInfoPage(Request req) async {
-  var resp = new ResponseBuffered(ContentType.HTML);
-  resp.write("""
+Future<Response> _handleSessionInfoPage(Request req) async {
+  final resp = new ResponseBuffered(ContentType.HTML)..write("""
 <html>
 <head></head>
 <body>
@@ -838,9 +845,10 @@ Future<Response> handleSessionInfoPage(Request req) async {
 """);
 
   if (req.session != null) {
-    var duration = new DateTime.now().difference(req.session["when"]);
+    final sessionWhen = req.session["when"] as DateTime;
+    final duration = new DateTime.now().difference(sessionWhen);
 
-    var name = req.session["name"];
+    final name = req.session["name"] as String;
     if (name != null) {
       resp.write("<p>Welcome <strong>${HEsc.text(name)}</strong>.</p>");
     }
@@ -917,9 +925,8 @@ ${homeButton(req)}
 
 //----------------------------------------------------------------
 
-Future<Response> handleSessionSetName(Request req) async {
-  var resp = new ResponseBuffered(ContentType.HTML);
-  resp.write("""
+Future<Response> _handleSessionSetName(Request req) async {
+  final resp = new ResponseBuffered(ContentType.HTML)..write("""
 <html>
 <head></head>
 <body>
@@ -927,7 +934,7 @@ Future<Response> handleSessionSetName(Request req) async {
 """);
 
   if (req.session != null) {
-    var newName = req.postParams["name"];
+    final newName = req.postParams["name"];
     req.session["name"] = newName;
 
     if (newName.isNotEmpty) {
@@ -957,15 +964,15 @@ ${homeButton(req)}
 //
 // Change this to the level and type of logging desired.
 
-void loggingSetup() {
+void _loggingSetup() {
   hierarchicalLoggingEnabled = true;
-  Logger.root.onRecord.listen((LogRecord rec) {
+  Logger.root.onRecord.listen((rec) {
     print('${rec.time}: ${rec.loggerName}: ${rec.level.name}: ${rec.message}');
   });
 
   Logger.root.level = Level.OFF;
 
-  var commonLevel = Level.INFO;
+  final commonLevel = Level.INFO;
 
   new Logger("main").level = commonLevel;
   new Logger("woomera.server").level = commonLevel;
@@ -978,7 +985,7 @@ void loggingSetup() {
 
 //----------------------------------------------------------------
 
-Server serverSetup() {
+Server _serverSetup() {
   //--------
   // Create a new Web server
   //
@@ -992,28 +999,25 @@ Server serverSetup() {
   // pipelines (which normally doesn't happen in ordinary applications) so
   // these are global variables so that the handler methods can access them.
 
-  webServer = new Server();
-  webServer.bindAddress = InternetAddress.ANY_IP_V6;
-  webServer.v6Only = false; // false = listen to any IPv4 and any IPv6 address
-  webServer.bindPort = 1024;
-
-  // Set server's exception handler
-
-  webServer.exceptionHandler = exceptionHandlerOnServer;
+  webServer = new Server()
+    ..bindAddress = InternetAddress.ANY_IP_V6
+    ..v6Only = false // false = listen to any IPv4 and any IPv6 address
+    ..bindPort = 1024
+    ..exceptionHandler = exceptionHandlerOnServer; // set exception handler
 
   //--------
   // Setup the first pipeline
   //
   // Get the first pipeline and set the exception handler on it.
 
-  p1 = webServer.pipelines.first;
+  p1 = webServer.pipelines.first
 
-  // Set the first pipeline's exception handler
-  //
-  // If an exception is thrown, and is not processed by any pipeline's
-  // exception
+    // Set the first pipeline's exception handler
+    //
+    // If an exception is thrown, and is not processed by any pipeline's
+    // exception
 
-  p1.exceptionHandler = exceptionHandlerOnPipe1;
+    ..exceptionHandler = exceptionHandlerOnPipe1;
 
   //--------
   // Setup the second pipeline
@@ -1037,46 +1041,40 @@ Server serverSetup() {
   // Applications can define exception handlers on the server, individual
   // pipelines, or a combination of both.
 
-  p2.exceptionHandler = exceptionHandlerOnPipe2;
+  p2
+    ..exceptionHandler = exceptionHandlerOnPipe2
 
-  // Set up the rules for the second pipeline. A rule consists of the HTTP
-  // request method (e.g. GET or POST), a pattern to match against the request
-  // path and the handler method.
+    // Set up the rules for the second pipeline. A rule consists of the HTTP
+    // request method (e.g. GET or POST), a pattern to match against the request
+    // path and the handler method.
 
-  p2.get("~/", homePage);
+    ..get("~/", homePage)
+    ..get("~/must/all/match", debugHandler)
+    ..post("~/must/all/match", debugHandler)
+    ..get("~/one/:first", debugHandler)
+    ..get("~/two/:first/:second", debugHandler)
+    ..get("~/three/:first/:second/:third", debugHandler)
+    ..post("~/one/:first", debugHandler)
+    ..post("~/two/:first/:second", debugHandler)
+    ..post("~/three/:first/:second/:third", debugHandler)
+    ..get("~/double/:name/:name", debugHandler)
+    ..get("~/triple/:name/:name/:name", debugHandler)
+    ..post("~/double/:name/:name", debugHandler)
+    ..post("~/triple/:name/:name/:name", debugHandler)
+    ..get("~/wildcard1/*", debugHandler)
+    ..get("~/wildcard2/*/foo/bar", debugHandler)
+    ..get("~/wildcard3/*/*", debugHandler)
+    ..get("~/wildcard4/*/foo/bar/*/baz", debugHandler)
+    ..get("~/throw/:name", handleThrow) // tests exception handling
 
-  p2.get("~/must/all/match", debugHandler);
-  p2.post("~/must/all/match", debugHandler);
-
-  p2.get("~/one/:first", debugHandler);
-  p2.get("~/two/:first/:second", debugHandler);
-  p2.get("~/three/:first/:second/:third", debugHandler);
-  p2.post("~/one/:first", debugHandler);
-  p2.post("~/two/:first/:second", debugHandler);
-  p2.post("~/three/:first/:second/:third", debugHandler);
-
-  p2.get("~/double/:name/:name", debugHandler);
-  p2.get("~/triple/:name/:name/:name", debugHandler);
-  p2.post("~/double/:name/:name", debugHandler);
-  p2.post("~/triple/:name/:name/:name", debugHandler);
-
-  p2.get("~/wildcard1/*", debugHandler);
-  p2.get("~/wildcard2/*/foo/bar", debugHandler);
-  p2.get("~/wildcard3/*/*", debugHandler);
-  p2.get("~/wildcard4/*/foo/bar/*/baz", debugHandler);
-
-  p2.get("~/throw/:name", handleThrow); // tests exception handling
-
-  p2.get("~/test", debugHandler);
-  p2.post("~/test", debugHandler);
-
-  p2.get("~/streamTest", streamTest);
-
-  p2.get("~/session/login", handleLogin);
-  p2.get("~/session/loginWithCookies", handleLoginWithCookies);
-  p2.get("~/session/info", handleSessionInfoPage);
-  p2.post("~/session/set-name", handleSessionSetName);
-  p2.get("~/session/logout", handleLogout);
+    ..get("~/test", debugHandler)
+    ..post("~/test", debugHandler)
+    ..get("~/streamTest", streamTest)
+    ..get("~/session/login", _handleLogin)
+    ..get("~/session/loginWithCookies", _handleLoginWithCookies)
+    ..get("~/session/info", _handleSessionInfoPage)
+    ..post("~/session/set-name", _handleSessionSetName)
+    ..get("~/session/logout", _handleLogout);
 
   // Serve static files
   //
@@ -1092,12 +1090,12 @@ Server serverSetup() {
   // no such file/directory. Though, if possible, it is better to use a more
   // restrictive pattern (e.g. "~/style/*" or "~/images/*").
 
-  var dirContainingThisFile = FileSystemEntity.parentOf(Platform.script.path);
-  var projectDir = FileSystemEntity.parentOf(dirContainingThisFile);
+  final dirContainingThisFile = FileSystemEntity.parentOf(Platform.script.path);
+  final projectDir = FileSystemEntity.parentOf(dirContainingThisFile);
 
   // Map paths without an end slash to a directory, allow directory listing
 
-  var staticFiles = new StaticFiles(projectDir + "/web",
+  final staticFiles = new StaticFiles("$projectDir/web",
       defaultFilenames: ["index.html", "index.htm"],
       allowFilePathsAsDirectories: true,
       allowDirectoryListing: true);
@@ -1106,7 +1104,7 @@ Server serverSetup() {
 
   // Do not try to treat paths without an end slash as directories, no listing
 
-  var staticDir0List0 = new StaticFiles(projectDir + "/web",
+  final staticDir0List0 = new StaticFiles("$projectDir/web",
       defaultFilenames: ["index.html", "index.htm"],
       allowFilePathsAsDirectories: false,
       allowDirectoryListing: false);
@@ -1115,7 +1113,7 @@ Server serverSetup() {
 
   // Maps paths without an end slash to a directory, no directory listing
 
-  var staticDir1List0 = new StaticFiles(projectDir + "/web",
+  final staticDir1List0 = new StaticFiles("$projectDir/web",
       defaultFilenames: ["index.html", "index.htm"],
       allowFilePathsAsDirectories: true,
       allowDirectoryListing: false);
@@ -1124,17 +1122,18 @@ Server serverSetup() {
 
   // Do not try to treat paths without an end slash as directories, allow listing
 
-  var staticDir0List1 = new StaticFiles(projectDir + "/web",
+  final staticDir0List1 = new StaticFiles("$projectDir/web",
       defaultFilenames: ["index.html", "index.htm"],
       allowFilePathsAsDirectories: false,
       allowDirectoryListing: true);
 
-  p2.get("~/diskfilesDir0List1/*", staticDir0List1.handler);
+  p2
+    ..get("~/diskfilesDir0List1/*", staticDir0List1.handler)
 
-  // Special handlers for demonstrating Woomera features
+    // Special handlers for demonstrating Woomera features
 
-  p2.post("~/system/exceptionHandler", handleExceptionHandlers);
-  p2.post("~/system/stop", handleStop);
+    ..post("~/system/exceptionHandler", handleExceptionHandlers)
+    ..post("~/system/stop", handleStop);
 
   return webServer;
 }
@@ -1142,9 +1141,9 @@ Server serverSetup() {
 //----------------------------------------------------------------
 
 Future main(List<String> args) async {
-  loggingSetup();
+  _loggingSetup();
 
-  var server = serverSetup();
+  final server = _serverSetup();
 
   mainLog.fine("started");
 

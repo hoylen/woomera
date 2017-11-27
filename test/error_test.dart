@@ -8,17 +8,12 @@ library main;
 
 import 'dart:async';
 import 'dart:convert' show UTF8;
-import 'dart:io' show ContentType, HttpClient, HttpClientResponse, stderr, exit;
+import 'dart:io' show ContentType, HttpClient;
 
 import 'package:test/test.dart';
 import 'package:logging/logging.dart';
 
 import 'package:woomera/woomera.dart';
-
-// NOTE: currently these tests must be run as a Dart program:
-//     dart woomera_test.dart
-//
-// Running them using "pub run test" does not work.
 
 //----------------------------------------------------------------
 // Constants
@@ -26,140 +21,202 @@ import 'package:woomera/woomera.dart';
 //================================================================
 // Globals
 
-int PORT_NUMBER = 1024;
+/// Port to listen on
+const int portNumber = 1025;
 
+/// Woomera Web server
 Server webServer;
 
 //================================================================
-// Test server
-
-//----------------------------------------------------------------
-/// Create and run the test Web server.
+/// Test exception
 ///
-Server createTestServer() {
-  webServer = new Server(numberOfPipelines: 1);
-  // webServer.bindAddress = "127.0.0.1";
-  // webServer.bindAddress = "localhost";
-  webServer.bindPort = PORT_NUMBER;
-  webServer.exceptionHandler = myExceptionHandler;
+/// This is the internal exception that will be raised for testing when
+/// exceptions are raised inside handlers.
 
-  // Configure the first pipeline
+class MyException implements Exception {
+  /// Name of exception
+  String message;
 
-  var pipeline = webServer.pipelines.first;
+  /// Constructor
+  ///
+  MyException(this.message);
 
-  pipeline.register("GET", "~/", handlerRoot);
-
-  pipeline.register("GET", "~/test1", handler1);
-  pipeline.register("GET", "~/test2", handler2);
-
-  pipeline.register("GET", "~/stop", handlerStop);
-
-  return webServer;
+  /// String representation
+  @override
+  String toString() => message;
 }
 
 //================================================================
 // Handlers
 
+/// Handler to test exception handling.
+///
 Future<Response> myExceptionHandler(
-    Request req, Object exception, StackTrace st) {
-  var resp = new ResponseBuffered(ContentType.TEXT);
-  resp.write("Exception handler caught: $exception\n$st");
+    Request req, Object exception, StackTrace st) async {
+  final resp = new ResponseBuffered(ContentType.TEXT)
+    ..write("Exception handler caught: $exception\n")
+    ..write("Stack trace:\n$st");
   return resp;
 }
-//----------------------------------------------------------------
 
+//----------------------------------------------------------------
+/// Request handler for /
+///
 Future<Response> handlerRoot(Request req) async {
-  var resp = new ResponseBuffered(ContentType.TEXT);
-  resp.write("Error/Exception test");
+  final resp = new ResponseBuffered(ContentType.TEXT)
+    ..write("Error/Exception test\n");
   return resp;
 }
 
 //----------------------------------------------------------------
-
+/// Request handler for /test1
+///
+/// This handler throws an exception, to show how the pipeline/server deals with
+/// exceptions.
+///
 Future<Response> handler1(Request req) async {
-  var resp = new ResponseBuffered(ContentType.TEXT);
-  resp.write("Test 1");
-  throw "test1";
+  final _ = new ResponseBuffered(ContentType.TEXT)..write("Test 1");
+  throw new MyException("test1");
 }
 
 //----------------------------------------------------------------
-
+/// Request handler for /test2
+///
+/// This handler uses "completeError" to raise an error that is detected by
+/// an "onError" callback, to show how the pipeline/server deals with them.
+///
 Future<Response> handler2(Request req) {
-  var completer = new Completer();
+  final completer = new Completer<Response>();
 
-  new Timer(new Duration(seconds: 0), () {
+  new Timer(const Duration(seconds: 1), () {
     completer.completeError("test2");
-    throw new StateError("bar");
   });
 
   return completer.future;
 }
 
 //----------------------------------------------------------------
+/// Request handler for /test3
+///
+/// This handler uses both "completeError" and throw to doubly raise an
+/// exception and "onError" callback.
+///
+Future<Response> handler3(Request req) {
+  final completer = new Completer<Response>();
 
+  new Timer(const Duration(seconds: 1), () {
+    completer.completeError("test3a");
+    throw new MyException("test3b");
+  });
+
+  return completer.future;
+}
+
+//----------------------------------------------------------------
+/// Request handler to stop the Web server.
+///
 Future<Response> handlerStop(Request req) async {
-  webServer.stop(); // async
+  await webServer.stop(); // async
 
-  var resp = new ResponseBuffered(ContentType.TEXT);
-  resp.write("stopping");
+  final resp = new ResponseBuffered(ContentType.TEXT)..write("stopping");
   return resp;
 }
 
-//================================================================
-// The tests
+//----------------------------------------------------------------
+// Create the test server.
 
-void runTests() {
+Server _createTestServer() {
+  // Create a test Web server that listens on localhost
+
+  webServer = new Server(numberOfPipelines: 1)
+    ..bindPort = portNumber
+    ..exceptionHandler = myExceptionHandler;
+
+  webServer.pipelines.first
+    ..register("GET", "~/", handlerRoot)
+    ..register("GET", "~/test1", handler1)
+    ..register("GET", "~/test2", handler2)
+    ..register("GET", "~/test3", handler3)
+    ..register("GET", "~/stop", handlerStop);
+
+  return webServer;
+}
+
+//================================================================
+/// The tests
+///
+void runTests(Future<int> numProcessedFuture) {
   //----------------
 
   test("Exception caught", () async {
-    var str = await getRequest("/test1");
+    final str = await getRequest("/test1");
     expect(str, startsWith("Exception handler caught: test1\n"));
   });
 
   //----------------
 
   test("onError caught", () async {
-    var str = await getRequest("/test2");
+    final str = await getRequest("/test2");
     expect(str, startsWith("Exception handler caught: test2\n"));
   });
 
   //----------------
 
+  test("Exception and onError caught", () async {
+    final str = await getRequest("/test3");
+    expect(str, startsWith("Exception handler caught: test3a\n"));
+  });
+
+  //----------------
+
+  test("server still running", () async {
+    final str = await getRequest("/");
+    expect(str, startsWith("Error/Exception test\n"));
+  });
+
+  //----------------
+
   test("stopping server", () async {
-    var str = await getRequest("/stop");
-    expect(str, equals("stopping"));
+    final str = await getRequest("/stop");
+    expect(str, startsWith("stopping"));
+
+    // Wait for server to stop
+    final num = await numProcessedFuture;
+    new Logger("main").info("server stopped: requests processed: $num");
   });
 }
 
 //================================================================
 
 //----------------------------------------------------------------
-// GET
-
+/// GET
+///
 Future<String> getRequest(String path) async {
   // Note: must use "localhost" because "127.0.0.1" does not work: strange!
 
-  var request = await new HttpClient().get("localhost", PORT_NUMBER, path);
+  final request = await new HttpClient().get("localhost", portNumber, path);
 
   //request.headers.contentType = ContentType.HTML;
 
-  HttpClientResponse response = await request.close();
+  final response = await request.close();
 
-  var contents = "";
+  final contents = new StringBuffer();
   await for (var chunk in response.transform(UTF8.decoder)) {
-    contents += chunk;
+    contents.write(chunk);
   }
 
-  return contents;
+  return contents.toString();
 }
 
 //================================================================
 
+/// Set up logging
+///
 void loggingSetup() {
   // Set up logging
 
   hierarchicalLoggingEnabled = true;
-  Logger.root.onRecord.listen((LogRecord rec) {
+  Logger.root.onRecord.listen((rec) {
     print('${rec.time}: ${rec.loggerName}: ${rec.level.name}: ${rec.message}');
   });
 
@@ -177,24 +234,11 @@ void loggingSetup() {
 Future main() async {
   // loggingSetup(); // TODO: Uncomment if you want logging
 
-  var mainLogger = new Logger("main");
+  // Start the server
 
-  // Start the test server
-
-  var server = createTestServer();
-  var numProcessedFuture = server.run();
+  final numProcessedFuture = _createTestServer().run();
 
   // Run the tests
 
-  new Timer(new Duration(seconds: 1), () {
-    // Run the tests, after waiting a short time for the server to get started
-    mainLogger.info("running tests: started");
-    runTests();
-    mainLogger.info("running tests: finished");
-  });
-
-  // Stop the test server
-
-  var num = await numProcessedFuture;
-  mainLogger.info("server to stopped: number of requests processed: $num");
+  runTests(numProcessedFuture);
 }
