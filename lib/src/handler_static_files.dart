@@ -214,7 +214,7 @@ class StaticFiles {
       // Probably a file
 
       final file = new File(path);
-      if (await file.exists()) {
+      if (file.existsSync()) {
         _logRequest.finest("[${req.id}] static file found: $path");
         return await _serveFile(req, file);
       } else if (allowFilePathsAsDirectories &&
@@ -249,7 +249,8 @@ class StaticFiles {
         if (allowDirectoryListing) {
           // List the contents of the directory
           _logRequest.finest("[${req.id}] returning directory listing");
-          return await directoryListing(req, dir, (1 < components.length));
+          final notTop = (1 < components.length);
+          return await directoryListing(req, dir, linkToParent: notTop);
         } else {
           _logRequest
               .finest("[${req.id}] static directory listing not allowed");
@@ -272,7 +273,7 @@ class StaticFiles {
     for (var defaultFilename in defaultFilenames) {
       final dfName = "$path$defaultFilename";
       final df = new File(dfName);
-      if (await df.exists()) {
+      if (df.existsSync()) {
         return df;
       }
     }
@@ -285,16 +286,16 @@ class StaticFiles {
   /// directory, the directory exists, the directory does not have any of the
   /// default files, and [allowDirectoryListing] is true.
   ///
-  /// It is passed the [Request], [Directory] and [allowLinkToParent] is true
+  /// It is passed the [Request], [Directory]. If [linkToParent] is true,
   /// if a link to the parent directory is permitted (i.e. this is not the
   /// directory registered with the [StaticFiles]).
   ///
   /// Applications can create a subclass of [StaticFiles] and implement their
-  /// own [directoryListing] method, if they want to create their own directory
+  /// own directory listing method, if they want to create a custom directory
   /// listings.
 
-  Future<Response> directoryListing(
-      Request req, Directory dir, bool allowLinkToParent) async {
+  Future<Response> directoryListing(Request req, Directory dir,
+      {bool linkToParent}) async {
     final components = dir.path.split("/");
     String title;
     if (2 <= components.length &&
@@ -328,7 +329,7 @@ class StaticFiles {
   <ul>
 """);
 
-    if (allowLinkToParent) {
+    if (linkToParent) {
       buf.write(
           "<li><a href='..' title='Parent' class='parent'>&#x2191;</a></li>\n");
     }

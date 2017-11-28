@@ -15,6 +15,10 @@ part of woomera;
 // views - templates
 // filters: before after
 
+/// Type for a request factory.
+///
+typedef Request RequestFactory(HttpRequest request, String id, Server server);
+
 //----------------------------------------------------------------
 /// A Web server.
 ///
@@ -165,6 +169,17 @@ class Server {
   ExceptionHandler exceptionHandler;
 
   bool _isSecure;
+
+  /// Function used to create a [Request] object for each HTTP request.
+  ///
+  /// Applications can set this to a [RequestFactory] function that returns
+  /// a subclass of [Request], if it wants to pass custom information to
+  /// handlers in the request object.
+  ///
+  /// The default is null, which means the server will create a [Request]
+  /// object.
+  ///
+  RequestFactory requestFactory;
 
   // Set when the server is running (i.e. is listening for requests).
 
@@ -351,7 +366,10 @@ class Server {
     try {
       // Create context
 
-      final req = new Request._constructor(request, requestId, this);
+      final req = (requestFactory != null)
+          ? requestFactory(request, requestId, this)
+          : new Request(request, requestId, this);
+
       await req._postParmsInit(postMaxSize);
       await req._sessionRestore(); // must be after POST parameters gotten
 
@@ -364,7 +382,7 @@ class Server {
       // The following catch statements deal with that situation, or if the
       // context could not be created (which is also very bad).
 
-    } on dynamic catch (e, s) {
+    } catch (e, s) {
       int status;
       String message;
 
@@ -460,7 +478,7 @@ class Server {
 
             try {
               response = await _invokeRequestHandler(rule.handler, req);
-            } on dynamic catch (initialObjectThrown, initialStackTrace) {
+            } catch (initialObjectThrown, initialStackTrace) {
               // The request handler threw an exception (or returned null which
               // caused the InvalidUsage exception to be thrown above).
 
@@ -476,7 +494,7 @@ class Server {
                 try {
                   response = await _invokeExceptionHandler(
                       pipe.exceptionHandler, req, e, st);
-                } on dynamic catch (pipeEx, pipeSt) {
+                } catch (pipeEx, pipeSt) {
                   // The pipe exception handler threw an exception
                   e = new ExceptionHandlerException(e, pipeEx);
                   st = pipeSt;
@@ -496,29 +514,25 @@ class Server {
                     //response = await this.exceptionHandler(req, e, st);
                     response = await _invokeExceptionHandler(
                         exceptionHandler, req, e, st);
-                  } on dynamic catch (es) {
+                  } catch (es) {
                     e = new ExceptionHandlerException(e, es);
                   }
                 }
               }
 
-              if (response == null) {
-                // The exception was not handled by the pipe exception handler
-                // nor the server exception handler.
-                //
-                // Either the pipe exception handler did not handle it (see
-                // above for reasons), there was no exception handler for the
-                // server, the server handler returned null, or the server
-                // handler threw an exception.
+              // If null, the exception was not handled by the pipe exception
+              // handler nor the server exception handler.
+              //
+              // Either the pipe exception handler did not handle it (see
+              // above for reasons), there was no exception handler for the
+              // server, the server handler returned null, or the server
+              // handler threw an exception.
 
-                // Resort to using the built-in default exception handler.
+              // Resort to using the built-in default exception handler.
 
-                // response = await _defaultExceptionHandler(req, e, st);
-                response = await _invokeExceptionHandler(
-                    _defaultExceptionHandler, req, e, st);
-              }
-
-              assert(response != null);
+              // response = await _defaultExceptionHandler(req, e, st);
+              response ??= await _invokeExceptionHandler(
+                  _defaultExceptionHandler, req, e, st);
             }
 
             // At this point a response has been produced (either by the
@@ -571,7 +585,7 @@ class Server {
         if (exceptionHandler != null) {
           try {
             response = await this.exceptionHandler(req, e, null);
-          } on dynamic catch (es) {
+          } catch (es) {
             e = new ExceptionHandlerException(e, es);
           }
         }

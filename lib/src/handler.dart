@@ -56,10 +56,10 @@ Future<Response> _invokeRequestHandler(
 
   final resp = await hCompleter.future;
 
-  // Return result or throw the exception
+  // Return result or throw the error/exception (which can be of any type)
 
   if (thrownObject != null) {
-    throw thrownObject;
+    throw thrownObject; // ignore: only_throw_errors
   }
   return resp; // which could be null (i.e. handler could not process request)
 }
@@ -93,10 +93,10 @@ Future<Response> _invokeExceptionHandler(
 
   final resp = await hCompleter.future;
 
-  // Return result or throw the exception
+  // Return result or throw the error/exception (which can be of any type)
 
   if (thrownObject != null) {
-    throw thrownObject;
+    throw thrownObject; // ignore: only_throw_errors
   }
   return resp; // which could be null
 }

@@ -18,12 +18,22 @@ abstract class Response {
   /// Default status is 200 "OK", if this method is not used to set it to
   /// a different value.
   ///
+  /// The HTTP status code cannot be changed after the production of the
+  /// response has started. Attempts to change it will result in a
+  /// [StateError] exception.
+  ///
   set status(int value) {
     if (_headersOutputted) {
       throw new StateError("Header already outputted");
     }
     _status = value;
   }
+
+  /// HTTP status code.
+  ///
+  /// Returns the HTTP status code that will be used to create the response.
+  ///
+  int get status => _status;
 
   /// Set a HTTP header
   ///
@@ -155,8 +165,9 @@ abstract class Response {
   /// handler or exception handler.
   ///
   /// The implementation in the base [Request] class does nothing. But an
-  /// application could create their own subclass (usually of [RequestBuffered],
-  /// [RequestStream]) and implement its own [finish] method. A typical use of a
+  /// application could create their own subclass (usually a subclass of
+  /// [ResponseBuffered] or [ResponseStream]) and that implement its own
+  /// [finish] method. A typical use of a
   /// subclass is to generate HTML pages for an application: the subclass's
   /// constructor could produce the common HTML headers and the subclass's
   /// [finish] method could produce the common HTML footers.
@@ -320,7 +331,7 @@ class ResponseRedirect extends Response {
 
   /// Constructor.
   ///
-  /// The response will redirect the browser to [url], which can be
+  /// The response will redirect the browser to [addr], which can be
   /// a relative to the deployment URL (i.e. starts with "~/") or a real URL.
   ///
   /// The [status] must be a redirection HTTP status code.

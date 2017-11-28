@@ -52,6 +52,27 @@ ServerPipeline p1;
 ServerPipeline p2;
 
 //================================================================
+/// Session for login.
+///
+/// Extends the [Session] class with the time the login started
+/// and the user name.
+///
+class LoginSession extends Session {
+  /// When the login started
+  DateTime when;
+
+  /// The name of the user logged in.
+  ///
+  /// Can be null.
+  String name;
+
+  /// Constructor for a login session.
+  ///
+  LoginSession(Server server, Duration timeout, this.when, [this.name = null])
+      : super(server, timeout);
+}
+
+//================================================================
 // Handlers
 //
 // These handlers are used in the rules that are registered in the pipelines
@@ -369,7 +390,8 @@ Future<Response> homePage(Request req) async {
     either session cookies or URL rewriting to remember the current session.</p>
     """);
 
-  if (req.session == null) {
+  final requestSession = req.session;
+  if (requestSession == null) {
     // Not logged in
     resp.write("""
   <ul>
@@ -378,14 +400,15 @@ Future<Response> homePage(Request req) async {
     <li><a href=\"${req.rewriteUrl("~/session/login")}\">Login without cookies</a></li>
   </ul>
   """);
-  } else {
+  } else if (requestSession is LoginSession) {
     // Logged in
+    assert(requestSession != null);
     resp.write("""
   <ul>
     <li><a href=\"${req.rewriteUrl("~/session/info")}\">Session information page</a></li>
     <li><a href=\"${req.rewriteUrl("~/session/logout")}\">Logout</a></li>
   </ul>
-  <p style="font-size: smaller">Logged in at: ${req.session["when"]}</p>
+  <p style="font-size: smaller">Logged in at: ${requestSession.when}</p>
   """);
   }
 
@@ -780,9 +803,7 @@ they have been disabled, or if the login page is visited directly
 Future<Response> _handleLogin(Request req) async {
   const keepAlive = const Duration(minutes: 1);
 
-  req.session = new Session(webServer, keepAlive);
-
-  req.session["when"] = new DateTime.now();
+  req.session = new LoginSession(webServer, keepAlive, new DateTime.now());
 
   final resp = new ResponseBuffered(ContentType.HTML)
     ..cookieDelete(_testCookieName, req.server.basePath)
@@ -844,16 +865,18 @@ Future<Response> _handleSessionInfoPage(Request req) async {
 <h1>Session information</h1>
 """);
 
-  if (req.session != null) {
-    final sessionWhen = req.session["when"] as DateTime;
-    final duration = new DateTime.now().difference(sessionWhen);
+  final requestSession = req.session;
+  if (requestSession is LoginSession) {
+    assert(requestSession != null);
 
-    final name = req.session["name"] as String;
-    if (name != null) {
-      resp.write("<p>Welcome <strong>${HEsc.text(name)}</strong>.</p>");
+    final duration = new DateTime.now().difference(requestSession.when);
+
+    if (requestSession.name != null) {
+      resp.write(
+          "<p>Welcome <strong>${HEsc.text(requestSession.name)}</strong>.</p>");
     }
     resp.write("""
-<p>Logged in at ${req.session["when"]}.
+<p>Logged in at ${requestSession.when}.
 You have been logged in for over ${duration.inSeconds} seconds.</p>
 
 <h2>Session preservation across GET requests</h2>
@@ -933,12 +956,14 @@ Future<Response> _handleSessionSetName(Request req) async {
 <h1>Session: name set</h1>
 """);
 
-  if (req.session != null) {
-    final newName = req.postParams["name"];
-    req.session["name"] = newName;
+  final requestSession = req.session;
+  if (requestSession is LoginSession) {
+    assert(requestSession != null);
+    requestSession.name = req.postParams["name"];
 
-    if (newName.isNotEmpty) {
-      resp.write("<p>Your name has been set to \"${HEsc.text(newName)}\".</p>");
+    if (requestSession.name.isNotEmpty) {
+      resp.write(
+          "<p>Your name has been set to \"${HEsc.text(requestSession.name)}\".</p>");
     } else {
       resp.write("<p>Your name has been cleared.</p>");
     }

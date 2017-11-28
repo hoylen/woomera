@@ -185,7 +185,7 @@ class RequestParams {
       return values;
     } else {
       // Return list of trimmed values
-      final x = values.map((s) => _sanitize(s));
+      final x = values.map(_sanitize);
       return new List<String>.from(x);
     }
   }

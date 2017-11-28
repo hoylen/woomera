@@ -172,10 +172,10 @@ class Session {
   /// Session ID
   ///
   /// The unique identifier for the session which can be used
-  /// for logging. It is a UUID.
+  /// for logging. It is a UUID that is initialized to a unique value.
 
   final String id =
-      (new Uuid().v4() as String).replaceAll("-", ""); // random session ID
+      (new Uuid().v4() as String).replaceAll("-", ""); // ignore: avoid_as
 
   final DateTime _created; // When the session was created
 
@@ -258,28 +258,6 @@ class Session {
     }
     _timeout = newTimeout;
     _refresh();
-  }
-
-  //================================================================
-  // Properties
-
-  final Map<String, Object> _properties = {};
-
-  /// Set a property on the session.
-  ///
-  /// The application can use properties to associate arbitrary values
-  /// with the session.
-
-  void operator []=(String key, dynamic value) {
-    assert(key != null);
-    _properties[key] = value;
-  }
-
-  /// Lookup a property on the session.
-
-  Object operator [](String key) {
-    assert(key != null);
-    return _properties[key];
   }
 
   //================================================================

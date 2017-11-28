@@ -100,10 +100,7 @@ class Request {
   //================================================================
   /// Constructor
   ///
-  /// Internal constructor invoked by [Server] code. Code outside this package
-  /// cannot create [Request] objects.
-  ///
-  Request._constructor(this.request, this.id, this.server) {
+  Request (this.request, this.id, this.server) {
     assert(request != null);
     assert(id != null);
     assert(server != null);
@@ -245,28 +242,6 @@ class Request {
         _logRequestParam.finer(str);
       }
     }
-  }
-
-  //================================================================
-  // Properties
-
-  final Map<String, Object> _properties = {};
-
-  /// Set a property on the request.
-  ///
-  /// The application can use properties to associate arbitrary values
-  /// with the context.
-
-  void operator []=(String key, dynamic value) {
-    assert(key != null);
-    _properties[key] = value;
-  }
-
-  /// Lookup a property on the request.
-
-  Object operator [](String key) {
-    assert(key != null);
-    return _properties[key];
   }
 
   //================================================================
