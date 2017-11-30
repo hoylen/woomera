@@ -6,6 +6,7 @@
 - Removed arbitrary properties from Request and Session: use subtypes instead.
 - Changed default bindAddress from LOOPBACK_IP_V6 to LOOPBACK_IP_V4.
 - Added convenience methods for registering PUT, PATCH and DELETE handlers.
+- Added coverage tests.
 
 ## 1.0.5
 

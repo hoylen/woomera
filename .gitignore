@@ -5,5 +5,6 @@
 .packages
 packages
 pubspec.lock
+coverage-suite
 doc/api
 build

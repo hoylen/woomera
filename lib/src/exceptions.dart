@@ -43,16 +43,16 @@ class PostTooLongException extends WoomeraException {}
 class NotFoundException extends WoomeraException {
   /// Value for [found] when no handlers for the HTTP method were found.
 
-  static int foundNothing = 0;
+  static const int foundNothing = 0;
 
   /// Value for [found] when at least one handler for the HTTP method
   /// was found, but none of them matched the request path.
 
-  static int foundMethod = 1;
+  static const int foundMethod = 1;
 
   /// Value for [found] when a handler was found, but no result was produced.
 
-  static int foundHandler = 2;
+  static const int foundHandler = 2;
 
   /// Value for [found] when a StaticFile handler failed to produce a response.
   ///
@@ -61,7 +61,7 @@ class NotFoundException extends WoomeraException {
   /// the default file in the directory could not be read, or an automatic
   /// listing of the directory was not permitted.
 
-  static int foundStaticHandler = 3;
+  static const int foundStaticHandler = 3;
 
   /// Indicates how much was found before a result could not be created.
   ///
@@ -78,13 +78,34 @@ class NotFoundException extends WoomeraException {
   /// Constructor.
   ///
   NotFoundException(this.found);
+
+  /// String representation
+  @override
+  String toString() {
+    var s = "unknown";
+    switch (found) {
+      case foundNothing:
+        s = 'method not supported';
+        break;
+      case foundMethod:
+        s = 'path not supported';
+        break;
+      case foundHandler:
+        s = 'no result';
+        break;
+      case foundStaticHandler:
+        s = 'no resource';
+        break;
+    }
+    return s;
+  }
 }
 
 //================================================================
 // Exception handling exception
 
 //----------------------------------------------------------------
-/// Exception indicating an exception occurred in an exception handler.
+/// Exception indicating an exception/error occurred in an exception handler.
 ///
 /// The exception that was raised by the exception handler is stored in
 /// [exception].

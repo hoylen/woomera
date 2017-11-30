@@ -34,7 +34,7 @@ part of woomera;
 /// Future<Response> handleActivity(Request req) async {
 ///   // the session (if available) will be automatically restored
 ///   ...
-///   if (req.hasSession) {
+///   if (req.session != null) {
 ///     // User is logged in
 ///     var loggedInUser = req.session["user"];
 ///     ...
@@ -45,7 +45,7 @@ part of woomera;
 /// }
 ///
 /// Future<Response> handleLogout(Request req) async {
-///   assert(req.hasSession);
+///   assert(req.session != null);
 ///   await req.session.terminate();
 ///   req.session = null; // important: gets the response to clear the session
 ///   ...
@@ -150,21 +150,6 @@ part of woomera;
 
 class Session {
   //================================================================
-  // Constants
-
-  /// Reason for the [finish] method: sesson's [terminate] method was invoked.
-
-  static const int endByTerminate = 0;
-
-  /// Reason for the [finish] method: session's timer had timed out.
-
-  static const int endByTimeout = 1;
-
-  /// Reason for the [finish] method: session's [resume] method returned false.
-
-  static const int endByFailureToResume = 2;
-
-  //================================================================
   // Members
 
   final Server _server;
@@ -267,15 +252,17 @@ class Session {
   /// Explicitly terminate a session.
   ///
   /// This is used when an application wants to terminate a session without
-  /// without waiting for it to time out.
+  /// without waiting for it to time out. For example, when the user explicitly
+  /// logs out.
   ///
   /// Important: the application must also remove the session from the [Request]
+  /// (i.e. setting it to null)
   /// before the request handler returns.
 
   Future terminate() async {
     _expiryTimer.cancel();
     _expiryTimer = null;
-    await _terminate(endByTerminate);
+    await _terminate(SessionTermination.terminated);
   }
 
   //----------------------------------------------------------------
@@ -294,7 +281,8 @@ class Session {
     // Create a new timer
 
     if (_timeout != null) {
-      _expiryTimer = new Timer(_timeout, () => _terminate(endByTimeout));
+      _expiryTimer =
+          new Timer(_timeout, () => _terminate(SessionTermination.timeout));
     }
   }
 
@@ -302,17 +290,17 @@ class Session {
   // Internal method to consistently terminate a session. Used by all code
   // that terminates a session (i.e. terminate and the refresh timeout).
 
-  Future _terminate(int endReason) async {
+  Future _terminate(SessionTermination endReason) async {
     final duration = new DateTime.now().difference(_created);
     String r;
     switch (endReason) {
-      case endByTerminate:
+      case SessionTermination.terminated:
         r = "terminated";
         break;
-      case endByTimeout:
+      case SessionTermination.timeout:
         r = "timeout";
         break;
-      case endByFailureToResume:
+      case SessionTermination.resumeFailed:
         r = "failed to resume";
         break;
       default:
@@ -380,20 +368,36 @@ class Session {
   /// Invoked when a session is terminated.
   ///
   /// This method is invoked when the session is ended. The [endReason]
-  /// indicates why the session has ended. Possible values are:
+  /// indicates why the session has ended.
   ///
-  /// - [endByTerminate] the application explicitly terminated the session.
-  /// - [endByTimeout] the session was automatically terminated because it had
-  ///   timed out.
-  /// - [endByFailureToResume] the [resume] method returned false, so the
-  ///   session can no longer be used.
-  ///
-  /// The base implementation does nothing.
+  /// This base implementation does nothing. Subclasses of [Session] can
+  /// override this method, if they want to be notified of when the session
+  /// is terminated.
   ///
   /// This instance method is intended to be overridden by subclasses of the
   /// [Session] class.
 
-  Future finish(int endReason) async {
+  Future finish(SessionTermination endReason) async {
     // do nothing
   }
+}
+
+//================================================================
+/// Reasons why a session was terminated.
+///
+/// The [Session.finish] callback method is invoked with one of these
+/// enumerated values to indicate why the session was terminated.
+
+enum SessionTermination {
+  /// The application terminated the session by invoking [Session.terminate].
+
+  terminated,
+
+  /// The session expired.
+
+  timeout,
+
+  /// The [Session.resume] callback failed.
+
+  resumeFailed
 }

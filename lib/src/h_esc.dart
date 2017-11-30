@@ -34,22 +34,18 @@ part of woomera;
 /// ```
 
 abstract class HEsc {
-  // Disable default constructor, since this class is not to be instantiated.
-  HEsc._internal() {
-    assert(false);
-  }
-
   //----------------------------------------------------------------
   /// Escape values for placement inside a HTML or XML attribute.
   ///
-  /// Returns a string where all characters &, <, >, ' and " in [str] is
-  /// replaced by its HTML entities.
+  /// Returns a string where all characters &, <, >, ' and " in the string
+  /// representation of [value] is replaced by its HTML entities.
+  /// The string representation is produced by invoking `toString` on the value.
   ///
-  /// If [str] is null, the empty string is returned.
+  /// If [value] is null, the empty string is returned.
 
-  static String attr(String str) {
-    if (str != null) {
-      var s = str.replaceAll("&", "&amp;");
+  static String attr(Object value) {
+    if (value != null) {
+      var s = value.toString().replaceAll("&", "&amp;");
       s = s.replaceAll("<", "&lt;");
       s = s.replaceAll(">", "&gt;");
       s = s.replaceAll("'", "&apos;");
@@ -63,14 +59,16 @@ abstract class HEsc {
   //----------------------------------------------------------------
   /// Escape values for placement inside the contents of a HTML or XML element.
   ///
-  /// Returns a string where all characters &, < and > in [str] is
-  /// replaced by its HTML entities.
+  /// Returns a string where all characters &, < and > in the string
+  /// representation of [value] is replaced by its HTML entities.
+  /// The string representation is produced by invoking `toString` on the value.
   ///
-  /// If [str] is null, the empty string is returned.
+  /// If [value] is null, the empty string is returned.
 
-  static String text(String str) {
-    if (str != null) {
-      var s = str.replaceAll("&", "&amp;");
+  static String text(Object value) {
+
+    if (value != null) {
+      var s = value.toString().replaceAll("&", "&amp;");
       s = s.replaceAll("<", "&lt;");
       s = s.replaceAll(">", "&gt;");
       return s;
@@ -86,14 +84,16 @@ abstract class HEsc {
   /// Each line is escaped using [text]. If there is only one line (i.e.
   /// there is no new line) no break elements are added.
   ///
-  /// If [s] is null, the empty string is returned.
+  /// The string representation is produced by invoking `toString` on the value.
+  ///
+  /// If [value] is null, the empty string is returned.
 
-  static String lines(String s) {
-    if (s != null) {
+  static String lines(Object value) {
+    if (value != null) {
       final buf = new StringBuffer();
       var started = false;
 
-      for (var line in s.split("\n")) {
+      for (var line in value.toString().split("\n")) {
         if (started) {
           buf.write("<br/>");
         } else {

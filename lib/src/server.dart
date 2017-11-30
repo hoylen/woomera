@@ -104,21 +104,25 @@ class Server {
   /// otherwise clients external to the machine will not be allowed to connect
   /// to the Web server.
   ///
-  /// If it is set to [InternetAddress.ANY_IP_V6], it listens to any IPv4 or IPv6 address,
+  /// If it is set to [InternetAddress.ANY_IP_V6], it listens on any IPv4 or
+  /// IPv6 address (including the loop-back addresses),
   /// unless [v6Only] is set to true (in which case it only listens on any IPv6
-  /// address).
+  /// address and the IPv6 loopback address).
 
   InternetAddress bindAddress = InternetAddress.LOOPBACK_IP_V4;
 
   /// Indicates how a [bindAddress] value of [InternetAddress.ANY_IP_V6] treats IPv4 addresses.
   ///
-  /// The default is false, which means it listens to any IPv4 or IPv6
+  /// The default is false, which means it listens to any IPv4 and any IPv6
   /// addresses.
   ///
   /// If set to true, it only listens on any IPv6 address. That is, it will not
   /// listen on any IPv4 address.
   ///
-  /// This value has no effect if the [bindAddress] is not [InternetAddress.ANY_IP_V6].
+  /// This value has no effect if the [bindAddress] is not
+  /// [InternetAddress.ANY_IP_V6]. Therefore, it is not possible to listen on
+  /// both IPv4 and IPv6 loop-back addresses at the same time (not without also
+  /// listening on every IPv4 and IPv6 address too).
 
   bool v6Only = false;
 
@@ -152,19 +156,20 @@ class Server {
 
   final List<ServerPipeline> pipelines = <ServerPipeline>[];
 
-  /// Server level exception handler.
+  /// Server level exception/error handler.
   ///
   /// If an exception occurs outside of a pipeline, or is not handled by
   /// the pipeline's exception handler, the exception is passed to
   /// this exception handler to process.
   ///
-  /// If this exception handler is not set (i.e. null), an internal default
-  /// exception handler will be used. Its output is very plain and basic, so
-  /// most applications should provide their own server-level exception handler.
+  /// If this exception/exception handler is not set (i.e. null), an internal
+  /// default exception/error handler will be used. Its output is very plain and
+  /// basic, so most applications should provide their own server-level
+  /// exception/error handler.
   ///
-  /// Ideally, an application's server-level exception handler should not thrown
-  /// an exception.  But if it did throw an exception, the internal default
-  /// exception handler will also be used to handle it.
+  /// Ideally, an application's server-level exception/error handler should not
+  /// thrown an exception.  But if it did throw an exception, the internal
+  /// default exception/error handler will also be used to handle it.
 
   ExceptionHandler exceptionHandler;
 

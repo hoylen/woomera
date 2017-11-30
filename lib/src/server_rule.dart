@@ -54,15 +54,13 @@ class ServerRule {
   /// "/foo/bar?/baz"
 
   ServerRule(String pathPattern, this.handler) {
-    if (pathPattern == null) {
-      throw new ArgumentError.notNull("ServerRule.pathPattern");
-    }
+    assert(pathPattern != null);
+
     _segments = pathPattern.split(_pathSeparator);
 
-    if (_segments.isEmpty || _segments[0] != "~") {
-      throw new ArgumentError.value(
-          pathPattern, "pathPattern", "ServerRule: does not start with '~'");
-    }
+    assert(_segments.isNotEmpty);
+    assert(_segments[0] == '~', 'ServerRule path does not start with ~');
+
     _segments.removeAt(0); // remove the leading "~".
 
     while (_segments.isNotEmpty && _segments[0].isEmpty) {

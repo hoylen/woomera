@@ -21,7 +21,10 @@ part of woomera;
 /// stops with the first handler that doesn't return null.
 
 class ServerPipeline {
-  /// Pipeline level exception handler.
+  /// Pipeline level exception/error handler.
+  ///
+  /// Exception/error handler for the pipeline. If not set, exceptions/errors
+  /// will be handled by the server-level exception/error handler.
 
   ExceptionHandler exceptionHandler;
 
@@ -29,7 +32,13 @@ class ServerPipeline {
 
   //================================================================
 
+  /// Generic registration of a request handler for any HTTP method.
+  ///
   /// Register a request [handler] when a [method] request asks for [path].
+  ///
+  /// Convenience methods for common methods exist: [get], [post], [put],
+  /// [patch], [delete]. They simply invoke this method with corresponding
+  /// values for the HTTP method.
 
   void register(String method, String path, RequestHandler handler) {
     _logServer.config("register: $method $path");
@@ -108,6 +117,8 @@ class ServerPipeline {
   //----------------------------------------------------------------
   /// Returns the methods in the pipeline
   ///
+  /// This method is probably only useful for testing.
+
   Iterable<String> methods() => _rulesByMethod.keys;
 
   //----------------------------------------------------------------

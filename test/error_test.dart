@@ -49,12 +49,34 @@ class MyException implements Exception {
 //================================================================
 // Handlers
 
+const String _caseExceptionHandlerToFail = 'please throw an exception';
+
 /// Handler to test exception handling.
 ///
-Future<Response> myExceptionHandler(
+Future<Response> serverExceptionHandler(
     Request req, Object exception, StackTrace st) async {
+  if (exception is MyException) {
+    if (exception.message == _caseExceptionHandlerToFail) {
+      throw new StateError("exception inside exception handler");
+    }
+  }
   final resp = new ResponseBuffered(ContentType.TEXT)
-    ..write("Exception handler caught: $exception\n")
+    ..write("Server caught: $exception\n")
+    ..write("Stack trace:\n$st");
+  return resp;
+}
+
+/// Handler to test exception handling.
+///
+Future<Response> pipelineExceptionHandler(
+    Request req, Object exception, StackTrace st) async {
+  if (exception is MyException) {
+    if (exception.message == _caseExceptionHandlerToFail) {
+      throw new StateError("exception inside exception handler");
+    }
+  }
+  final resp = new ResponseBuffered(ContentType.TEXT)
+    ..write("Pipeline caught: $exception\n")
     ..write("Stack trace:\n$st");
   return resp;
 }
@@ -113,8 +135,21 @@ Future<Response> handler3(Request req) {
 }
 
 //----------------------------------------------------------------
+/// Request handler for /test4
+///
+/// This handler raises an exception which causes the exception handler
+/// to raise an exception.
+///
+Future<Response> handler4(Request req) {
+  throw new MyException(_caseExceptionHandlerToFail);
+}
+
+//----------------------------------------------------------------
 /// Request handler to stop the Web server.
 ///
+/// This is to stop the server after the tests have completed.
+/// Normally, servers should not have such an operation.
+
 Future<Response> handlerStop(Request req) async {
   await webServer.stop(); // async
 
@@ -130,13 +165,15 @@ Server _createTestServer() {
 
   webServer = new Server(numberOfPipelines: 1)
     ..bindPort = portNumber
-    ..exceptionHandler = myExceptionHandler;
+    ..exceptionHandler = serverExceptionHandler;
 
   webServer.pipelines.first
+    ..exceptionHandler = pipelineExceptionHandler
     ..register("GET", "~/", handlerRoot)
     ..register("GET", "~/test1", handler1)
     ..register("GET", "~/test2", handler2)
     ..register("GET", "~/test3", handler3)
+    ..register("GET", "~/test4", handler4)
     ..register("GET", "~/stop", handlerStop);
 
   return webServer;
@@ -148,24 +185,32 @@ Server _createTestServer() {
 void runTests(Future<int> numProcessedFuture) {
   //----------------
 
-  test("Exception caught", () async {
+  test("Handler Exception", () async {
     final str = await getRequest("/test1");
-    expect(str, startsWith("Exception handler caught: test1\n"));
+    expect(str, startsWith("Pipeline caught: test1\n"));
   });
 
   //----------------
 
-  test("onError caught", () async {
+  test("Handler onError", () async {
     final str = await getRequest("/test2");
-    expect(str, startsWith("Exception handler caught: test2\n"));
+    expect(str, startsWith("Pipeline caught: test2\n"));
   });
 
   //----------------
 
-  test("Exception and onError caught", () async {
+  test("Handler Exception and onError", () async {
     final str = await getRequest("/test3");
-    expect(str, startsWith("Exception handler caught: test3a\n"));
+    expect(str, startsWith("Pipeline caught: test3a\n"));
   });
+
+  //----------------
+
+  test("Exception handler throws an Exception", () async {
+    final str = await getRequest("/test4");
+    expect(str, startsWith("Server caught: Instance of 'ExceptionHandlerException'\n"));
+  });
+
 
   //----------------
 
@@ -175,6 +220,10 @@ void runTests(Future<int> numProcessedFuture) {
   });
 
   //----------------
+  // Important: this must be the last test, to stop the server.
+  //
+  // If the server is not stopped, this program will not halt when run as a
+  // Dart program, but does halt when run using "pub run test".
 
   test("stopping server", () async {
     final str = await getRequest("/stop");

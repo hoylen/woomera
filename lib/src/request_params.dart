@@ -71,7 +71,7 @@ class RequestParams {
               Uri.decodeQueryComponent(value, encoding: encoding));
         } else {
           // Has "=", but is first character: key is empty string
-          _add("", Uri.decodeQueryComponent(pair, encoding: encoding));
+          _add("", Uri.decodeQueryComponent(pair.substring(1), encoding: encoding));
         }
       }
     }
@@ -158,7 +158,7 @@ class RequestParams {
     } else if (values.length == 1) {
       return _sanitize(values[0]); // returns sanitized single value
     } else {
-      assert(values.length == 1); // do not use this operator with multiples
+      assert(values.length == 1, 'multi-valued: do not use [] with "$key"');
       return ""; // error value
     }
   }

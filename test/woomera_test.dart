@@ -15,19 +15,23 @@ import 'package:logging/logging.dart';
 
 import 'package:woomera/woomera.dart';
 
-// NOTE: currently these tests must be run as a Dart program:
-//     dart woomera_test.dart
-//
-// Running them using "pub run test" does not work.
-
-//----------------------------------------------------------------
-// Constants
-
 //================================================================
 // Globals
 
+//----------------------------------------------------------------
+// Configuration
+
+/// Set to true to use this Web server with a Web browser. False runs tests.
+const bool interactiveMode = false;
+
+/// Enable or disable logging
+const bool doLogging = false;
+
 /// Port to listen on
 int portNumber = 1024;
+
+//----------------------------------------------------------------
+// Internal
 
 /// The Web server
 Server webServer;
@@ -71,34 +75,12 @@ Future<Response> _exceptionHandlerOnPipe2(
 
 Future<Response> _exceptionHandler(
     Request req, Object exception, StackTrace st, String who) async {
-  final resp = new ResponseBuffered(ContentType.HTML)..write("""
-<html>
-<head>
-  <title>Exception</title>
-</head>
-<body>
-<h1>Exception thrown</h1>
-
-An exception was thrown and was handled by the <strong>$who</strong> exception handler.
-
-<h2>Exception</h2>
-
-<p>Exception object type: <code>${exception.runtimeType}</code></p>
-<p>String representation of object: <strong>$exception</strong></p>
-""");
+  final resp = new ResponseBuffered(ContentType.TEXT)
+    ..write("$who exception handler (${exception.runtimeType}) $exception\n");
 
   if (st != null) {
-    resp.write("""
-<h2>Stack trace</h2>
-<pre>
-$st
-</pre>
-    """);
+    resp.write("Stack trace:\n$st\n");
   }
-  resp.write("""
-</body>
-</html>
-""");
 
   return resp;
 }
@@ -120,14 +102,18 @@ Server _createTestServer() {
   pipe1 = webServer.pipelines.first
     ..exceptionHandler = _exceptionHandlerOnPipe1
     ..register("GET", "~/", testHandler)
-    ..register("GET", "~/test", testHandler)
-    ..register("POST", "~/test", testHandler)
+    ..get("~/test", testHandler)
+    ..post("~/test", testHandler)
+    ..put("~/test", testHandler)
+    ..patch("~/test", testHandler)
+    ..delete("~/test", testHandler)
     ..register("GET", "~/two/:first/:second", testHandler)
     ..register("GET", "~/double/:name/:name", testHandler)
     ..register("GET", "~/wildcard1/*", testHandler)
     ..register("GET", "~/wildcard2/*/foo/bar", testHandler)
     ..register("GET", "~/wildcard3/*/*", testHandler)
     ..register("GET", "~/wildcard4/*/foo/bar/*/baz", testHandler)
+    ..register("GET", "~/special/:mode", _specialHandler)
     ..register("GET", "~/system/stop", handleStop);
 
   // Configure the second pipeline
@@ -169,9 +155,80 @@ Future<Response> testHandler(Request req) async {
   return resp;
 }
 
+//--------
+
+const _modeParams = 'param';
+
+Future<Response> _specialHandler(Request req) async {
+  var message = 'ok';
+
+  final mode = req.pathParams['mode'];
+  switch (mode) {
+    case _modeParams:
+      if (req.queryParams.isEmpty) {
+        message = 'error: query parameters reported as empty';
+      }
+      if (req.queryParams.length != 5) {
+        message = 'error: number of query parameters != 5';
+      }
+
+      final a = req.queryParams['a'];
+      if (a != '1') {
+        message = 'mismatch a';
+      }
+      var bChecked = false;
+      try {
+        final b = req.queryParams['b'];
+        if (b != '') {
+          // in production mode, multi-values returns empty string
+          message = 'mismatch b: multivalue did not return empty string';
+        }
+        bChecked = true;
+        // ignore: avoid_catching_errors
+      } on AssertionError {
+        bChecked = true; // in checked mode, an assertion will fail
+      }
+      if (!bChecked) {
+        message = "b: did not detect multiple values";
+      }
+      final rawB = req.queryParams.values('b');
+      if (rawB.length != 2) {
+        message = 'b: did not get 2 values';
+      }
+
+      final blankValue = req.queryParams['blankValue'];
+      if (blankValue != '') {
+        message = 'mismatch blankValue: $blankValue';
+      }
+
+      final noValue = req.queryParams['novalue'];
+      if (noValue != '') {
+        message = 'mismatch noValue: $noValue';
+      }
+
+      final noKey = req.queryParams[''];
+      if (noKey != 'noKey') {
+        message = 'mismatched noKey: $noKey';
+      }
+
+      final str = req.queryParams.toString();
+      if (str !=
+          '=["noKey"], a=["1"], b=["x", "y"], blankValue=[""], noValue=[""]') {
+        message = 'toString: $str';
+      }
+      break;
+  }
+
+  final resp = new ResponseBuffered(ContentType.TEXT)..write(message);
+  return resp;
+}
+
 //----------------------------------------------------------------
 /// Handler for stopping the server
 ///
+/// This is to stop the server after the tests have completed.
+/// Normally, servers should not have such an operation.
+
 Future<Response> handleStop(Request req) async {
   await webServer.stop(); // async
 
@@ -236,6 +293,48 @@ void _runTests(Future<int> numProcessedFuture) {
 
     test("pipeline", () async {
       expect(webServer.pipelines.length, equals(2));
+    });
+
+    test("pipeline 1 has expected methods", () async {
+      final methods = webServer.pipelines[0].methods();
+      expect(methods.length, equals(5));
+      expect(methods.contains("GET"), isTrue);
+      expect(methods.contains("POST"), isTrue);
+      expect(methods.contains("PUT"), isTrue);
+      expect(methods.contains("PATCH"), isTrue);
+      expect(methods.contains("DELETE"), isTrue);
+    });
+
+    test("pipeline 2 has expected methods", () async {
+      final methods = webServer.pipelines[1].methods();
+      expect(methods.length, equals(0));
+      //expect(methods.contains("GET"), isTrue);
+    });
+
+    //----------------
+    // Attempts to call register incorrectly
+
+    final pipeline1 = webServer.pipelines.first;
+
+    test("register with null for method", () {
+      expect(
+          () => pipeline1.register(null, "~/bad", testHandler),
+          throwsA(predicate<dynamic>((Object e) =>
+              e is ArgumentError && e.message == 'Must not be null')));
+    });
+
+    test("register with empty string for method", () {
+      expect(
+          () => pipeline1.register("", "~/bad", testHandler),
+          throwsA(predicate<dynamic>((Object e) =>
+              e is ArgumentError && e.message == 'Empty string')));
+    });
+
+    test("register with null handler", () {
+      expect(
+          () => pipeline1.register("GET", "~/bad", null),
+          throwsA(predicate<dynamic>((Object e) =>
+              e is ArgumentError && e.message == 'Must not be null')));
     });
   });
 
@@ -373,10 +472,36 @@ void _runTests(Future<int> numProcessedFuture) {
   });
 
   //----------------------------------------------------------------
+
+  group("Not found", () {
+    //----------------
+
+    test("no match", () async {
+      final str = await postRequest("/unknown", "");
+      expect(
+          str,
+          equals(
+              "server exception handler (NotFoundException) path not supported\n"));
+    });
+  });
+
+  //----------------------------------------------------------------
+
+  group("Special:", () {
+    //----------------
+
+    test("$_modeParams", () async {
+      final str = await getRequest(
+          "/special/$_modeParams?=noKey&a=1&b=x&b=y&blankValue=&noValue");
+      expect(str, equals("ok"));
+    });
+  });
+
+  //----------------------------------------------------------------
   // Important: this must be the last test, to stop the server.
   //
   // If the server is not stopped, this program will not halt when run as a
-  // Dart program, but will halt when run using "pub run test".
+  // Dart program, but does halt when run using "pub run test".
 
   group("End of tests", () {
     //----------------
@@ -415,13 +540,15 @@ void loggingSetup() {
 //----------------------------------------------------------------
 
 Future main() async {
-  // loggingSetup(); // TODO: Uncomment if you want logging
-
-  // Start the server
+  if (doLogging) {
+    loggingSetup();
+  }
 
   final numProcessedFuture = _createTestServer().run();
 
-  // Run the tests
-
-  _runTests(numProcessedFuture);
+  if (!interactiveMode) {
+    _runTests(numProcessedFuture);
+  } else {
+    print("Service running at http://localhost:$portNumber/session");
+  }
 }

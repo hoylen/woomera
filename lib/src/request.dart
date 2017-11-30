@@ -36,13 +36,13 @@ class Request {
 
   final Server server;
 
-  /// The HTTP request.
+  /// The underlying HTTP request.
   ///
   /// An instance of [HttpRequest] the produced the context.
 
   final HttpRequest request;
 
-  /// The session associated with the context.
+  /// The session associated with the context or null.
   ///
   /// If the HTTP request indicated that it belongs to a session (either by
   /// presenting a session cookie or URI parameter) the session will be
@@ -100,31 +100,31 @@ class Request {
   //================================================================
   /// Constructor
   ///
-  Request (this.request, this.id, this.server) {
+  Request(this.request, this.id, this.server) {
     assert(request != null);
     assert(id != null);
     assert(server != null);
 
-    _logRequest.fine("[$id] ${request.method} ${request.uri.path}");
-
-    if (_logRequest.level <= Level.FINE) {
-      // Log request
-      final buf = new StringBuffer("[$id] HTTP headers:");
-      request.headers.forEach((name, values) {
-        buf.write("\n  $name: ");
-        if (values.isEmpty) {
-          buf.write("<noValue>");
-        } else if (values.length == 1) {
-          buf.write("${values[0]}");
-        } else {
-          var index = 1;
-          for (var v in values) {
-            buf.write("\n  [${index++}] $v");
+    _logRequest
+      ..fine("[$id] ${request.method} ${request.uri.path}")
+      ..finer(() {
+        // Log request
+        final buf = new StringBuffer("[$id] HTTP headers:");
+        request.headers.forEach((name, values) {
+          buf.write("\n  $name: ");
+          if (values.isEmpty) {
+            buf.write("<noValue>");
+          } else if (values.length == 1) {
+            buf.write("${values[0]}");
+          } else {
+            var index = 1;
+            for (var v in values) {
+              buf.write("\n  [${index++}] $v");
+            }
           }
-        }
+        });
+        return buf.toString();
       });
-      _logRequestHeader.finest(buf.toString());
-    }
 
     // Check length of URI does not exceed limits
 
@@ -147,9 +147,8 @@ class Request {
 
     _queryParams = new RequestParams._fromQueryString(request.uri.query);
 
-    if (_queryParams.isNotEmpty && _logRequestParam.level <= Level.FINE) {
-      final str = "[$id] query: ${queryParams.length} key(s): $queryParams";
-      _logRequestParam.finer(str);
+    if (_queryParams.isNotEmpty) {
+      _logRequestParam.finer(() => "[$id] query: $queryParams");
     }
 
     // Determine method used for maintaining (future) sessions
@@ -164,9 +163,11 @@ class Request {
   //================================================================
   // Accessors
 
-  //----------------------------------------------------------------
   /// Indicates if the request has a session or not.
+  ///
+  /// Deprecated: please use `x.session != null` instead of `x.hasSession`.
 
+  @deprecated
   bool get hasSession => session != null;
 
   //----------------------------------------------------------------
@@ -237,9 +238,8 @@ class Request {
 
       // Logging
 
-      if (postParams.isNotEmpty && _logRequestParam.level <= Level.FINE) {
-        final str = "[$id] post: ${postParams.length} key(s): $postParams";
-        _logRequestParam.finer(str);
+      if (postParams.isNotEmpty) {
+        _logRequestParam.finer(() => "[$id] post: $postParams");
       }
     }
   }
@@ -372,7 +372,7 @@ class Request {
   /// context.
 
   String sessionHiddenInputElement() {
-    if (hasSession && !_sessionUsingCookies) {
+    if (session != null && !_sessionUsingCookies) {
       // Require hidden POST form parameter to preserve session
       final name = HEsc.attr(server.sessionParamName);
       final value = HEsc.attr(session.id);
@@ -472,7 +472,7 @@ class Request {
           } else {
             _logSession
                 .finest("[$id] session could not be resumed: $sessionId");
-            await candidate._terminate(Session.endByFailureToResume);
+            await candidate._terminate(SessionTermination.resumeFailed);
             session = null;
           }
           _sessionWasSetInRequest = true;

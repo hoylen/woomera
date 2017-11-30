@@ -111,13 +111,17 @@ ws.bindAddress = InternetAddress.ANY_IP_V6;
 ws.bindPort = 1024;
 ```
 
-Typically, when deployed in production, the bind address will be
-`InternetAddress.LOOPBACK_IP_V6` (the default) and the service is
-running behind a reverse Web proxy (e.g. Apache or Nginx). The service
-will only be accessed from the same host it is running on.
-
 For testing, the above example sets it to `InternetAddress.ANY_IP_V6`,
-so the service can be accessed from any external machine.
+so the service is listening to connections on any interface (i.e. both
+loopback and public). When using `InternetAddress.ANY_IP_V6`, the
+`v6Only` member is used to control whether IPv4 addresses are included
+or not.
+
+Typically, when deployed in production, the service is accessed via a
+reverse Web proxy (e.g. Apache or Nginx). The default bind address is
+`InternetAddress.LOOPBACK_IP_V4`, which means it only listens for
+connections on 127.0.0.1. That is, only clients on the same host can
+connect to it.
 
 A port number 1024 or greater should be used, because the lower port
 numbers are require special permission to use.

@@ -10,15 +10,23 @@ part of woomera;
 /// If the future returns a response, processing stops and that response is
 /// used to produce the HTTP response. If the future returns null, the search
 /// continues for another matching rule.
+///
+/// Used for in the rules of a [ServerPipeline].
 
 typedef Future<Response> RequestHandler(Request req);
 
 //----------------------------------------------------------------
 
-/// Exception handler function type.
+/// Exception/error handler function type.
 ///
-/// Create server exception handler or pipeline exception
+/// Define server exception handlers or pipeline exception
 /// handlers matching this type.
+///
+/// The [ex] is `Object` because these methods are expected to handle anything
+/// that can be thrown or raised in Dart. This includes `Error` and `Exception`,
+/// but can be any type of object.
+///
+/// Used for [Server.exceptionHandler] and [ServerPipeline.exceptionHandler].
 
 typedef Future<Response> ExceptionHandler(Request r, Object ex, StackTrace st);
 

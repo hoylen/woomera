@@ -3,8 +3,8 @@ part of woomera;
 //================================================================
 /// Abstract base class for a response.
 ///
-/// The handlers (both in the rules in a [ServerPipeline] as well as the
-/// exception handlers) return an object based on this type.
+/// The various handlers return a [Future] to an object based on
+/// this type. See the [RequestHandler] and [ExceptionHandler] typedefs.
 
 abstract class Response {
   int _status = HttpStatus.OK;

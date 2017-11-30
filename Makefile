@@ -6,7 +6,7 @@
 FILES_TO_INSTALL=bin lib pubspec.yaml pubspec.lock packages
 FILES_IN_BUILD=bin lib etc pubspec.yaml pubspec.lock README.md Makefile
 
-.PHONY: build
+.PHONY: build coverage-suite
 
 APP_NAME=`awk '/^name:/ {print $$2}' pubspec.yaml`
 APP_VERSION=`awk '/^version:/ {print $$2}' pubspec.yaml`
@@ -37,9 +37,10 @@ help:
 	  echo "  clean       - deletes build directory"; \
 	  echo "Deployment targets:"; \
 	fi
-	@echo "  install      - install service and init.d script"
-	@echo "  uninstall    - uninstalls service and init.d script"
-	@echo "  purge        - uninstall and deletes config and logs"
+	@echo "  coverage-suite - updates the files in coverage-suite"
+	@echo "  install        - install service and init.d script"
+	@echo "  uninstall      - uninstalls service and init.d script"
+	@echo "  purge          - uninstall and deletes config and logs"
 	@echo
 	@echo "Deployment settings: (change by editing the Makefile)"
 	@echo "  Installation directory: ${INSTDIR}"
@@ -98,6 +99,18 @@ dartdoc:
 dartdocview:
 	@open doc/api/index.html
 
+coverage-suite:
+	@if [ ! -d coverage-suite ]; then \
+	  mkdir coverage-suite; \
+	fi
+	@find coverage-suite -type l -name \*.dart -exec rm {} \;
+	@for F in test/*_test.dart; do \
+	  ln -s ../$$F coverage-suite/`basename $$F`; \
+	done
+	@echo "Coverage test programs:"
+	@find coverage-suite -type l -name \*.dart -exec echo " - {}" \;
+	@echo "Run these with Coverage and add the coverage results into one active suite."
+
 build:
 	@rm -rf "build/${APP_NAME}-${APP_VERSION}"
 	@mkdir -p "build/${APP_NAME}-${APP_VERSION}"
@@ -111,5 +124,7 @@ build:
 
 clean:
 	@rm -f -r .pub build doc/api *~
+	@find coverage-suite -type l -name \*.dart -exec rm {} \;
+	@-rmdir coverage-suite
 
 #EOF
