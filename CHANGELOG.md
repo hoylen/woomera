@@ -5,7 +5,7 @@
 - Code made sound to support Dart strong mode.
 - Removed arbitrary properties from Request and Session: use subtypes instead.
 - Changed default bindAddress from LOOPBACK_IP_V6 to LOOPBACK_IP_V4.
-- Added convenience methods for registering PUT, PATCH and DELETE handlers.
+- Added convenience methods for registering PUT, PATCH, DELETE and HEAD handlers.
 - Added coverage tests.
 
 ## 1.0.5

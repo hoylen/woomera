@@ -111,6 +111,15 @@ class ServerPipeline {
     register("DELETE", path, handler);
   }
 
+  //----------------------------------------------------------------
+  /// Register a HEAD request handler.
+  ///
+  /// Shorthand for calling [register] with the method set to "HEAD".
+  ///
+  void head(String path, RequestHandler handler) {
+    register("HEAD", path, handler);
+  }
+
   //================================================================
   // Retrieval methods
 
