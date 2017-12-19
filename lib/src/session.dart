@@ -164,6 +164,8 @@ class Session {
 
   final DateTime _created; // When the session was created
 
+  DateTime _expires; // When the session is expected to expire
+
   /// Timer that expires the session after inactivity.
 
   Timer _expiryTimer;
@@ -210,6 +212,19 @@ class Session {
 
     _logSession.fine("[session:$id]: created");
   }
+
+  //================================================================
+  // Properties
+
+  //----------------------------------------------------------------
+  /// When the session was created.
+
+  DateTime get created => _created;
+
+  //----------------------------------------------------------------
+  /// When the session will expire (unless refreshed or terminated early).
+
+  DateTime get expires => _expires;
 
   //----------------------------------------------------------------
   /// Duration the session remains alive after the last HTTP request.
@@ -260,8 +275,10 @@ class Session {
   /// before the request handler returns.
 
   Future terminate() async {
-    _expiryTimer.cancel();
-    _expiryTimer = null;
+    if (_expiryTimer != null) {
+      _expiryTimer.cancel();
+      _expiryTimer = null;
+    }
     await _terminate(SessionTermination.terminated);
   }
 
@@ -283,6 +300,7 @@ class Session {
     if (_timeout != null) {
       _expiryTimer =
           new Timer(_timeout, () => _terminate(SessionTermination.timeout));
+      _expires = new DateTime.now().add(_timeout);
     }
   }
 

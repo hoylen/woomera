@@ -355,13 +355,29 @@ class Server {
   ///
   /// The returned future completes when the server is stopped.
   ///
+  /// Any sessions are terminated.
+  ///
   /// If [force] is true, active connections will be closed immediately.
 
   Future stop({bool force: false}) async {
-    _logServer.fine("stop");
+    _logServer.finer("stop: ${_allSessions.length} sessions, force=$force");
+
+    if (_allSessions.isNotEmpty) {
+      // Terminate all sessions
+      // First copy values to a list, because calling [terminate] will change
+      // the Map so simply iterating over [_allSessions.values] will not work.
+      final sList = _allSessions.values.toList(growable: false);
+      for (var s in sList) {
+        await s.terminate();
+      }
+    }
+
     if (_svr != null) {
+      // Stop the HTTP server
       await _svr.close(force: force);
     }
+
+    _logServer.finer("stop: closed");
   }
 
   //----------------------------------------------------------------
@@ -794,6 +810,12 @@ class Server {
   /// An [Iterable] of all the currently active sessions.
 
   Iterable<Session> get sessions => _allSessions.values;
+
+  /// Number of active sessions.
+
+  int get numSessions => _allSessions.length;
+
+  // Internal Map to track all active sessions.
 
   final Map<String, Session> _allSessions = {};
 

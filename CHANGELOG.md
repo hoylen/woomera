@@ -1,5 +1,12 @@
 # Changelog
 
+## 2.1.0
+
+- Added ability to retrieve the number of active sessions.
+- Added access to creation time for sessions.
+- Added expiry time for sessions.
+- Stopping a server also terminates any sessions.
+
 ## 2.0.0
 
 - Code made sound to support Dart strong mode.

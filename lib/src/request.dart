@@ -466,12 +466,11 @@ class Request {
 
         if (candidate != null) {
           if (await candidate.resume(this)) {
-            _logSession.finest("[$id] session resumed: $sessionId");
+            _logSession.finest("[$id] [session:$sessionId] resumed");
             candidate._refresh(); // restart timeout timer
             session = candidate;
           } else {
-            _logSession
-                .finest("[$id] session could not be resumed: $sessionId");
+            _logSession.finest("[$id] [sessionL$sessionId] can't resume");
             await candidate._terminate(SessionTermination.resumeFailed);
             session = null;
           }
@@ -479,7 +478,7 @@ class Request {
           return; // found session (but might not have been restored)
 
         } else {
-          _logSession.finest("[$id] session not found: $sessionId");
+          _logSession.finest("[$id] [session:$sessionId] not found");
           // fall through to treat as no session found
         }
       } else {
