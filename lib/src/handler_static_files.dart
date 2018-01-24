@@ -344,7 +344,7 @@ class StaticFiles {
         n = entity.uri.pathSegments.last;
         cl = "class=\"file\"";
       }
-      buf.write("<li><a href='${HEsc.attr(n)}'$cl>${HEsc.text(n)}</a></li>\n");
+      buf.write("<li><a href='${HEsc.attr(n)}' $cl>${HEsc.text(n)}</a></li>\n");
     }
 
     buf.write("""
@@ -353,7 +353,10 @@ class StaticFiles {
 </html>
 """);
 
-    final resp = new ResponseBuffered(ContentType.HTML)..write(buf.toString());
+    final resp = new ResponseBuffered(ContentType.HTML)
+      ..header("Date", _rfc1123DateFormat(new DateTime.now()))
+      ..header("Content-Length", buf.length.toString())
+      ..write(buf.toString());
     return resp;
   }
 
@@ -379,8 +382,45 @@ class StaticFiles {
     contentType = contentType ?? ContentType.BINARY; // default if not known
 
     // Return contents of file
+    // Last-Modified, Date and Content-Length helps browsers cache the contents.
 
-    final resp = new ResponseStream(contentType);
+    final resp = new ResponseStream(contentType)
+      ..header("Date", _rfc1123DateFormat(new DateTime.now()))
+      ..header("Last-Modified", _rfc1123DateFormat(file.lastModifiedSync()))
+      ..header("Content-Length", (await file.length()).toString());
+
     return await resp.addStream(req, file.openRead());
+  }
+
+  //----------------------------------------------------------------
+  // Formats a DateTime for use in HTTP headers.
+  //
+  // Format a DateTime in the `rfc1123-date` format as defined by section 3.3.1
+  // of RFC 2616 <https://tools.ietf.org/html/rfc2616#section-3.3>.
+
+  String _rfc1123DateFormat(DateTime datetime) {
+    final u = datetime.toUtc();
+    final wd = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"][u.weekday - 1];
+    final mon = [
+      "Jan",
+      "Feb",
+      "Mar",
+      "Apr",
+      "May",
+      "Jun",
+      "Jul",
+      "Aug",
+      "Sep",
+      "Oct",
+      "Nov",
+      "Dec"
+    ][u.month - 1];
+    final dd = u.day.toString().padLeft(2, "0");
+    final year = u.year.toString().padLeft(4, "0");
+    final hh = u.hour.toString().padLeft(2, "0");
+    final mm = u.minute.toString().padLeft(2, "0");
+    final ss = u.second.toString().padLeft(2, "0");
+
+    return "$wd, $dd $mon $year $hh:$mm:$ss GMT";
   }
 }

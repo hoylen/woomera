@@ -1,5 +1,9 @@
 # Changelog
 
+## 2.1.1
+
+- Included Length, Last-Modified, and Date HTTP headers for StaticFiles.
+
 ## 2.1.0
 
 - Added ability to retrieve the number of active sessions.
