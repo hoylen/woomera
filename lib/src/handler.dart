@@ -46,7 +46,8 @@ Future<Response> _invokeRequestHandler(
   // that don't use async). Must use zones, since a simple try/catch
   // would only catch exceptions thrown from async methods.
 
-  runZoned(() async {
+  // ignore: UNUSED_LOCAL_VARIABLE
+  final doNotWaitOnThis = runZoned(() async {
     final result = await handler(req); // call the handler
     hCompleter.complete(result);
   }, onError: (Object e, StackTrace s) {
@@ -88,7 +89,8 @@ Future<Response> _invokeExceptionHandler(
   // that don't use async). Must use zones, since a simple try/catch
   // would only catch exceptions thrown from async methods.
 
-  runZoned(() async {
+  // ignore: UNUSED_LOCAL_VARIABLE
+  final doNotWaitOnThis = runZoned(() async {
     final result = await eh(req, ex, st); // call the exception handler
     hCompleter.complete(result);
   }, onError: (Object e, StackTrace s) {

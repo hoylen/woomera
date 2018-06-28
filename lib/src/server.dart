@@ -17,7 +17,20 @@ part of woomera;
 
 /// Type for a request factory.
 ///
-typedef Request RequestFactory(HttpRequest request, String id, Server server);
+/// Note: despite the name, this has nothing to do with the Dart factory keyword.
+
+typedef FutureOr<Request> RequestCreator(
+    HttpRequest request, String id, Server server);
+
+
+/// Use [RequestCreator] typedef instead.
+///
+/// This name can be confused with the `factory` feature in Dart.
+
+@deprecated
+typedef FutureOr<Request> RequestFactory(
+    HttpRequest request, String id, Server server);
+
 
 //----------------------------------------------------------------
 /// A Web server.
@@ -177,14 +190,16 @@ class Server {
 
   /// Function used to create a [Request] object for each HTTP request.
   ///
-  /// Applications can set this to a [RequestFactory] function that returns
-  /// a subclass of [Request], if it wants to pass custom information to
-  /// handlers in the request object.
+  /// Applications can set this to a [RequestCreator] function that returns
+  /// a subclass of [Request] or a Future that produces one. This allows them
+  /// to pass custom information to handlers in the request object and to
+  /// perform custom cleanup at the end of request processing (by overriding the
+  /// the [Request.release] method).
   ///
-  /// The default is null, which means the server will create a [Request]
+  /// The default is null, which means the server will create a normal [Request]
   /// object.
-  ///
-  RequestFactory requestFactory;
+
+  RequestCreator requestCreator;
 
   // Set when the server is running (i.e. is listening for requests).
 
@@ -232,6 +247,27 @@ class Server {
   /// listening for requests over HTTP. Null means it is not running.
 
   bool get isSecure => _isSecure;
+
+  //================================================================
+  // For backward compatibility
+  // TODO: remove in a future release.
+
+  /// Use [requestCreator] instead.
+  ///
+  /// This name can be confused with the `factory` feature in Dart.
+
+  @deprecated
+  RequestCreator get requestFactory => requestCreator;
+
+  /// Use [requestCreator] instead.
+  ///
+  /// This name can be confused with the `factory` feature in Dart.
+
+  @deprecated
+  set requestFactory(RequestCreator c) { requestCreator = c; }
+
+  //================================================================
+  // Methods
 
   //----------------------------------------------------------------
   /// Starts the Web server.
@@ -302,7 +338,8 @@ class Server {
 
     final requestLoopCompleter = new Completer<int>();
 
-    runZoned(() async {
+    // ignore: UNUSED_LOCAL_VARIABLE
+    final doNotWaitOnThis = runZoned(() async {
       // The request processing loop
 
       await for (var request in _svr) {
@@ -310,7 +347,13 @@ class Server {
           // Note: although _handleRequest returns a Future that completes when
           // the request is fully processed, this does NOT wait for it to
           // complete, so that multiple requests can be handled in parallel.
-          _handleRequest(request, "$id${++requestNo}");
+
+          //_logServer.info("HTTP Request: [$id${requestNo + 1}] starting handler");
+
+          final doNotWait = _handleRequest(request, "$id${++requestNo}");
+
+          //_logServer.info("HTTP Request: [$id$requestNo] handler started");
+
         } catch (e, s) {
           _logServer.shout(
               "uncaught try/catch exception (${e.runtimeType}): $e", e, s);
@@ -387,16 +430,36 @@ class Server {
     try {
       // Create context
 
-      final req = (requestFactory != null)
-          ? requestFactory(request, requestId, this)
-          : new Request(request, requestId, this);
+      Request req;
 
-      await req._postParmsInit(postMaxSize);
-      await req._sessionRestore(); // must be after POST parameters gotten
+      if (requestCreator != null) {
+        // Application uses a custom request: invoke it for the request object
+        _logRequest.finest("_handleRequest: creating custom request object");
 
-      // Handle the request in its context
+        final x = requestCreator(request, requestId, this);
+        req = (x is Request) ? x : await x;
+      } else {
+        // No custom request: create a [Request] object
+        _logRequest.finest("_handleRequest: creating standard request object");
 
-      await _handleRequestWithContext(req);
+        req = new Request(request, requestId, this);
+      }
+      assert(req != null);
+      assert(req is Request);
+
+      try {
+        await req._postParmsInit(postMaxSize);
+        await req._sessionRestore(); // must be after POST parameters gotten
+
+        // Handle the request in its context
+
+        await _handleRequestWithContext(req);
+      } finally {
+        // The release method on the [Request] (or its subclass) is always
+        // invoked so it can clean up. For example, when a request subtype
+        // has a transaction that needs to be released.
+        await req.release();
+      }
 
       // The _handleRequestWithContext normally deals with any exceptions
       // that might be thrown, otherwise something very bad went wrong!
@@ -437,6 +500,8 @@ class Server {
     } finally {
       await request.response.close(); // always close the response
     }
+
+    _logRequest.finest("_handleRequest: done");
   }
 
   //--------

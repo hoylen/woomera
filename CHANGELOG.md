@@ -1,5 +1,11 @@
 # Changelog
 
+## 2.2.0
+
+- Changed RequestFactory to return FutureOr<Request> instead of Request.
+- Added release method on Request class to perform cleanup operations.
+- Deprecated requestFactory: renamed to requestCreator.
+
 ## 2.1.1
 
 - Included Length, Last-Modified, and Date HTTP headers for StaticFiles.

@@ -161,6 +161,23 @@ class Request {
   }
 
   //================================================================
+  // Release method
+
+  /// Release method
+  ///
+  /// This method is guaranteed to be invoked when the server is finished
+  /// with the [Request] object.
+  ///
+  /// It does nothing in [Request], but applications implementing their own
+  /// custom subclass can use it to clean up. For example, if the custom
+  /// subclass creates a transaction, commit/rollback on it can be invoked
+  /// in its implementation of release.
+
+  Future release() async {
+    // do nothing
+  }
+
+  //================================================================
   // Accessors
 
   /// Indicates if the request has a session or not.
