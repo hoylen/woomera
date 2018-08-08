@@ -53,11 +53,12 @@ Future<Response> _invokeRequestHandler(
   }, onError: (Object e, StackTrace s) {
     thrownObject = e;
     // stacktrace = s;
-    if (! hCompleter.isCompleted) {
+    if (!hCompleter.isCompleted) {
       _logRequest.finest("[${req.id}] handler onError (${e.runtimeType}): $e");
       hCompleter.complete(null);
     } else {
-      _logRequest.finest("[${req.id}] handler onError ignored (${e.runtimeType}): $e");
+      _logRequest
+          .finest("[${req.id}] handler onError ignored (${e.runtimeType}): $e");
     }
   });
 

@@ -22,7 +22,6 @@ part of woomera;
 typedef FutureOr<Request> RequestCreator(
     HttpRequest request, String id, Server server);
 
-
 /// Use [RequestCreator] typedef instead.
 ///
 /// This name can be confused with the `factory` feature in Dart.
@@ -30,7 +29,6 @@ typedef FutureOr<Request> RequestCreator(
 @deprecated
 typedef FutureOr<Request> RequestFactory(
     HttpRequest request, String id, Server server);
-
 
 //----------------------------------------------------------------
 /// A Web server.
@@ -264,7 +262,9 @@ class Server {
   /// This name can be confused with the `factory` feature in Dart.
 
   @deprecated
-  set requestFactory(RequestCreator c) { requestCreator = c; }
+  set requestFactory(RequestCreator c) {
+    requestCreator = c;
+  }
 
   //================================================================
   // Methods

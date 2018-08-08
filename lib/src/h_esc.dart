@@ -66,7 +66,6 @@ abstract class HEsc {
   /// If [value] is null, the empty string is returned.
 
   static String text(Object value) {
-
     if (value != null) {
       var s = value.toString().replaceAll("&", "&amp;");
       s = s.replaceAll("<", "&lt;");

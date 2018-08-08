@@ -11,7 +11,6 @@ part of woomera;
 /// processing sets of checkboxes or radio buttons.
 
 class RequestParams {
-
   //================================================================
 
   // Stores the parameter keys and values.
@@ -71,7 +70,8 @@ class RequestParams {
               Uri.decodeQueryComponent(value, encoding: encoding));
         } else {
           // Has "=", but is first character: key is empty string
-          _add("", Uri.decodeQueryComponent(pair.substring(1), encoding: encoding));
+          _add("",
+              Uri.decodeQueryComponent(pair.substring(1), encoding: encoding));
         }
       }
     }
