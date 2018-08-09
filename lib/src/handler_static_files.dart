@@ -23,17 +23,17 @@ class StaticFiles {
   ///
   /// This list is only examined if a match was not found in the
   /// local [mimeTypes]. If a match could not be found in this global map,
-  /// the default of [ContentType.BINARY] is used.
+  /// the default of [ContentType.binary] is used.
   ///
   /// This list contains values for extensions such as: txt, html, htm, json,
   /// css, png, jpg, jpeg, gif, xml, js, dart. Note: only lowercase extensions
   /// will match.
 
   static Map<String, ContentType> defaultMimeTypes = {
-    "txt": ContentType.TEXT,
-    "html": ContentType.HTML,
-    "htm": ContentType.HTML,
-    "json": ContentType.JSON,
+    "txt": ContentType.text,
+    "html": ContentType.html,
+    "htm": ContentType.html,
+    "json": ContentType.json,
     "css": new ContentType("text", "css"),
     "png": new ContentType("image", "png"),
     "jpg": new ContentType("image", "jpeg"),
@@ -241,8 +241,8 @@ class StaticFiles {
         final defaultFile = await _findDefaultFile(path);
 
         if (defaultFile != null) {
-          _logRequest.finest("[${req
-                .id}] static directory: default file found: $defaultFile");
+          _logRequest.finest(
+              "[${req.id}] static directory: default file found: $defaultFile");
           return await _serveFile(req, defaultFile);
         }
 
@@ -353,7 +353,7 @@ class StaticFiles {
 </html>
 """);
 
-    final resp = new ResponseBuffered(ContentType.HTML)
+    final resp = new ResponseBuffered(ContentType.html)
       ..header("Date", _rfc1123DateFormat(new DateTime.now()))
       ..header("Content-Length", buf.length.toString())
       ..write(buf.toString());
@@ -379,7 +379,7 @@ class StaticFiles {
       }
     }
 
-    contentType = contentType ?? ContentType.BINARY; // default if not known
+    contentType = contentType ?? ContentType.binary; // default if not known
 
     // Return contents of file
     // Last-Modified, Date and Content-Length helps browsers cache the contents.

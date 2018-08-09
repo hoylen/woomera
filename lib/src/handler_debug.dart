@@ -50,6 +50,6 @@ Future<Response> debugHandler(Request req) async {
 
   buf.write("Time: ${new DateTime.now().toString()}");
 
-  final resp = new ResponseBuffered(ContentType.TEXT)..write(buf.toString());
+  final resp = new ResponseBuffered(ContentType.text)..write(buf.toString());
   return resp;
 }

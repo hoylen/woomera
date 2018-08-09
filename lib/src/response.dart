@@ -7,8 +7,8 @@ part of woomera;
 /// this type. See the [RequestHandler] and [ExceptionHandler] typedefs.
 
 abstract class Response {
-  int _status = HttpStatus.OK;
-  ContentType _contentType = ContentType.BINARY;
+  int _status = HttpStatus.ok;
+  ContentType _contentType = ContentType.binary;
   final _headers = <String, List<String>>{};
   final _cookies = <Cookie>[];
   bool _headersOutputted = false;
@@ -336,11 +336,11 @@ class ResponseRedirect extends Response {
   ///
   /// The [status] must be a redirection HTTP status code.
   ///
-  /// The default status is [HttpStatus.SEE_OTHER] (303).
-  /// Other commonly used values are [HttpStatus.MOVED_PERMANENTLY] (301) and
-  /// [HttpStatus.MOVED_TEMPORARILY] (302).
+  /// The default status is [HttpStatus.seeOther] (303).
+  /// Other commonly used values are [HttpStatus.movedPermanently] (301) and
+  /// [HttpStatus.movedtemporarily] (302).
   ///
-  /// The value of [HttpStatus.TEMPORARY_REDIRECT] (307) is used when the method
+  /// The value of [HttpStatus.temporaryRedirect] (307) is used when the method
   /// is preserved. That is, GET request is redirected to a GET request
   /// and a POST request is redirected to a POST request. Old browsers might
   /// not support this status code.
@@ -348,7 +348,7 @@ class ResponseRedirect extends Response {
   /// For more information on HTTP status codes, see
   /// <https://www.w3.org/Protocols/rfc2616/rfc2616-sec10.html#sec10.3>
 
-  ResponseRedirect(String addr, {int status: HttpStatus.SEE_OTHER}) {
+  ResponseRedirect(String addr, {int status: HttpStatus.seeOther}) {
     if (status < 300 || 399 < status) {
       throw new ArgumentError.value(
           status, "status", "ResponseRedirect: not a redirection HTTP status");

@@ -11,7 +11,7 @@
 //----------------------------------------------------------------
 
 import 'dart:async';
-import 'dart:convert' show JSON;
+import 'dart:convert' show json;
 import 'dart:io'
     show
         ContentType,
@@ -655,9 +655,9 @@ Stream<List<int>> _streamSource(Request req, int iterations, int secs) async* {
 Future<Response> handleJson(Request req) async {
   final data = {'name': "John Citizen", 'address': "foo"};
 
-  // response.headers.contentType = ContentType.JSON
-  print(JSON.encode(data));
-  // JSON.decode(str);
+  // response.headers.contentType = ContentType.json
+  print(json.encode(data));
+  // json.decode(str);
 
   final resp = new ResponseBuffered(ContentType.TEXT)..write("JSON test");
   return resp;

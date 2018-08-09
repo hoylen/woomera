@@ -55,7 +55,7 @@ class RequestParams {
   /// Each query component will be decoded using [encoding]. The default encoding
   /// is UTF-8.
   ///
-  RequestParams._fromQueryString(String query, {Encoding encoding: UTF8}) {
+  RequestParams._fromQueryString(String query, {Encoding encoding: utf8}) {
     for (var pair in query.split("&")) {
       if (pair.isNotEmpty) {
         final index = pair.indexOf("=");

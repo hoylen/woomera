@@ -102,11 +102,11 @@ class Server {
   /// Bind address for the server.
   ///
   /// Can be a String containing a hostname or IP address, or one of these
-  /// values from the [InternetAddress] class: [InternetAddress.LOOPBACK_IP_V4],
-  /// [InternetAddress.LOOPBACK_IP_V6], [InternetAddress.ANY_IP_V4] or
-  /// [InternetAddress.ANY_IP_V6].
+  /// values from the [InternetAddress] class: [InternetAddress.loopbackIPv4],
+  /// [InternetAddress.loopbackIPv6], [InternetAddress.anyIPv4] or
+  /// [InternetAddress.anyIPv6].
   ///
-  /// The default value is LOOPBACK_IP_V4, which means it only listens on the
+  /// The default value is loopbackIPv4, which means it only listens on the
   /// IPv4 loopback address of 127.0.0.1. This option is usually used when
   /// the service is run behind a reverse proxy server (e.g. Apache or Nginx).
   /// The server can only be contacted over IPv4 from the same machine.
@@ -115,14 +115,14 @@ class Server {
   /// otherwise clients external to the machine will not be allowed to connect
   /// to the Web server.
   ///
-  /// If it is set to [InternetAddress.ANY_IP_V6], it listens on any IPv4 or
+  /// If it is set to [InternetAddress.anyIPv6], it listens on any IPv4 or
   /// IPv6 address (including the loop-back addresses),
   /// unless [v6Only] is set to true (in which case it only listens on any IPv6
   /// address and the IPv6 loopback address).
 
-  InternetAddress bindAddress = InternetAddress.LOOPBACK_IP_V4;
+  InternetAddress bindAddress = InternetAddress.loopbackIPv4;
 
-  /// Indicates how a [bindAddress] value of [InternetAddress.ANY_IP_V6] treats IPv4 addresses.
+  /// Indicates how a [bindAddress] value of [InternetAddress.anyIPv6] treats IPv4 addresses.
   ///
   /// The default is false, which means it listens to any IPv4 and any IPv6
   /// addresses.
@@ -131,7 +131,7 @@ class Server {
   /// listen on any IPv4 address.
   ///
   /// This value has no effect if the [bindAddress] is not
-  /// [InternetAddress.ANY_IP_V6]. Therefore, it is not possible to listen on
+  /// [InternetAddress.anyIPv6]. Therefore, it is not possible to listen on
   /// both IPv4 and IPv6 loop-back addresses at the same time (not without also
   /// listening on every IPv4 and IPv6 address too).
 
@@ -351,6 +351,7 @@ class Server {
           //_logServer.info("HTTP Request: [$id${requestNo + 1}] starting handler");
 
           final doNotWait = _handleRequest(request, "$id${++requestNo}");
+          assert(doNotWait != null);
 
           //_logServer.info("HTTP Request: [$id$requestNo] handler started");
 
@@ -483,10 +484,10 @@ class Server {
       } else if (e is FormatException ||
           e is PathTooLongException ||
           e is PostTooLongException) {
-        status = HttpStatus.BAD_REQUEST;
+        status = HttpStatus.badRequest;
         message = "Bad request";
       } else {
-        status = HttpStatus.INTERNAL_SERVER_ERROR;
+        status = HttpStatus.internalServerError;
         message = "Internal error";
       }
 
@@ -555,8 +556,8 @@ class Server {
 
             if (params.isNotEmpty && _logRequestParam.level <= Level.FINER) {
               // Log path parameters
-              final str = "[${req.id}] path: ${params.length} key(s): ${params
-                  .toString()}";
+              final str =
+                  "[${req.id}] path: ${params.length} key(s): ${params.toString()}";
               _logRequestParam.finer(str);
             }
 
@@ -629,8 +630,8 @@ class Server {
               // handler produced a result
               break; // stop looking for further matches in this pipe
             } else {
-              _logRequest.fine("[${req
-                      .id}] handler returned no response, continue matching");
+              _logRequest.fine(
+                  "[${req.id}] handler returned no response, continue matching");
               // handler indicated that processing is to continue processing with
               // the next match in the rule/pipeline.
             }
@@ -721,7 +722,7 @@ class Server {
 
   static Future<Response> _defaultExceptionHandler(
       Request req, Object thrownObject, StackTrace st) async {
-    var status = HttpStatus.INTERNAL_SERVER_ERROR;
+    var status = HttpStatus.internalServerError;
     String title;
     String message;
 
@@ -733,8 +734,8 @@ class Server {
       assert(st == null);
 
       status = (thrownObject.found == NotFoundException.foundNothing)
-          ? HttpStatus.METHOD_NOT_ALLOWED
-          : HttpStatus.NOT_FOUND;
+          ? HttpStatus.methodNotAllowed
+          : HttpStatus.notFound;
       title = "Error: Not found";
       message = "Sorry, the page you were looking for was not found.";
     } else {
@@ -754,12 +755,12 @@ class Server {
         _logResponse.finest("[${req.id}] stack trace:\n$st");
       }
 
-      status = HttpStatus.INTERNAL_SERVER_ERROR;
+      status = HttpStatus.internalServerError;
       title = "Error";
       message = "Sorry, an error occured while processing the request.";
     }
 
-    final resp = new ResponseBuffered(ContentType.HTML)
+    final resp = new ResponseBuffered(ContentType.html)
       ..status = status
       ..write("""
 <!doctype html>

@@ -1,5 +1,10 @@
 # Changelog
 
+## 3.0.0
+
+- Updated the upper bound of the SDK constraint to <3.0.0.
+- Changed names to use new Dart 2 names.
+
 ## 2.2.1
 
 - This version runs under Dart 1.

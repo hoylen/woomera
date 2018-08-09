@@ -7,7 +7,7 @@
 library main;
 
 import 'dart:async';
-import 'dart:convert' show UTF8;
+import 'dart:convert' show utf8;
 import 'dart:io' show ContentType, HttpClient, HttpStatus;
 
 import 'package:test/test.dart';
@@ -201,7 +201,7 @@ Future<TestResponse> getRequest(String path) async {
   final response = await request.close();
 
   final contents = new StringBuffer();
-  await for (var chunk in response.transform(UTF8.decoder)) {
+  await for (var chunk in response.transform(utf8.decoder)) {
     contents.write(chunk);
   }
 
@@ -223,7 +223,7 @@ Future<TestResponse> postRequest(String path, String data) async {
   final response = await request.close();
 
   final contents = new StringBuffer();
-  await for (var chunk in response.transform(UTF8.decoder)) {
+  await for (var chunk in response.transform(utf8.decoder)) {
     contents.write(chunk);
   }
 

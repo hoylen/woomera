@@ -1,11 +1,11 @@
 name: woomera
-version: 2.2.1
-description: Web framework for HTTP request handling and session manager
+version: 3.0.0
+description: Web framework for handling HTTP requests, managing sessions and generating responses
 homepage: https://github.com/hoylen/woomera
 author: Hoylen Sue <hoylen@hoylen.com>
 
 environment:
-  sdk: '>=1.13.0 <2.0.0'
+  sdk: '^2.0.0'
 
 dev_dependencies:
   test: ">=0.12.10 <1.4.0"

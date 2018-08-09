@@ -105,26 +105,26 @@ class Request {
     assert(id != null);
     assert(server != null);
 
-    _logRequest
-      ..fine("[$id] ${request.method} ${request.uri.path}")
-      ..finer(() {
-        // Log request
-        final buf = new StringBuffer("[$id] HTTP headers:");
-        request.headers.forEach((name, values) {
-          buf.write("\n  $name: ");
-          if (values.isEmpty) {
-            buf.write("<noValue>");
-          } else if (values.length == 1) {
-            buf.write("${values[0]}");
-          } else {
-            var index = 1;
-            for (var v in values) {
-              buf.write("\n  [${index++}] $v");
-            }
+    _logRequest.fine("[$id] ${request.method} ${request.uri.path}");
+
+    _logRequestHeader.finer(() {
+      // Log request
+      final buf = new StringBuffer("[$id] HTTP headers:");
+      request.headers.forEach((name, values) {
+        buf.write("\n  $name: ");
+        if (values.isEmpty) {
+          buf.write("<noValue>");
+        } else if (values.length == 1) {
+          buf.write("${values[0]}");
+        } else {
+          var index = 1;
+          for (var v in values) {
+            buf.write("\n  [${index++}] $v");
           }
-        });
-        return buf.toString();
+        }
       });
+      return buf.toString();
+    });
 
     // Check length of URI does not exceed limits
 
@@ -247,7 +247,7 @@ class Request {
 
       // Convert the contents into a string
 
-      final str = UTF8.decoder.convert(buf);
+      final str = utf8.decoder.convert(buf);
 
       // Parse the string into parameters
 
