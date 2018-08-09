@@ -2,6 +2,7 @@
 
 ## 2.2.1
 
+- This version runs under Dart 1.
 - Updated dependencies to allow for Dart 2 compatible versions to be used.
 
 ## 2.2.0
