@@ -208,9 +208,9 @@ void runTests(Future<int> numProcessedFuture) {
 
   test("Exception handler throws an Exception", () async {
     final str = await getRequest("/test4");
-    expect(str, startsWith("Server caught: Instance of 'ExceptionHandlerException'\n"));
+    expect(str,
+        startsWith("Server caught: Instance of 'ExceptionHandlerException'\n"));
   });
-
 
   //----------------
 

@@ -3,7 +3,7 @@
 /// This program runs a Web server to demonstrate the features of the Woomera
 /// framework.
 ///
-/// This program runs a single HTTP Web server (on port 1023), and has defined
+/// This program runs a single HTTP Web server (on port 1024), and has defined
 /// two pipelines for processing the HTTP requests.
 ///
 /// Copyright (c) 2016, Hoylen Sue. All rights reserved. Use of this source code
@@ -1024,11 +1024,15 @@ Server _serverSetup() {
   // pipelines (which normally doesn't happen in ordinary applications) so
   // these are global variables so that the handler methods can access them.
 
+  final port = 1024;
+
   webServer = new Server()
     ..bindAddress = InternetAddress.ANY_IP_V6
     ..v6Only = false // false = listen to any IPv4 and any IPv6 address
-    ..bindPort = 1024
+    ..bindPort = port
     ..exceptionHandler = exceptionHandlerOnServer; // set exception handler
+
+  mainLog.info("Web server running on port $port");
 
   //--------
   // Setup the first pipeline
@@ -1117,6 +1121,8 @@ Server _serverSetup() {
 
   final dirContainingThisFile = FileSystemEntity.parentOf(Platform.script.path);
   final projectDir = FileSystemEntity.parentOf(dirContainingThisFile);
+
+  //mainLog.info("projectDir: $projectDir");
 
   // Map paths without an end slash to a directory, allow directory listing
 

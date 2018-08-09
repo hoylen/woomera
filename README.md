@@ -15,11 +15,24 @@ reduce that complexity.
 Main features include:
 
 - URL pattern matching inspired by the
-  [Sinatra](http://www.sinatrab.com/) Web framework;
-- Pipelines of patterns to allow sophisticated processing, if needed;
-- Exception handling to ensure error pages are reliably generated;
+  [Sinatra](http://www.sinatrab.com/) Web framework - allows easy
+  parsing of URL path components as parameters;
+  
+- Exception handling framework - ensures error pages are reliably
+  generated and unexpected exceptions are always "caught" to generate
+  an error page response;
+
+- Pipelines of patterns for matching against URLs to allow
+  sophisticated processing, if needed - allows requests to be processed
+  by multiple handlers (e.g. to log/audit requests before handling them)
+  and different exception handlers to be set for different resources;
+
 - Session management using cookies or URL rewriting;
-- Responses can be generated into a buffer;
+
+- Responses can be generated into a buffer - allows response to
+  contain a complete error page instead of an incompletely generated
+  result page.
+
 - Responses can be read from a stream of data.
 
 This following is a tutorial which provides an overview the main

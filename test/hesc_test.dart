@@ -93,6 +93,5 @@ Future main() async {
       expect(HEsc.lines(42), equals("42"));
       expect(HEsc.lines(new TestThing()), equals("begin<br/>end"));
     });
-
   });
 }

@@ -23,7 +23,7 @@ final _log = new Logger("session_test");
 
 Future main() async {
   //loggingSetup(level: Level.ALL);
-  loggingSetup(levels: { 'woomera.session' : Level.ALL});
+  loggingSetup(levels: {'woomera.session': Level.ALL});
   //loggingSetup();
 
   // Create and configure server
@@ -79,7 +79,8 @@ Future<Response> _handleTopLevel(Request req) async {
     resp.write(
         "<table><tr><th>Session ID</th><th>Created</th><th>Timeout</th><th>Expires</th></tr>\n");
     for (var s in ws.sessions) {
-      final current = (req.session != null && req.session.id == s.id) ? "*" : "";
+      final current =
+          (req.session != null && req.session.id == s.id) ? "*" : "";
       final highlight = (s.id == newId) ? "style='color: green;'" : "";
       resp.write("""
       <tr $highlight>
@@ -90,7 +91,8 @@ Future<Response> _handleTopLevel(Request req) async {
       </tr>
       """);
     }
-    resp.write("<tr><td colspan='3' id='currentTime'>Current time:</td><td>${new DateTime.now()}</td></tr></table>\n");
+    resp.write(
+        "<tr><td colspan='3' id='currentTime'>Current time:</td><td>${new DateTime.now()}</td></tr></table>\n");
   } else {
     resp.write("<p>No sessions.</p>\n");
   }
