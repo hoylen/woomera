@@ -100,11 +100,10 @@ class Request {
   //================================================================
   /// Constructor
   ///
-  Request(this.request, this.id, this.server) {
-    assert(request != null);
-    assert(id != null);
-    assert(server != null);
-
+  Request(this.request, this.id, this.server)
+      : assert(request != null),
+        assert(id != null),
+        assert(server != null) {
     _logRequest.fine("[$id] ${request.method} ${request.uri.path}");
 
     _logRequestHeader.finer(() {
@@ -303,7 +302,7 @@ class Request {
   /// context for the request and the response. The session is a part of that
   /// context.
 
-  String rewriteUrl(String iUrl, {bool includeSession: null}) {
+  String rewriteUrl(String iUrl, {bool includeSession}) {
     if (!iUrl.startsWith("~/")) {
       throw new ArgumentError.value(
           iUrl, "rUrl", "rewriteUrl: does not start with '~/'");
@@ -575,6 +574,6 @@ class Request {
   /// [includeSession] to false and use the [sessionHiddenInputElement] method
   /// inside the form element. See [sessionHiddenInputElement] for more details.
 
-  String ura(String iUrl, {bool includeSession: null}) =>
+  String ura(String iUrl, {bool includeSession}) =>
       HEsc.attr(rewriteUrl(iUrl, includeSession: includeSession));
 }

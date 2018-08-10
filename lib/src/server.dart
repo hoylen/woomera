@@ -292,9 +292,9 @@ class Server {
   /// Throws a [StateError] if the server is already running.
 
   Future<int> run(
-      {String privateKeyFilename: null,
-      String certificateName: null,
-      String certChainFilename: null}) async {
+      {String privateKeyFilename,
+      String certificateName,
+      String certChainFilename}) async {
     if (_svr != null) {
       throw new StateError("server already running");
     }

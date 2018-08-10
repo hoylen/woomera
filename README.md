@@ -35,8 +35,8 @@ Main features include:
 
 - Responses can be read from a stream of data.
 
-**Note:** Woomera version 2.x.x and earlier requires Dart 1.  Woomera
-version 3.0.0 will be the first release that requires Dart 2.
+**Note:** This version **requires Dart 2**.  Please use version
+"<3.0.0" if running **Dart 1**.
 
 This following is a tutorial which provides an overview the main
 features of the package. For details about the package and its

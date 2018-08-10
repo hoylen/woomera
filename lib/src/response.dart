@@ -338,7 +338,7 @@ class ResponseRedirect extends Response {
   ///
   /// The default status is [HttpStatus.seeOther] (303).
   /// Other commonly used values are [HttpStatus.movedPermanently] (301) and
-  /// [HttpStatus.movedtemporarily] (302).
+  /// [HttpStatus.movedTemporarily] (302).
   ///
   /// The value of [HttpStatus.temporaryRedirect] (307) is used when the method
   /// is preserved. That is, GET request is redirected to a GET request

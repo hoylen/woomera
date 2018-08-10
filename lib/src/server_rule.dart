@@ -53,9 +53,7 @@ class ServerRule {
   /// "/foo/*"
   /// "/foo/bar?/baz"
 
-  ServerRule(String pathPattern, this.handler) {
-    assert(pathPattern != null);
-
+  ServerRule(String pathPattern, this.handler) : assert(pathPattern != null) {
     _segments = pathPattern.split(_pathSeparator);
 
     assert(_segments.isNotEmpty);
