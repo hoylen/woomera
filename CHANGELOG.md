@@ -1,5 +1,9 @@
 # Changelog
 
+## 3.1.1
+
+- Fixed problem with publishing documentation on pub.dartlang.org.
+
 ## 3.0.0
 
 - Updated the upper bound of the SDK constraint to <3.0.0.
