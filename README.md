@@ -61,7 +61,7 @@ Future main() async {
   // Create and configure server
 
   var ws = new Server();
-  ws.bindAddress = InternetAddress.ANY_IP_V6;
+  ws.bindAddress = InternetAddress.anyIPv6;
   ws.bindPort = 1024;
 
   // Register rules
@@ -660,7 +660,18 @@ session cookies or URL rewriting. The application can terminate a
 session, or they will automatically terminate after a nominated
 timeout period after they were last used.
 
-## 7. References
+### 7. Logging
+
+Woomera uses the [Logging](https://pub.dartlang.org/packages/logging) package
+for logging.
+
+Please see the woomera library API documentation for the logger names.
+
+In general, a logging level of "INFO" should produce no logging unless there is
+a problem.  Setting the "woomera.request" logger to "FINE" logs the URL
+of every HTTP request, which might be useful for testing.
+
+### 8. References
 
 - Dart tutorial on Writing HTTP clients and servers
 <https://www.dartlang.org/docs/tutorials/httpserver/> (the package

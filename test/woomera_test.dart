@@ -75,7 +75,7 @@ Future<Response> _exceptionHandlerOnPipe2(
 
 Future<Response> _exceptionHandler(
     Request req, Object exception, StackTrace st, String who) async {
-  final resp = new ResponseBuffered(ContentType.TEXT)
+  final resp = new ResponseBuffered(ContentType.text)
     ..write("$who exception handler (${exception.runtimeType}) $exception\n");
 
   if (st != null) {
@@ -151,7 +151,7 @@ Future<Response> testHandler(Request req) async {
 
   buf.write(".");
 
-  final resp = new ResponseBuffered(ContentType.TEXT)..write(buf.toString());
+  final resp = new ResponseBuffered(ContentType.text)..write(buf.toString());
   return resp;
 }
 
@@ -219,7 +219,7 @@ Future<Response> _specialHandler(Request req) async {
       break;
   }
 
-  final resp = new ResponseBuffered(ContentType.TEXT)..write(message);
+  final resp = new ResponseBuffered(ContentType.text)..write(message);
   return resp;
 }
 
@@ -232,7 +232,7 @@ Future<Response> _specialHandler(Request req) async {
 Future<Response> handleStop(Request req) async {
   await webServer.stop(); // async
 
-  final resp = new ResponseBuffered(ContentType.TEXT)..write("stopping");
+  final resp = new ResponseBuffered(ContentType.text)..write("stopping");
   return resp;
 }
 
@@ -247,7 +247,7 @@ Future<String> getRequest(String path) async {
 
   final request = await new HttpClient().get("localhost", portNumber, path);
 
-  //request.headers.contentType = ContentType.HTML;
+  //request.headers.contentType = ContentType.html;
 
   final response = await request.close();
 

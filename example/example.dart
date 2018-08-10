@@ -68,7 +68,7 @@ class LoginSession extends Session {
 
   /// Constructor for a login session.
   ///
-  LoginSession(Server server, Duration timeout, this.when, [this.name = null])
+  LoginSession(Server server, Duration timeout, this.when, [this.name])
       : super(server, timeout);
 }
 
@@ -90,7 +90,7 @@ String homeButton(Request req) =>
 /// Main page for the demonstration Web server.
 
 Future<Response> homePage(Request req) async {
-  final resp = new ResponseBuffered(ContentType.HTML)
+  final resp = new ResponseBuffered(ContentType.html)
     ..write("""
 <!doctype html>
 <html>
@@ -474,7 +474,7 @@ Future<Response> handleTestPost(Request req) async {
   }
 */
 
-  final resp = new ResponseBuffered(ContentType.TEXT)..write("Test post\n");
+  final resp = new ResponseBuffered(ContentType.text)..write("Test post\n");
   return resp;
 }
 
@@ -491,7 +491,7 @@ Future<Response> handleExceptionHandlers(Request req) async {
   p2.exceptionHandler = (eh2) ? exceptionHandlerOnPipe2 : null;
 
   mainLog.fine("[${req.id}] setting exception handlers");
-  final resp = new ResponseBuffered(ContentType.HTML)..write("""
+  final resp = new ResponseBuffered(ContentType.html)..write("""
 <html>
 <head></head>
 <body>
@@ -514,7 +514,7 @@ ${homeButton(req)}
 Future<Response> handleStop(Request req) async {
   await webServer.stop();
   mainLog.fine("[${req.id}] stopped");
-  final resp = new ResponseBuffered(ContentType.TEXT)
+  final resp = new ResponseBuffered(ContentType.text)
     ..write("Web server has been stopped\n");
   return resp;
 }
@@ -548,8 +548,8 @@ Future<Response> handleThrow(Request req) async {
       throw new ArgumentError("Unknown name: $type");
   }
 
-  final resp = new ResponseBuffered(ContentType.HTML)
-    ..status = HttpStatus.NOT_ACCEPTABLE
+  final resp = new ResponseBuffered(ContentType.html)
+    ..status = HttpStatus.notAcceptable
     ..write("""
 <html>
 <head><title>Exception test</title></head>
@@ -594,8 +594,8 @@ Future<ResponseBuffered> oldStyleFuture({bool throwException: false}) {
       throw new StateError(new DateTime.now().toString());
     }
 
-    final resp = new ResponseBuffered(ContentType.TEXT)
-      ..status = HttpStatus.NOT_ACCEPTABLE
+    final resp = new ResponseBuffered(ContentType.text)
+      ..status = HttpStatus.notAcceptable
       ..write("""This worked, but it should not have.""");
     c.complete(resp);
   });
@@ -621,7 +621,7 @@ Future<Response> streamTest(Request req) async {
 
   // Produce the stream response
 
-  final resp = new ResponseStream(ContentType.TEXT)..status = HttpStatus.OK;
+  final resp = new ResponseStream(ContentType.text)..status = HttpStatus.ok;
   await resp.addStream(req, _streamSource(req, numIterations, secs));
 
   return resp;
@@ -659,7 +659,7 @@ Future<Response> handleJson(Request req) async {
   print(json.encode(data));
   // json.decode(str);
 
-  final resp = new ResponseBuffered(ContentType.TEXT)..write("JSON test");
+  final resp = new ResponseBuffered(ContentType.text)..write("JSON test");
   return resp;
 }
 
@@ -713,16 +713,16 @@ Future<Response> _exceptionHandler(
     Request req, Object exception, StackTrace st, String who) async {
   // Create a response
 
-  final resp = new ResponseBuffered(ContentType.HTML);
+  final resp = new ResponseBuffered(ContentType.html);
 
   // Set the status depending on the type of exception
 
   if (exception is NotFoundException) {
     resp.status = (exception.found == NotFoundException.foundNothing)
-        ? HttpStatus.METHOD_NOT_ALLOWED
-        : HttpStatus.NOT_FOUND;
+        ? HttpStatus.methodNotAllowed
+        : HttpStatus.notFound;
   } else {
-    resp.status = HttpStatus.INTERNAL_SERVER_ERROR;
+    resp.status = HttpStatus.internalServerError;
   }
 
   // The body of the response
@@ -770,7 +770,7 @@ Future<Response> _handleLoginWithCookies(Request req) async {
     ..path = req.server.basePath
     ..httpOnly = true;
 
-  final resp = new ResponseBuffered(ContentType.HTML)
+  final resp = new ResponseBuffered(ContentType.html)
     ..cookieAdd(testCookie)
     ..write("""
 <html>
@@ -805,7 +805,7 @@ Future<Response> _handleLogin(Request req) async {
 
   req.session = new LoginSession(webServer, keepAlive, new DateTime.now());
 
-  final resp = new ResponseBuffered(ContentType.HTML)
+  final resp = new ResponseBuffered(ContentType.html)
     ..cookieDelete(_testCookieName, req.server.basePath)
     ..write("""
 <html>
@@ -830,7 +830,7 @@ ${homeButton(req)}
 //----------------------------------------------------------------
 
 Future<Response> _handleLogout(Request req) async {
-  final resp = new ResponseBuffered(ContentType.HTML)..write("""
+  final resp = new ResponseBuffered(ContentType.html)..write("""
 <html>
 <head></head>
 <body>
@@ -858,7 +858,7 @@ ${homeButton(req)}
 //----------------------------------------------------------------
 
 Future<Response> _handleSessionInfoPage(Request req) async {
-  final resp = new ResponseBuffered(ContentType.HTML)..write("""
+  final resp = new ResponseBuffered(ContentType.html)..write("""
 <html>
 <head></head>
 <body>
@@ -949,7 +949,7 @@ ${homeButton(req)}
 //----------------------------------------------------------------
 
 Future<Response> _handleSessionSetName(Request req) async {
-  final resp = new ResponseBuffered(ContentType.HTML)..write("""
+  final resp = new ResponseBuffered(ContentType.html)..write("""
 <html>
 <head></head>
 <body>
@@ -1027,7 +1027,7 @@ Server _serverSetup() {
   final port = 1024;
 
   webServer = new Server()
-    ..bindAddress = InternetAddress.ANY_IP_V6
+    ..bindAddress = InternetAddress.anyIPv6
     ..v6Only = false // false = listen to any IPv4 and any IPv6 address
     ..bindPort = port
     ..exceptionHandler = exceptionHandlerOnServer; // set exception handler

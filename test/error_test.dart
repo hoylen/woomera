@@ -60,7 +60,7 @@ Future<Response> serverExceptionHandler(
       throw new StateError("exception inside exception handler");
     }
   }
-  final resp = new ResponseBuffered(ContentType.TEXT)
+  final resp = new ResponseBuffered(ContentType.text)
     ..write("Server caught: $exception\n")
     ..write("Stack trace:\n$st");
   return resp;
@@ -75,7 +75,7 @@ Future<Response> pipelineExceptionHandler(
       throw new StateError("exception inside exception handler");
     }
   }
-  final resp = new ResponseBuffered(ContentType.TEXT)
+  final resp = new ResponseBuffered(ContentType.text)
     ..write("Pipeline caught: $exception\n")
     ..write("Stack trace:\n$st");
   return resp;
@@ -85,7 +85,7 @@ Future<Response> pipelineExceptionHandler(
 /// Request handler for /
 ///
 Future<Response> handlerRoot(Request req) async {
-  final resp = new ResponseBuffered(ContentType.TEXT)
+  final resp = new ResponseBuffered(ContentType.text)
     ..write("Error/Exception test\n");
   return resp;
 }
@@ -97,7 +97,7 @@ Future<Response> handlerRoot(Request req) async {
 /// exceptions.
 ///
 Future<Response> handler1(Request req) async {
-  final _ = new ResponseBuffered(ContentType.TEXT)..write("Test 1");
+  final _ = new ResponseBuffered(ContentType.text)..write("Test 1");
   throw new MyException("test1");
 }
 
@@ -153,7 +153,7 @@ Future<Response> handler4(Request req) {
 Future<Response> handlerStop(Request req) async {
   await webServer.stop(); // async
 
-  final resp = new ResponseBuffered(ContentType.TEXT)..write("stopping");
+  final resp = new ResponseBuffered(ContentType.text)..write("stopping");
   return resp;
 }
 
@@ -245,7 +245,7 @@ Future<String> getRequest(String path) async {
 
   final request = await new HttpClient().get("localhost", portNumber, path);
 
-  //request.headers.contentType = ContentType.HTML;
+  //request.headers.contentType = ContentType.html;
 
   final response = await request.close();
 

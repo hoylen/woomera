@@ -9,7 +9,7 @@ Future main() async {
   // Create and configure server
 
   final ws = new Server()
-    ..bindAddress = InternetAddress.ANY_IP_V6
+    ..bindAddress = InternetAddress.anyIPv6
     ..bindPort = 1024;
 
   // Register rules
@@ -25,7 +25,7 @@ Future<Response> _handleTopLevel(Request req) async {
   var name = req.queryParams["name"];
   name = (name.isEmpty) ? "world" : name;
 
-  final resp = new ResponseBuffered(ContentType.HTML)..write("""
+  final resp = new ResponseBuffered(ContentType.html)..write("""
 <html>
   <head>
     <title>Woomera Tutorial</title>

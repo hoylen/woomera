@@ -83,7 +83,7 @@ Server _createTestServer() {
 /// Handler for home page
 ///
 Future<Response> _sessionStatus(Request req) async {
-  final resp = new ResponseBuffered(ContentType.HTML)..write(_htmlHeader);
+  final resp = new ResponseBuffered(ContentType.html)..write(_htmlHeader);
   final session = req.session;
 
   if (session == null) {
@@ -108,7 +108,7 @@ Future<Response> _sessionStatus(Request req) async {
 /// Handler for starting a session
 
 Future<Response> _sessionStart(Request req) async {
-  final resp = new ResponseBuffered(ContentType.HTML)..write(_htmlHeader);
+  final resp = new ResponseBuffered(ContentType.html)..write(_htmlHeader);
 
   if (req.session == null) {
     // Create a new sesson object and associate it with the user's browser.
@@ -120,7 +120,7 @@ Future<Response> _sessionStart(Request req) async {
     resp.write("<p>OK</p>");
   } else {
     resp
-      ..status = HttpStatus.BAD_REQUEST // 400
+      ..status = HttpStatus.badRequest // 400
       ..write("<p>Error: already logged in.</p>");
   }
 
@@ -137,7 +137,7 @@ Future<Response> _sessionStart(Request req) async {
 /// Handler for stopping a session
 
 Future<Response> _sessionStop(Request req) async {
-  final resp = new ResponseBuffered(ContentType.HTML)..write(_htmlHeader);
+  final resp = new ResponseBuffered(ContentType.html)..write(_htmlHeader);
 
   if (req.session != null) {
     // Terminate the session
@@ -146,7 +146,7 @@ Future<Response> _sessionStop(Request req) async {
     resp.write("<p>Done</p>");
   } else {
     resp
-      ..status = HttpStatus.BAD_REQUEST // 400
+      ..status = HttpStatus.badRequest // 400
       ..write("<p>Error: not logged in.</p>");
   }
 
@@ -168,7 +168,7 @@ Future<Response> _sessionStop(Request req) async {
 Future<Response> handleStop(Request req) async {
   await webServer.stop(); // async
 
-  final resp = new ResponseBuffered(ContentType.TEXT)..write("stopping");
+  final resp = new ResponseBuffered(ContentType.text)..write("stopping");
   return resp;
 }
 
@@ -196,7 +196,7 @@ Future<TestResponse> getRequest(String path) async {
 
   final request = await new HttpClient().get("localhost", portNumber, path);
 
-  //request.headers.contentType = ContentType.HTML;
+  //request.headers.contentType = ContentType.html;
 
   final response = await request.close();
 
@@ -243,15 +243,15 @@ void _runTests(Future<int> numProcessedFuture) {
     test("URL rewriting", () async {
       // Status page OK
       var r = await getRequest("/session");
-      expect(r.status, equals(HttpStatus.OK));
+      expect(r.status, equals(HttpStatus.ok));
 
       // Logout without a session should fail
       r = await postRequest("/session/logout", "");
-      expect(r.status, equals(HttpStatus.BAD_REQUEST));
+      expect(r.status, equals(HttpStatus.badRequest));
 
       // Login
       r = await postRequest("/session/login", "");
-      expect(r.status, equals(HttpStatus.OK));
+      expect(r.status, equals(HttpStatus.ok));
 
       // Extract the URL rewritten home link
       const homePrefix = "<a href='";
@@ -264,7 +264,7 @@ void _runTests(Future<int> numProcessedFuture) {
 
       // Get the status page
       r = await getRequest(h1);
-      expect(r.status, equals(HttpStatus.OK));
+      expect(r.status, equals(HttpStatus.ok));
       expect(r.contents.contains("<p>Session: "), isTrue);
 
       // Extract the URL rewritten logout link
@@ -277,7 +277,7 @@ void _runTests(Future<int> numProcessedFuture) {
 
       // Logout
       r = await postRequest(b, "");
-      expect(r.status, equals(HttpStatus.OK));
+      expect(r.status, equals(HttpStatus.ok));
 
       // Extract the URL rewritten home link (after logout)
       final h2 = r.contents.substring(
@@ -299,7 +299,7 @@ void _runTests(Future<int> numProcessedFuture) {
 
     test("stopping server", () async {
       final r = await getRequest("/system/stop");
-      expect(r.status, equals(HttpStatus.OK));
+      expect(r.status, equals(HttpStatus.ok));
 
       // Wait for server to stop
       final num = await numProcessedFuture;

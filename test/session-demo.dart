@@ -29,7 +29,7 @@ Future main() async {
   // Create and configure server
 
   ws = new Server()
-    ..bindAddress = InternetAddress.ANY_IP_V6
+    ..bindAddress = InternetAddress.anyIPv6
     ..bindPort = 1024
     ..sessionExpiry = const Duration(seconds: defaultTimeout);
 
@@ -52,7 +52,7 @@ Future main() async {
 Future<Response> _handleTopLevel(Request req) async {
   final newId = req.queryParams["new"];
 
-  final resp = new ResponseBuffered(ContentType.HTML)..write("""
+  final resp = new ResponseBuffered(ContentType.html)..write("""
 <html>
   <head>
     <title>Woomera: session demo</title>
@@ -127,7 +127,7 @@ Future<Response> _handleNewSession(Request req) async {
 //----------------------------------------------------------------
 
 Future<Response> _handleStop(Request req) async {
-  final resp = new ResponseBuffered(ContentType.HTML)..write("""
+  final resp = new ResponseBuffered(ContentType.html)..write("""
 <html>
   <head>
     <title>Woomera: server stopped</title>

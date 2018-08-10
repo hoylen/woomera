@@ -9,7 +9,7 @@ Future main() async {
   // Create and configure server
 
   final ws = new Server()
-    ..bindAddress = InternetAddress.ANY_IP_V6
+    ..bindAddress = InternetAddress.anyIPv6
     ..bindPort = 1024
     ..exceptionHandler = _myExceptionHandler;
 
@@ -33,7 +33,7 @@ Future<Response> _handleTopLevel(Request req) async {
   var name = req.queryParams["name"];
   name = (name.isEmpty) ? "world" : name;
 
-  final resp = new ResponseBuffered(ContentType.HTML)..write("""
+  final resp = new ResponseBuffered(ContentType.html)..write("""
 <html>
   <head>
     <title>Woomera Tutorial</title>
@@ -47,7 +47,7 @@ Future<Response> _handleTopLevel(Request req) async {
 }
 
 Future<Response> _handleTestForm(Request req) async {
-  final resp = new ResponseBuffered(ContentType.HTML)..write("""
+  final resp = new ResponseBuffered(ContentType.html)..write("""
 <html>
   <head>
     <title>Woomera Tutorial</title>
@@ -75,16 +75,16 @@ Future<Response> _myExceptionHandler(
 
   if (ex is NotFoundException) {
     status = (ex.found == NotFoundException.foundNothing)
-        ? HttpStatus.METHOD_NOT_ALLOWED
-        : HttpStatus.NOT_FOUND;
+        ? HttpStatus.methodNotAllowed
+        : HttpStatus.notFound;
     message = "Sorry, the page you were looking for could not be found.";
   } else {
-    status = HttpStatus.INTERNAL_SERVER_ERROR;
+    status = HttpStatus.internalServerError;
     message = "Sorry, an internal error occured.";
     print("Exception: $ex");
   }
 
-  final resp = new ResponseBuffered(ContentType.HTML)
+  final resp = new ResponseBuffered(ContentType.html)
     ..status = status
     ..write("""
 <html>
