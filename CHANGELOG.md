@@ -1,5 +1,9 @@
 # Changelog
 
+## 2.2.2
+
+- Responds with HTTP 400 Bad Request if URL has malformed percent encodings.
+
 ## 2.2.1
 
 - This version runs under Dart 1.

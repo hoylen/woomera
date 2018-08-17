@@ -518,6 +518,8 @@ class Server {
       pathSegments = req.request.uri.pathSegments;
     } on FormatException catch (_) {
       // This is usually due to malformed paths, due to malicious attackers
+      // For example putting "/certsrv/..%C0%AF../winnt/system32/cmd.exe" and
+      // "/scripts/..%C1%1C../winnt/system32/cmd.exe"
       pathSegments = null;
       _logRequest.finest("invalid char encoding in path: request rejected");
     }
@@ -685,8 +687,8 @@ class Server {
       }
     } else {
       // Path segments raised FormatException: malformed request
-      final nfe = new NotFoundException(NotFoundException.foundNothing);
-      response = await _defaultExceptionHandler(req, nfe, null);
+      response = await _defaultExceptionHandler(
+          req, new MalformedPathException(), null);
     }
 
     assert(response != null);
@@ -726,17 +728,29 @@ class Server {
     String message;
 
     if (thrownObject is NotFoundException) {
-      // Report these as "not found" to the requestor.
+      // Report these as "not found" to the requester.
 
       _logRequest.severe(
-          "[${req.id}] not found: ${req.request.method} ${req.request.uri.path}");
+          "[${req.id}] not found: ${req.request.method} ${req.request.uri
+              .path}");
       assert(st == null);
 
       status = (thrownObject.found == NotFoundException.foundNothing)
           ? HttpStatus.METHOD_NOT_ALLOWED
           : HttpStatus.NOT_FOUND;
       title = "Error: Not found";
-      message = "Sorry, the page you were looking for was not found.";
+      message = "The page you were looking for was not found.";
+    } else if (thrownObject is MalformedPathException) {
+      // Report as bad request
+
+      _logRequest.finest(
+          "[${req.id}] bad request: ${req.request.method} ${req.request.uri
+              .path}");
+      assert(st == null);
+
+      status = HttpStatus.BAD_REQUEST;
+      title = "Error: bad request";
+      message = "Your request was invalid.";
     } else {
       // Everything else is reported to the requester as an internal error
       // since the problem can only be fixed by the developer and we don't
@@ -756,7 +770,7 @@ class Server {
 
       status = HttpStatus.INTERNAL_SERVER_ERROR;
       title = "Error";
-      message = "Sorry, an error occured while processing the request.";
+      message = "An error occured while processing the request.";
     }
 
     final resp = new ResponseBuffered(ContentType.HTML)

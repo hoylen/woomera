@@ -1,5 +1,5 @@
 name: woomera
-version: 2.2.1
+version: 2.2.2
 description: Web framework for HTTP request handling and session manager
 homepage: https://github.com/hoylen/woomera
 author: Hoylen Sue <hoylen@hoylen.com>
