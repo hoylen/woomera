@@ -471,7 +471,7 @@ class Server {
       String message;
 
       _logRequest
-        ..shout("[$requestId] exception raised outside context: $e")
+        ..finer("[$requestId] exception raised outside context: $e")
         ..finest("[$requestId] exception stack trace:\n$s");
 
       // Since there is no context, the exception handlers cannot be used

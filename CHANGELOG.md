@@ -3,6 +3,7 @@
 ## 2.2.2
 
 - Responds with HTTP 400 Bad Request if URL has malformed percent encodings.
+- Change logging level for FormatExceptions when parsing query/POST params.
 
 ## 2.2.1
 
