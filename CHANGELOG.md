@@ -1,5 +1,9 @@
 # Changelog
 
+## 3.1.2
+
+- Incorporated changes from v2.2.2.
+
 ## 3.1.1
 
 - Fixed problem with publishing documentation on pub.dartlang.org.
@@ -8,6 +12,11 @@
 
 - Updated the upper bound of the SDK constraint to <3.0.0.
 - Changed names to use new Dart 2 names.
+
+## 2.2.2
+
+- Responds with HTTP 400 Bad Request if URL has malformed percent encodings.
+- Change logging level for FormatExceptions when parsing query/POST params.
 
 ## 2.2.1
 

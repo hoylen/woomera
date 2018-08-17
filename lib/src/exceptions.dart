@@ -38,6 +38,14 @@ class PostTooLongException extends WoomeraException {}
 // Handler matching exceptions
 
 //----------------------------------------------------------------
+/// Exception indicating malformed request.
+///
+/// Usually a sign of an attacker trying to exploit vulnerabilities in a Web
+/// server.
+
+class MalformedPathException extends WoomeraException {}
+
+//----------------------------------------------------------------
 /// Exception indicating a response could not be created.
 ///
 class NotFoundException extends WoomeraException {
