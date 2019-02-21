@@ -163,7 +163,7 @@ void loggingSetup(
 
   // Setup listener
 
-  Logger.root.onRecord.listen((LogRecord r) {
+  Logger.root.onRecord.listen((r) {
     final timeStr = r.time.toString().padRight(26, '0');
 
     var name = r.loggerName;
@@ -185,6 +185,6 @@ void loggingSetup(
   Logger.root.level = level;
 
   if (levels != null) {
-    levels.forEach((String name, Level lvl) => new Logger(name).level = lvl);
+    levels.forEach((name, lvl) => new Logger(name).level = lvl);
   }
 }

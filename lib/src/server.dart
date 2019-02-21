@@ -230,7 +230,7 @@ class Server {
   /// There is nothing special about these initial pipelines. The application
   /// can also create them and add them to the [pipelines] list.
 
-  Server({int numberOfPipelines: 1}) {
+  Server({int numberOfPipelines = 1}) {
     for (var x = 0; x < numberOfPipelines; x++) {
       pipelines.add(new ServerPipeline());
     }
@@ -403,7 +403,7 @@ class Server {
   ///
   /// If [force] is true, active connections will be closed immediately.
 
-  Future stop({bool force: false}) async {
+  Future stop({bool force = false}) async {
     _logServer.finer("stop: ${_allSessions.length} sessions, force=$force");
 
     if (_allSessions.isNotEmpty) {
@@ -732,8 +732,7 @@ class Server {
       // Report these as "not found" to the requester.
 
       _logRequest.severe(
-          "[${req.id}] not found: ${req.request.method} ${req.request.uri
-              .path}");
+          "[${req.id}] not found: ${req.request.method} ${req.request.uri.path}");
       assert(st == null);
 
       status = (thrownObject.found == NotFoundException.foundNothing)
@@ -745,11 +744,10 @@ class Server {
       // Report as bad request
 
       _logRequest.finest(
-          "[${req.id}] bad request: ${req.request.method} ${req.request.uri
-              .path}");
+          "[${req.id}] bad request: ${req.request.method} ${req.request.uri.path}");
       assert(st == null);
 
-      status = HttpStatus.BAD_REQUEST;
+      status = HttpStatus.badRequest;
       title = "Error: bad request";
       message = "Your request was invalid.";
     } else {

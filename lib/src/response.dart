@@ -108,8 +108,10 @@ abstract class Response {
         ..expires = new DateTime.utc(1970, 1, 1, 0, 0, 1, 0)
         ..maxAge = 0;
       return cookieAdd(delCookie);
+      // ignore: avoid_catching_errors
     } on RangeError {
-      throw new UnsupportedError('do not use Dart 2.1.x: a bug prevents cookie deletion');
+      throw new UnsupportedError(
+          'do not use Dart 2.1.x: a bug prevents cookie deletion');
     }
   }
 
@@ -352,7 +354,7 @@ class ResponseRedirect extends Response {
   /// For more information on HTTP status codes, see
   /// <https://www.w3.org/Protocols/rfc2616/rfc2616-sec10.html#sec10.3>
 
-  ResponseRedirect(String addr, {int status: HttpStatus.seeOther}) {
+  ResponseRedirect(String addr, {int status = HttpStatus.seeOther}) {
     if (status < 300 || 399 < status) {
       throw new ArgumentError.value(
           status, "status", "ResponseRedirect: not a redirection HTTP status");

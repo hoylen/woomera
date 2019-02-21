@@ -1,6 +1,5 @@
 # Changelog
 
-
 ## 3.1.0
 
 - Detects bug in Dart 2.1.x which prevents cookies from being deleted.

@@ -201,6 +201,7 @@ Future<TestResponse> getRequest(String path) async {
   final response = await request.close();
 
   final contents = new StringBuffer();
+  // ignore: prefer_foreach
   await for (var chunk in response.transform(utf8.decoder)) {
     contents.write(chunk);
   }
@@ -223,6 +224,7 @@ Future<TestResponse> postRequest(String path, String data) async {
   final response = await request.close();
 
   final contents = new StringBuffer();
+  // ignore: prefer_foreach
   await for (var chunk in response.transform(utf8.decoder)) {
     contents.write(chunk);
   }

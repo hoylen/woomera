@@ -122,8 +122,8 @@ class StaticFiles {
 
   StaticFiles(String baseDir,
       {List<String> defaultFilenames,
-      this.allowFilePathsAsDirectories: true,
-      this.allowDirectoryListing: false}) {
+      this.allowFilePathsAsDirectories = true,
+      this.allowDirectoryListing = false}) {
     // Check if directory is usable.
     if (baseDir == null) {
       throw new ArgumentError.notNull("baseDir");

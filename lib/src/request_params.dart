@@ -55,7 +55,7 @@ class RequestParams {
   /// Each query component will be decoded using [encoding]. The default encoding
   /// is UTF-8.
   ///
-  RequestParams._fromQueryString(String query, {Encoding encoding: utf8}) {
+  RequestParams._fromQueryString(String query, {Encoding encoding = utf8}) {
     for (var pair in query.split("&")) {
       if (pair.isNotEmpty) {
         final index = pair.indexOf("=");
@@ -172,7 +172,7 @@ class RequestParams {
   /// By default, all values (if any) are trimmed of whitespace from both ends.
   /// If [raw] is true, the values are not trimmed.
 
-  List<String> values(String key, {bool raw: false}) {
+  List<String> values(String key, {bool raw = false}) {
     assert(key != null);
 
     final values = _data[key];
