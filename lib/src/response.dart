@@ -101,12 +101,16 @@ abstract class Response {
     if (_headersOutputted) {
       throw new StateError("Header already outputted");
     }
-    final delCookie = new Cookie(name, "")
-      ..path = path
-      ..domain = domain
-      ..expires = new DateTime.utc(1970, 1, 1, 0, 0, 1, 0)
-      ..maxAge = 0;
-    return cookieAdd(delCookie);
+    try {
+      final delCookie = new Cookie(name, "")
+        ..path = path
+        ..domain = domain
+        ..expires = new DateTime.utc(1970, 1, 1, 0, 0, 1, 0)
+        ..maxAge = 0;
+      return cookieAdd(delCookie);
+    } on RangeError {
+      throw new UnsupportedError('do not use Dart 2.1.x: a bug prevents cookie deletion');
+    }
   }
 
   /// Output the status and headers.

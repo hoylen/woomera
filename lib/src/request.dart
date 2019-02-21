@@ -205,8 +205,9 @@ class Request {
   //----------------------------------------------------------------
   /// The parameters from the POST request.
   ///
-  /// Is null if this context is not from a POST request.
-  ///
+  /// This is not null if the context is a POST request with a MIME type of
+  /// "application/x-www-form-urlencoded". Beware that it will be null for
+  /// other types of POST requests (e.g. JSON).
 
   RequestParams get postParams => _postParams;
 
@@ -225,7 +226,7 @@ class Request {
 
   //----------------------------------------------------------------
 
-  Future _postParmsInit(int maxPostSize) async {
+  Future _postParamsInit(int maxPostSize) async {
     // Set post parameters (if any)
 
     if (request.method == "POST" &&

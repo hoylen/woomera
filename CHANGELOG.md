@@ -1,10 +1,12 @@
 # Changelog
 
-## 3.1.2
 
-- Incorporated changes from v2.2.2.
+## 3.1.0
 
-## 3.1.1
+- Detects bug in Dart 2.1.x which prevents cookies from being deleted.
+- Merged in changes from v2.2.2.
+
+## 3.0.1
 
 - Fixed problem with publishing documentation on pub.dartlang.org.
 

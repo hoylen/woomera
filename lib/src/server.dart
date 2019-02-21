@@ -449,7 +449,7 @@ class Server {
       assert(req is Request);
 
       try {
-        await req._postParmsInit(postMaxSize);
+        await req._postParamsInit(postMaxSize);
         await req._sessionRestore(); // must be after POST parameters gotten
 
         // Handle the request in its context
