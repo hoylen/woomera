@@ -5,7 +5,8 @@ homepage: https://github.com/hoylen/woomera
 author: Hoylen Sue <hoylen@hoylen.com>
 
 environment:
-  sdk: '>=2.0.0 <3.0.0'
+  # sdk: '>=2.0.0 <3.0.0' # Dart 2.1.x has a bug that prevents cookie deletion. Until fixed, use 2.0.0.
+  sdk: '2.0.0'
 
 dev_dependencies:
   test: ">=0.12.10 <1.4.0"

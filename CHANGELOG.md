@@ -4,6 +4,7 @@
 
 - Detects bug in Dart 2.1.x which prevents cookies from being deleted.
 - Merged in changes from v2.2.2.
+- Added proxy handler.
 
 ## 3.0.1
 

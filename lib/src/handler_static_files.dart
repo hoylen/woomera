@@ -1,7 +1,7 @@
 part of woomera;
 
 //================================================================
-/// Handler for returning a static files under a local directory.
+/// Handler for returning static files and directory listings.
 ///
 /// The [handler] expects a single wildcard path parameter, which it uses
 /// to determine which file/directory under the base directory to return.
@@ -208,14 +208,14 @@ class StaticFiles {
     }
 
     final path = "$_baseDir/${components.join("/")}";
-    _logRequest.finer("[${req.id}] static file/directory requested: $path");
+    _logStaticFiles.finer("[${req.id}] static file/directory requested: $path");
 
     if (!path.endsWith("/")) {
       // Probably a file
 
       final file = new File(path);
       if (file.existsSync()) {
-        _logRequest.finest("[${req.id}] static file found: $path");
+        _logStaticFiles.finest("[${req.id}] static file found: $path");
         return await _serveFile(req, file);
       } else if (allowFilePathsAsDirectories &&
           await new Directory(path).exists()) {
@@ -224,11 +224,11 @@ class StaticFiles {
         if (allowDirectoryListing || await _findDefaultFile("$path/") != null) {
           // Can tell the browser to treat it as a directory
           // Note: must change URL in browser, otherwise relative links break
-          _logRequest.finest("[${req.id}] treating as static directory");
+          _logStaticFiles.finest("[${req.id}] treating as static directory");
           return new ResponseRedirect("${req.requestPath()}/");
         }
       } else {
-        _logRequest.finest("[${req.id}] static file not found");
+        _logStaticFiles.finest("[${req.id}] static file not found");
       }
     } else {
       // Request for a directory
@@ -241,22 +241,22 @@ class StaticFiles {
         final defaultFile = await _findDefaultFile(path);
 
         if (defaultFile != null) {
-          _logRequest.finest(
+          _logStaticFiles.finest(
               "[${req.id}] static directory: default file found: $defaultFile");
           return await _serveFile(req, defaultFile);
         }
 
         if (allowDirectoryListing) {
           // List the contents of the directory
-          _logRequest.finest("[${req.id}] returning directory listing");
+          _logStaticFiles.finest("[${req.id}] returning directory listing");
           final notTop = (1 < components.length);
           return await directoryListing(req, dir, linkToParent: notTop);
         } else {
-          _logRequest
+          _logStaticFiles
               .finest("[${req.id}] static directory listing not allowed");
         }
       } else {
-        _logRequest.finest("[${req.id}] static directory not found");
+        _logStaticFiles.finest("[${req.id}] static directory not found");
       }
     }
 

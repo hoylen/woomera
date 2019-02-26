@@ -30,6 +30,8 @@
 /// - woomera.request.param
 /// - woomera.response
 /// - woomera.session
+/// - woomera.static_file - static file handler
+/// - woomera.proxy - proxy handler
 
 library woomera;
 
@@ -39,6 +41,7 @@ import 'dart:async';
 import 'dart:convert' show Encoding, utf8;
 import 'dart:io';
 
+import 'package:http/http.dart' as http;
 import 'package:logging/logging.dart';
 import 'package:uuid/uuid.dart';
 
@@ -49,6 +52,7 @@ part 'src/request.dart';
 part 'src/exceptions.dart';
 part 'src/h_esc.dart';
 part 'src/handler_debug.dart';
+part 'src/handler_proxy.dart';
 part 'src/handler_static_files.dart';
 part 'src/request_params.dart';
 part 'src/server_rule.dart';
@@ -68,3 +72,6 @@ Logger _logRequestParam = new Logger("woomera.request.param");
 
 Logger _logResponse = new Logger("woomera.response");
 Logger _logSession = new Logger("woomera.session");
+
+Logger _logStaticFiles = new Logger("woomera.static_file");
+Logger _logProxy = new Logger("woomera.proxy");

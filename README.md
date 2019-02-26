@@ -642,7 +642,9 @@ With all three types of responses, the application can:
 - Create HTTP headers; and/or
 - Create or delete cookies.
 
-#### 5.5. Static file response
+#### 5.5 Common handlers provided
+
+##### 5.5.1. Static file handler
 
 The package includes a request handler for serving up files and
 directories from the local disk. It can be used to serve static files
@@ -650,6 +652,15 @@ for all or some of the Web server (for example, the images and
 stylesheets).
 
 See the API documentation for the _StaticFiles_ class.
+
+##### 5.5.2. Proxy handler
+
+The package includes a request handler for proxying requests to
+a different server. A request for one URI is converted into a
+target URI and the request is forward to it. The response from
+the target URI is used as the response.
+
+See the API documentation for the _Proxy_ class.
 
 ### 6. Sessions
 
