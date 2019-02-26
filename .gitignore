@@ -3,7 +3,7 @@
 .idea
 .pub
 .packages
-.dart_tools
+.dart_tool
 pubspec.lock
 coverage-suite
 build

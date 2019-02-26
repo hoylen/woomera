@@ -197,8 +197,9 @@ class Proxy {
       resp.write(targetResponse.body);
       return resp;
     } catch (e) {
-      _logProxy.warning("$targetUrl: exception ${e.runtimeType}: $e");
-      rethrow;
+      final proxyException = new ProxyHandlerException(targetUrl, e);
+      _logProxy.fine('[${req.id}] $proxyException');
+      throw proxyException;
     }
   }
 }

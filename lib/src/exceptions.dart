@@ -136,3 +136,42 @@ class ExceptionHandlerException extends WoomeraException {
   ///
   ExceptionHandlerException(this.previousException, this.exception);
 }
+
+//================================================================
+// Proxy exception
+
+//----------------------------------------------------------------
+/// Exception indicating an exception/error occurred in the proxy handler.
+
+class ProxyHandlerException extends WoomeraException {
+  /// The target URI
+
+  final String targetUri;
+
+  /// The exception that was thrown when trying to retrieve the [targetUri].
+
+  final Object exception;
+
+  /// Constructor.
+
+  ProxyHandlerException(this.targetUri, this.exception);
+
+  /// String representation of the exception.
+
+  @override
+  String toString() {
+    var message = 'exception ${exception.runtimeType}: $exception';
+
+    final e = exception;
+    if (e is SocketException) {
+      if (e.message == '' &&
+          e.osError != null &&
+          e.osError.errorCode == 61 &&
+          e.osError.message == 'Connection refused') {
+        // Known situation: more compact error message
+        message = 'cannot connect';
+      }
+    }
+    return 'proxy: $message: $targetUri';
+  }
+}
