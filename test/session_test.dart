@@ -179,14 +179,14 @@ Future<Response> handleStop(Request req) async {
 /// Result of a HTTP request
 ///
 class TestResponse {
+  /// Constructor
+  TestResponse(this.status, this.contents);
+
   /// HTTP status code
   int status;
 
   /// Contents of HTTP response
   String contents;
-
-  /// Constructor
-  TestResponse(this.status, this.contents);
 }
 //----------------------------------------------------------------
 /// GET

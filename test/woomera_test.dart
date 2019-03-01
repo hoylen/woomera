@@ -127,7 +127,7 @@ Server _createTestServer() {
 /// Handler
 ///
 Future<Response> testHandler(Request req) async {
-  final buf = new StringBuffer("${req.request.method};");
+  final buf = new StringBuffer("${req.method};");
 
   for (var key in req.pathParams.keys) {
     for (var value in req.pathParams.values(key, raw: true)) {

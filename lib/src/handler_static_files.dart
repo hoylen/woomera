@@ -16,6 +16,51 @@ part of woomera;
 /// ```
 
 class StaticFiles {
+  //----------------------------------------------------------------
+  /// Constructor
+  ///
+  /// Requests for a directory (i.e. path ending in "/")
+  /// returns one of the [defaultFilenames] in the directory (if it is set and
+  /// a file exists), otherwise if [allowDirectoryListing] is true
+  /// a listing of the directory is produced, otherwise an exception is thrown.
+
+  StaticFiles(String baseDir,
+      {List<String> defaultFilenames,
+      this.allowFilePathsAsDirectories = true,
+      this.allowDirectoryListing = false}) {
+    // Check if directory is usable.
+    if (baseDir == null) {
+      throw new ArgumentError.notNull("baseDir");
+    }
+    if (baseDir.isEmpty) {
+      throw new ArgumentError.value(
+          baseDir, "baseDir", "empty string not permitted for StaticFiles");
+    }
+    while (baseDir.endsWith("/")) {
+      // Remove all trailing slashes
+      baseDir = baseDir.substring(0, baseDir.length - 1);
+    }
+    if (baseDir.isEmpty) {
+      throw new ArgumentError.value(
+          "/", "baseDir", "not permitted for StaticFiles");
+    }
+    if (["/bin", "/etc", "/home", "/lib", "/tmp", "/var"].contains(baseDir)) {
+      throw new ArgumentError.value(
+          baseDir, "baseDir", "not permitted for StaticFiles");
+    }
+    if (!new Directory(baseDir).existsSync()) {
+      throw new ArgumentError.value(
+          baseDir, "baseDir", "directory does not exist for StaticFiles");
+    }
+    assert(baseDir.isNotEmpty);
+
+    _baseDir = baseDir;
+    this.defaultFilenames = defaultFilenames ?? [];
+  }
+
+  //================================================================
+  // Static constants
+
   /// Default MIME types.
   ///
   /// This is used for matching file extensions to MIME types. The file
@@ -112,48 +157,6 @@ class StaticFiles {
 
   Map<String, ContentType> mimeTypes = {};
 
-  //----------------------------------------------------------------
-  /// Constructor
-  ///
-  /// Requests for a directory (i.e. path ending in "/")
-  /// returns one of the [defaultFilenames] in the directory (if it is set and
-  /// a file exists), otherwise if [allowDirectoryListing] is true
-  /// a listing of the directory is produced, otherwise an exception is thrown.
-
-  StaticFiles(String baseDir,
-      {List<String> defaultFilenames,
-      this.allowFilePathsAsDirectories = true,
-      this.allowDirectoryListing = false}) {
-    // Check if directory is usable.
-    if (baseDir == null) {
-      throw new ArgumentError.notNull("baseDir");
-    }
-    if (baseDir.isEmpty) {
-      throw new ArgumentError.value(
-          baseDir, "baseDir", "empty string not permitted for StaticFiles");
-    }
-    while (baseDir.endsWith("/")) {
-      // Remove all trailing slashes
-      baseDir = baseDir.substring(0, baseDir.length - 1);
-    }
-    if (baseDir.isEmpty) {
-      throw new ArgumentError.value(
-          "/", "baseDir", "not permitted for StaticFiles");
-    }
-    if (["/bin", "/etc", "/home", "/lib", "/tmp", "/var"].contains(baseDir)) {
-      throw new ArgumentError.value(
-          baseDir, "baseDir", "not permitted for StaticFiles");
-    }
-    if (!new Directory(baseDir).existsSync()) {
-      throw new ArgumentError.value(
-          baseDir, "baseDir", "directory does not exist for StaticFiles");
-    }
-    assert(baseDir.isNotEmpty);
-
-    _baseDir = baseDir;
-    this.defaultFilenames = defaultFilenames ?? [];
-  }
-
   //================================================================
 
   /// The directory under which to look for files.
@@ -225,7 +228,7 @@ class StaticFiles {
           // Can tell the browser to treat it as a directory
           // Note: must change URL in browser, otherwise relative links break
           _logStaticFiles.finest("[${req.id}] treating as static directory");
-          return new ResponseRedirect("${req.requestPath()}/");
+          return new ResponseRedirect("${req.requestPath}/");
         }
       } else {
         _logStaticFiles.finest("[${req.id}] static file not found");
@@ -354,8 +357,8 @@ class StaticFiles {
 """);
 
     final resp = new ResponseBuffered(ContentType.html)
-      ..header("Date", _rfc1123DateFormat(new DateTime.now()))
-      ..header("Content-Length", buf.length.toString())
+      ..headerAdd("Date", _rfc1123DateFormat(new DateTime.now()))
+      ..headerAdd("Content-Length", buf.length.toString())
       ..write(buf.toString());
     return resp;
   }
@@ -385,9 +388,9 @@ class StaticFiles {
     // Last-Modified, Date and Content-Length helps browsers cache the contents.
 
     final resp = new ResponseStream(contentType)
-      ..header("Date", _rfc1123DateFormat(new DateTime.now()))
-      ..header("Last-Modified", _rfc1123DateFormat(file.lastModifiedSync()))
-      ..header("Content-Length", (await file.length()).toString());
+      ..headerAdd("Date", _rfc1123DateFormat(new DateTime.now()))
+      ..headerAdd("Last-Modified", _rfc1123DateFormat(file.lastModifiedSync()))
+      ..headerAdd("Content-Length", (await file.length()).toString());
 
     return await resp.addStream(req, file.openRead());
   }

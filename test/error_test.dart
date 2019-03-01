@@ -34,14 +34,16 @@ Server webServer;
 /// exceptions are raised inside handlers.
 
 class MyException implements Exception {
-  /// Name of exception
-  String message;
-
   /// Constructor
-  ///
+
   MyException(this.message);
 
+  /// Name of exception
+
+  String message;
+
   /// String representation
+
   @override
   String toString() => message;
 }

@@ -48,12 +48,13 @@ import 'package:uuid/uuid.dart';
 //----------------------------------------------------------------
 // export 'src/...dart';
 
-part 'src/request.dart';
 part 'src/exceptions.dart';
 part 'src/h_esc.dart';
 part 'src/handler_debug.dart';
 part 'src/handler_proxy.dart';
 part 'src/handler_static_files.dart';
+part 'src/request.dart';
+part 'src/request_impl.dart';
 part 'src/request_params.dart';
 part 'src/server_rule.dart';
 part 'src/server_pipeline.dart';
@@ -61,6 +62,8 @@ part 'src/handler.dart';
 part 'src/response.dart';
 part 'src/server.dart';
 part 'src/session.dart';
+part 'src/simulated_request.dart';
+part 'src/simulated_response.dart';
 
 //----------------------------------------------------------------
 // Loggers used in the Woomera package.

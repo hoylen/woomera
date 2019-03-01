@@ -9,25 +9,23 @@ part of woomera;
 /// the caller expects at-most-one value, as well as methods to access
 /// multi-valued parameters. Multi-valued parameters usually occur when
 /// processing sets of checkboxes or radio buttons.
+///
+/// The [RequestParams] is intended to be immutable, since it is normally
+/// created by the framework when it receives a HTTP request to process, and
+/// passes it to the application's request handlers (which should have no reason
+/// to modify them).
+///
+/// There is one situation where an application might want to modify
+/// _RequestParams_, and that is during testing: when the test program wants
+/// to build up and modify parameters to simulate different requests. For that
+/// purpose, test programs should use instances of the [RequestParamsMutable]
+/// class.
 
 class RequestParams {
-  //================================================================
-
-  // Stores the parameter keys and values.
-  //
-  // This implementation does not reuse a generic multi-map class
-  // because we want to add the sanitization of values feature,
-  // and to avoid having a dependency on a third-party multi-map
-  // implementation. If a multi-map implementation is added to the
-  // core Dart packages, this can be reconsidered.
-
-  final Map<String, List<String>> _data = {};
-
   //================================================================
   // Constructors
 
   //----------------------------------------------------------------
-
   /// Default constructor (for internal use only)
   ///
   RequestParams._internalConstructor();
@@ -78,6 +76,18 @@ class RequestParams {
   }
 
   //================================================================
+
+  // Stores the parameter keys and values.
+  //
+  // This implementation does not reuse a generic multi-map class
+  // because we want to add the sanitization of values feature,
+  // and to avoid having a dependency on a third-party multi-map
+  // implementation. If a multi-map implementation is added to the
+  // core Dart packages, this can be reconsidered.
+
+  final Map<String, List<String>> _data = {};
+
+  //================================================================
   // Getters and setters
 
   /// Returns true if there are no keys.
@@ -116,19 +126,25 @@ class RequestParams {
     _data.remove(key);
   }
 
-  /*
   //----------------------------------------------------------------
-  /// Remove a particular value from a key.
+  /// Remove a particular value associated with a key.
+  ///
+  /// For the [key] all values that match [value] are removed.
+  ///
+  /// If [raw] is true, the [value] must match exactly for it to be removed.
+  /// Otherwise (the default), the value is removed if its sanitized value
+  /// is the same as the sanitized [value]: where all leading and trailing
+  /// whitespace are removed and multiple whitespaces are treated as a single
+  /// space.
 
-  void remove(String key, String value, {bool raw: false}) {
-    var values = _data[key];
+  void _remove(String key, String value, {bool raw: false}) {
+    final values = _data[key];
     if (values != null) {
       values.removeWhere((raw)
           ? ((e) => e == value)
           : ((e) => _sanitize(e) == _sanitize(value)));
     }
   }
-  */
 
   //----------------------------------------------------------------
   /// Retrieves a single sanitized value for the key.
@@ -228,4 +244,53 @@ class RequestParams {
 
     return buf.toString();
   }
+}
+
+//================================================================
+/// A mutable [RequestParams].
+///
+/// This class is not normally used.
+///
+/// It is only needed for testing, when a test program wants to build up and/or
+/// modify a set of parameters which are then used to simulate different
+/// HTTP requests.
+
+class RequestParamsMutable extends RequestParams {
+  /// Constructor
+  ///
+  /// Creates a new mutable [RequestParams] that is initially empty.
+
+  RequestParamsMutable() : super._internalConstructor();
+
+  //----------------------------------------------------------------
+  /// Adds a key:value to the parameters.
+  ///
+  /// Note: if the value already exists for that key, an additional
+  /// copy of it is added.
+
+  void add(String key, String value) => _add(key, value);
+
+  //----------------------------------------------------------------
+  /// Removes all the values associated with a particular key.
+
+  void removeAll(String key) => _removeAll(key);
+
+  //----------------------------------------------------------------
+  /// Remove a particular value associated with a key.
+  ///
+  /// For the [key] all values that match [value] are removed.
+  ///
+  /// If [raw] is true, the [value] must match exactly for it to be removed.
+  /// Otherwise (the default), the value is removed if its sanitized value
+  /// is the same as the sanitized [value]: where all leading and trailing
+  /// whitespace are removed and multiple whitespaces are treated as a single
+  /// space.
+
+  void remove(String key, String value, {bool raw: false}) =>
+      _remove(key, value, raw: raw);
+
+  //----------------------------------------------------------------
+  /// Removes all values.
+
+  void clear() => _data.clear();
 }

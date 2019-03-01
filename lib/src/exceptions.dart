@@ -49,6 +49,10 @@ class MalformedPathException extends WoomeraException {}
 /// Exception indicating a response could not be created.
 ///
 class NotFoundException extends WoomeraException {
+  /// Constructor.
+
+  NotFoundException(this.found);
+
   /// Value for [found] when no handlers for the HTTP method were found.
 
   static const int foundNothing = 0;
@@ -82,10 +86,6 @@ class NotFoundException extends WoomeraException {
   /// response should return a status of [HttpStatus.notFound].
 
   int found;
-
-  /// Constructor.
-  ///
-  NotFoundException(this.found);
 
   /// String representation
   @override
@@ -124,17 +124,17 @@ class NotFoundException extends WoomeraException {
 /// in processing an exception.
 ///
 class ExceptionHandlerException extends WoomeraException {
+  /// Constructor.
+
+  ExceptionHandlerException(this.previousException, this.exception);
+
   /// Exception object that was being processed by exception handler.
-  ///
+
   Object previousException;
 
   /// The exception that thrown by the exception handler.
-  ///
-  Object exception;
 
-  /// Constructor.
-  ///
-  ExceptionHandlerException(this.previousException, this.exception);
+  Object exception;
 }
 
 //================================================================
@@ -144,6 +144,10 @@ class ExceptionHandlerException extends WoomeraException {
 /// Exception indicating an exception/error occurred in the proxy handler.
 
 class ProxyHandlerException extends WoomeraException {
+  /// Constructor.
+
+  ProxyHandlerException(this.targetUri, this.exception);
+
   /// The target URI
 
   final String targetUri;
@@ -151,10 +155,6 @@ class ProxyHandlerException extends WoomeraException {
   /// The exception that was thrown when trying to retrieve the [targetUri].
 
   final Object exception;
-
-  /// Constructor.
-
-  ProxyHandlerException(this.targetUri, this.exception);
 
   /// String representation of the exception.
 

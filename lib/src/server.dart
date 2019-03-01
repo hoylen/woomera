@@ -65,6 +65,40 @@ typedef FutureOr<Request> RequestFactory(
 /// process HTTP requests from multiple ports/interfaces.
 
 class Server {
+  //================================================================
+  // Constructors
+
+  //----------------------------------------------------------------
+  /// Constructor
+  ///
+  /// Creates a new [Server].
+  ///
+  /// After creation, a typical application should:
+  ///
+  /// - change the [bindPort];
+  /// - optionally change the [bindAddress] (when not deployed with a reverse proxy);
+  /// - configure the first pipeline with handlers;
+  /// - optional create and configure additional pipelines;
+  /// - define a server-level [exceptionHandler];
+  ///
+  /// and then invoke the [run] method to start the Web server.
+  ///
+  /// By default this constructor creates the first pipeline in [pipelines].
+  /// Since all Web servers would need at least one pipeline; and simple
+  /// applications usually don't need more than one pipeline.  But
+  /// [numberOfPipelines] can be set to zero or a number greater than one, to
+  /// create that number of pipelines.
+  ///
+  /// There is nothing special about these initial pipelines. The application
+  /// can also create them and add them to the [pipelines] list.
+
+  Server({int numberOfPipelines = 1}) {
+    for (var x = 0; x < numberOfPipelines; x++) {
+      pipelines.add(new ServerPipeline());
+    }
+  }
+
+  //================================================================
   /// Maximum size of a URL path and query before it is rejected.
   ///
   /// Although HTTP (RFC 2616) does not specify any length limits for URLs,
@@ -204,39 +238,6 @@ class Server {
   HttpServer _svr;
 
   //================================================================
-  // Constructors
-
-  //----------------------------------------------------------------
-  /// Constructor
-  ///
-  /// Creates a new [Server].
-  ///
-  /// After creation, a typical application should:
-  ///
-  /// - change the [bindPort];
-  /// - optionally change the [bindAddress] (when not deployed with a reverse proxy);
-  /// - configure the first pipeline with handlers;
-  /// - optional create and configure additional pipelines;
-  /// - define a server-level [exceptionHandler];
-  ///
-  /// and then invoke the [run] method to start the Web server.
-  ///
-  /// By default this constructor creates the first pipeline in [pipelines].
-  /// Since all Web servers would need at least one pipeline; and simple
-  /// applications usually don't need more than one pipeline.  But
-  /// [numberOfPipelines] can be set to zero or a number greater than one, to
-  /// create that number of pipelines.
-  ///
-  /// There is nothing special about these initial pipelines. The application
-  /// can also create them and add them to the [pipelines] list.
-
-  Server({int numberOfPipelines = 1}) {
-    for (var x = 0; x < numberOfPipelines; x++) {
-      pipelines.add(new ServerPipeline());
-    }
-  }
-
-  //================================================================
   // Getters and setters
 
   /// Indicates if the Web server is running secured HTTPS or unsecured HTTP.
@@ -350,7 +351,7 @@ class Server {
 
           //_logServer.info("HTTP Request: [$id${requestNo + 1}] starting handler");
 
-          final doNotWait = _handleRequest(request, "$id${++requestNo}");
+          final doNotWait = _handleRawRequest(request, "$id${++requestNo}");
           assert(doNotWait != null);
 
           //_logServer.info("HTTP Request: [$id$requestNo] handler started");
@@ -427,7 +428,7 @@ class Server {
   //----------------------------------------------------------------
   // Handles a HTTP request. This method processes the stream of HTTP requests.
 
-  Future _handleRequest(HttpRequest request, String requestId) async {
+  Future _handleRawRequest(HttpRequest request, String requestId) async {
     try {
       // Create context
 
@@ -443,24 +444,12 @@ class Server {
         // No custom request: create a [Request] object
         _logRequest.finest("_handleRequest: creating standard request object");
 
-        req = new Request(request, requestId, this);
+        req = new RequestImpl(request, requestId, this);
       }
       assert(req != null);
       assert(req is Request);
 
-      try {
-        await req._postParamsInit(postMaxSize);
-        await req._sessionRestore(); // must be after POST parameters gotten
-
-        // Handle the request in its context
-
-        await _handleRequestWithContext(req);
-      } finally {
-        // The release method on the [Request] (or its subclass) is always
-        // invoked so it can clean up. For example, when a request subtype
-        // has a transaction that needs to be released.
-        await req.release();
-      }
+      await _processRequest(req);
 
       // The _handleRequestWithContext normally deals with any exceptions
       // that might be thrown, otherwise something very bad went wrong!
@@ -506,6 +495,26 @@ class Server {
   }
 
   //--------
+  /// Processes a Woomera request.
+
+  Future _processRequest(Request req) async {
+    try {
+      await req._postParamsInit(postMaxSize);
+
+      await req._sessionRestore(); // must be after POST parameters gotten
+
+      // Handle the request in its context
+
+      await _handleRequestWithContext(req);
+    } finally {
+      // The release method on the [Request] (or its subclass) is always
+      // invoked so it can clean up. For example, when a request subtype
+      // has a transaction that needs to be released.
+      await req.release();
+    }
+  }
+
+  //--------
   // Handles a HTTP request with its [Context]. Processes it through the
   // pipeline (and handling any exceptions raised).
 
@@ -514,16 +523,7 @@ class Server {
     var handlerFound = false;
     Response response;
 
-    List<String> pathSegments;
-    try {
-      pathSegments = req.request.uri.pathSegments;
-    } on FormatException catch (_) {
-      // This is usually due to malformed paths, due to malicious attackers
-      // For example putting "/certsrv/..%C0%AF../winnt/system32/cmd.exe" and
-      // "/scripts/..%C1%1C../winnt/system32/cmd.exe"
-      pathSegments = null;
-      _logRequest.finest("invalid char encoding in path: request rejected");
-    }
+    final pathSegments = req._pathSegments; // can be null
 
     if (pathSegments != null) {
       // Good request
@@ -537,7 +537,7 @@ class Server {
       // none of the patterns matched it.
 
       for (var pipe in pipelines) {
-        final rules = pipe.rules(req.request.method);
+        final rules = pipe.rules(req.method);
         if (rules == null) {
           // This pipe does not support the method
           continue; // skip to next pipe in the pipeline
@@ -554,7 +554,7 @@ class Server {
 
             _logRequest.finer("[${req.id}] matched rule: $rule");
 
-            req._pathParams = params; // set matched path parameters
+            req.pathParams = params; // set matched path parameters
 
             if (params.isNotEmpty && _logRequestParam.level <= Level.FINER) {
               // Log path parameters
@@ -731,8 +731,8 @@ class Server {
     if (thrownObject is NotFoundException) {
       // Report these as "not found" to the requester.
 
-      _logRequest.severe(
-          "[${req.id}] not found: ${req.request.method} ${req.request.uri.path}");
+      _logRequest
+          .severe("[${req.id}] not found: ${req.method} ${req.requestPath()}");
       assert(st == null);
 
       status = (thrownObject.found == NotFoundException.foundNothing)
@@ -744,7 +744,7 @@ class Server {
       // Report as bad request
 
       _logRequest.finest(
-          "[${req.id}] bad request: ${req.request.method} ${req.request.uri.path}");
+          "[${req.id}] bad request: ${req.method} ${req.requestPath()}");
       assert(st == null);
 
       status = HttpStatus.badRequest;
@@ -789,6 +789,31 @@ class Server {
 """);
     return resp;
   }
+
+  //================================================================
+  /// Simulate the processing of a HTTP request.
+  ///
+  /// This is used for testing a server.
+  ///
+  /// Pass in a [RequestSimulated] for the server to process. The response
+  /// is returned can then be examined.
+
+  Future<ResponseSimulated> simulate(RequestSimulated req) async {
+    _simulatedInvocations++;
+    req._id ??= 's$_simulatedInvocations';
+
+    req._serverSet(this);
+
+    _logRequest.fine("[${req.id}] ${req.method} ${req.requestPath()}");
+
+    await _processRequest(req);
+
+    req._serverSet(null); // clears it so it can be set again in the future
+
+    return req._simulatedResponse;
+  }
+
+  static int _simulatedInvocations = 0;
 
   //================================================================
 

@@ -22,11 +22,6 @@ Main features include:
   generated and unexpected exceptions are always "caught" to generate
   an error page response;
 
-- Pipelines of patterns for matching against URLs to allow
-  sophisticated processing, if needed - allows requests to be processed
-  by multiple handlers (e.g. to log/audit requests before handling them)
-  and different exception handlers to be set for different resources;
-
 - Session management using cookies or URL rewriting;
 
 - Responses can be generated into a buffer - allows response to
@@ -34,6 +29,13 @@ Main features include:
   result page.
 
 - Responses can be read from a stream of data.
+
+- Ability to test a Web server without needing a Web browser.
+
+- Pipelines of patterns for matching against URLs to allow
+  sophisticated processing, if needed - allows requests to be processed
+  by multiple handlers (e.g. to log/audit requests before handling them)
+  and different exception handlers to be set for different resources;
 
 **Note:** This version **requires Dart 2**.  Please use version
 "<3.0.0" if running **Dart 1**.

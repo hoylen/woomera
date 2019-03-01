@@ -1,10 +1,11 @@
 # Changelog
 
-## 3.1.0
+## 4.0.0
 
 - Detects bug in Dart 2.1.x which prevents cookies from being deleted.
 - Merged in changes from v2.2.2.
 - Added proxy handler.
+- Simulation mechanism for testing servers.
 
 ## 3.0.1
 

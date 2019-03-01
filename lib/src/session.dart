@@ -109,7 +109,8 @@ part of woomera;
 ///
 /// To support URL rewriting, every URL within the application must be rewritten
 /// to add the session ID as a query parameter. This is done using the
-/// [Request.rewriteUrl], [Request.ura] or [Request.sessionHiddenInputElement]
+/// [Request.rewriteUrl], [Request.ura] or
+/// [RequestImpl.sessionHiddenInputElement]
 /// methods.
 ///
 /// ```dart
@@ -150,32 +151,6 @@ part of woomera;
 
 class Session {
   //================================================================
-  // Members
-
-  final Server _server;
-
-  /// Session ID
-  ///
-  /// The unique identifier for the session which can be used
-  /// for logging. It is a UUID that is initialized to a unique value.
-
-  final String id =
-      (new Uuid().v4() as String).replaceAll("-", ""); // ignore: avoid_as
-
-  final DateTime _created; // When the session was created
-
-  DateTime _expires; // When the session is expected to expire
-
-  /// Timer that expires the session after inactivity.
-
-  Timer _expiryTimer;
-
-  /// Timer duration. For resetting the timer when a HTTP request is received
-  /// and the session is restored to it.
-
-  Duration _timeout;
-
-  //================================================================
   /// Constructor
   ///
   /// Creates a new session and associate it to the [server].
@@ -212,6 +187,32 @@ class Session {
 
     _logSession.fine("[session:$id]: created");
   }
+
+  //================================================================
+  // Members
+
+  final Server _server;
+
+  /// Session ID
+  ///
+  /// The unique identifier for the session which can be used
+  /// for logging. It is a UUID that is initialized to a unique value.
+
+  final String id =
+      (new Uuid().v4() as String).replaceAll("-", ""); // ignore: avoid_as
+
+  final DateTime _created; // When the session was created
+
+  DateTime _expires; // When the session is expected to expire
+
+  /// Timer that expires the session after inactivity.
+
+  Timer _expiryTimer;
+
+  /// Timer duration. For resetting the timer when a HTTP request is received
+  /// and the session is restored to it.
+
+  Duration _timeout;
 
   //================================================================
   // Properties

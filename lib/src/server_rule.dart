@@ -11,24 +11,6 @@ part of woomera;
 /// [Server].
 
 class ServerRule {
-  //================================================================
-  // Defining the pattern syntax
-
-  static const String _pathSeparator = "/";
-  static const String _variablePrefix = ":";
-  static const String _splat = "*";
-  static const String _optionalSuffix = "?";
-
-  //================================================================
-
-  //----------------------------------------------------------------
-
-  List<String> _segments;
-
-  /// The request handler callback method.
-
-  RequestHandler handler;
-
   //----------------------------------------------------------------
   /// Constructor.
   ///
@@ -72,6 +54,24 @@ class ServerRule {
     //  "/foo/bar -> "foo", "bar"
     //  "/foo/bar/" -> "foo", "bar", ""
   }
+
+  //================================================================
+  // Defining the pattern syntax
+
+  static const String _pathSeparator = "/";
+  static const String _variablePrefix = ":";
+  static const String _splat = "*";
+  static const String _optionalSuffix = "?";
+
+  //================================================================
+
+  //----------------------------------------------------------------
+
+  List<String> _segments;
+
+  /// The request handler callback method.
+
+  RequestHandler handler;
 
   //================================================================
 

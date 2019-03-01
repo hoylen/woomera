@@ -58,18 +58,20 @@ ServerPipeline p2;
 /// and the user name.
 ///
 class LoginSession extends Session {
+  /// Constructor for a login session.
+
+  LoginSession(Server server, Duration timeout, this.when, [this.name])
+      : super(server, timeout);
+
   /// When the login started
+
   DateTime when;
 
   /// The name of the user logged in.
   ///
   /// Can be null.
-  String name;
 
-  /// Constructor for a login session.
-  ///
-  LoginSession(Server server, Duration timeout, this.when, [this.name])
-      : super(server, timeout);
+  String name;
 }
 
 //================================================================
@@ -453,7 +455,7 @@ Future<Response> homePage(Request req) async {
 /// Handler for post operation
 ///
 Future<Response> handleTestPost(Request req) async {
-  assert(req.request.method == "POST");
+  assert(req.method == "POST");
 
   mainLog.fine("[${req.id}] Test POST");
 /*
@@ -1169,16 +1171,36 @@ Server _serverSetup() {
   return webServer;
 }
 
+//================================================================
+// Simulated testing
+
 //----------------------------------------------------------------
 
+Future simulatedRun(Server server) async {
+  mainLog.fine("GET /test");
+
+  final req = new RequestSimulated('GET', '~/test', id: 'foosim');
+
+  final r = await server.simulate(req);
+  print(r);
+}
+
+//================================================================
+
 Future main(List<String> args) async {
+  final simulate = true;
+
   _loggingSetup();
 
   final server = _serverSetup();
 
   mainLog.fine("started");
 
-  await server.run();
+  if (!simulate) {
+    await server.run(); // run Web server
+  } else {
+    await simulatedRun(server); // run simulation for testing
+  }
 
   // The Future returned by the [run] method never gets completed, unless the
   // server's [stop] method is invoked. Most applications leave the web server

@@ -15,6 +15,41 @@ part of woomera;
 
 class Proxy {
   //================================================================
+  // Constructors
+
+  //----------------------------------------------------------------
+  /// Constructor
+
+  Proxy(this.method, String pattern, String proxy,
+      {List<String> ignoreNotFound,
+      this.requestBlockHeaders,
+      this.responseBlockHeaders}) {
+    if (method != 'GET' && method != 'HEAD') {
+      throw new ArgumentError.value(
+          method, 'method', 'only GET and HEAD supported');
+    }
+
+    if (!pattern.startsWith('~/')) {
+      throw new ArgumentError.value(
+          pattern, 'pattern', 'does not start with "~/"');
+    }
+
+    if (!pattern.endsWith('/*')) {
+      throw new ArgumentError.value(
+          pattern, 'pattern', 'does not end with "*"');
+    }
+
+    _pathPrefix = pattern.substring(2, pattern.length - 2);
+    _proxyHost = proxy;
+
+    if (ignoreNotFound != null) {
+      for (var path in ignoreNotFound) {
+        _ignoreNotFound.add('$proxy/$path');
+      }
+    }
+  }
+
+  //================================================================
   // Static constants
 
   /// Headers in the request which are never passed through to the target.
@@ -64,41 +99,6 @@ class Proxy {
   /// Set this value in the constructor.
 
   final List<String> responseBlockHeaders;
-
-  //================================================================
-  // Constructors
-
-  //----------------------------------------------------------------
-  /// Constructor
-
-  Proxy(this.method, String pattern, String proxy,
-      {List<String> ignoreNotFound,
-      this.requestBlockHeaders,
-      this.responseBlockHeaders}) {
-    if (method != 'GET' && method != 'HEAD') {
-      throw new ArgumentError.value(
-          method, 'method', 'only GET and HEAD supported');
-    }
-
-    if (!pattern.startsWith('~/')) {
-      throw new ArgumentError.value(
-          pattern, 'pattern', 'does not start with "~/"');
-    }
-
-    if (!pattern.endsWith('/*')) {
-      throw new ArgumentError.value(
-          pattern, 'pattern', 'does not end with "*"');
-    }
-
-    _pathPrefix = pattern.substring(2, pattern.length - 2);
-    _proxyHost = proxy;
-
-    if (ignoreNotFound != null) {
-      for (var path in ignoreNotFound) {
-        _ignoreNotFound.add('$proxy/$path');
-      }
-    }
-  }
 
   //================================================================
   // Methods
@@ -151,7 +151,7 @@ class Proxy {
       final u = Uri.parse(targetUrl);
       passHeaders['host'] = (u.hasPort) ? '${u.host}:${u.port}' : u.host;
 
-      req.request.headers.forEach((headerName, values) {
+      req.headers.forEach((headerName, values) {
         if (!(requestHeadersNeverPass.contains(headerName) ||
             (requestBlockHeaders?.contains(headerName) ?? false))) {
           if (values.length == 1) {
@@ -190,7 +190,7 @@ class Proxy {
         if (!(responseHeadersNeverPass.contains(headerName) ||
             (responseBlockHeaders?.contains(headerName) ?? false))) {
           // Not one of the special headers: copy it to the response
-          resp.header(headerName, targetResponse.headers[headerName]);
+          resp.headerAdd(headerName, targetResponse.headers[headerName]);
         }
       }
 

@@ -49,6 +49,12 @@ class ServerPipeline {
     if (method.isEmpty) {
       throw new ArgumentError.value(method, "method", "Empty string");
     }
+    if (path == null) {
+      throw new ArgumentError.notNull('path');
+    }
+    if (!path.startsWith('~/')) {
+      throw new ArgumentError.value(path, 'path', 'does not start with "~/"');
+    }
     if (handler == null) {
       throw new ArgumentError.notNull("handler");
     }

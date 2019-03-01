@@ -35,9 +35,10 @@ Future main() async {
 
   // Register rules
 
-  ws.pipelines.first..get("~/", _handleTopLevel);
-  ws.pipelines.first..post("~/new", _handleNewSession);
-  ws.pipelines.first..post("~/stop", _handleStop);
+  ws.pipelines.first
+    ..get("~/", _handleTopLevel)
+    ..post("~/new", _handleNewSession)
+    ..post("~/stop", _handleStop);
 
   // Run the server
 

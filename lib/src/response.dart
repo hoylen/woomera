@@ -7,11 +7,29 @@ part of woomera;
 /// this type. See the [RequestHandler] and [ExceptionHandler] typedefs.
 
 abstract class Response {
-  int _status = HttpStatus.ok;
-  ContentType _contentType = ContentType.binary;
-  final _headers = <String, List<String>>{};
-  final _cookies = <Cookie>[];
+  //================================================================
+  /// Default constructor
+
+  Response(ContentType ct) : contentType = ct ?? ContentType.binary;
+
+  //================================================================
+
+  /// Content-type of the response.
+  final ContentType contentType;
+
+  /// HTTP headers in the response.
+  final Map<String, List<String>> headers = {};
+
+  /// Cookies in the response.
+  final List<Cookie> cookies = [];
+
+  // State variable
   bool _headersOutputted = false;
+
+  //================================================================
+  // Status code
+
+  int _status = HttpStatus.ok; // defaults to OK
 
   /// Sets the HTTP status code
   ///
@@ -31,13 +49,17 @@ abstract class Response {
 
   /// HTTP status code.
   ///
-  /// Returns the HTTP status code that will be used to create the response.
-  ///
+  /// Returns the HTTP status code of the response.
+
   int get status => _status;
 
+  //================================================================
+  // Setting the HTTP headers
+
+  //----------------------------------------------------------------
   /// Set a HTTP header
   ///
-  void header(String name, String value) {
+  void headerAdd(String name, String value) {
     if (name == null) {
       throw new ArgumentError.notNull("name");
     }
@@ -51,13 +73,25 @@ abstract class Response {
       throw new StateError("Header already outputted");
     }
 
-    var values = _headers[name];
-    if (values == null) {
-      values = <String>[];
-      _headers[name] = values;
+    if (!headers.containsKey(name)) {
+      headers[name] = <String>[value]; // create new values list
+    } else {
+      headers[name].add(value); // append to existing
     }
-    _headers[name].add(value);
   }
+
+  //----------------------------------------------------------------
+  /// Set a HTML header
+  ///
+  /// Use [headerAdd] instead.
+
+  @deprecated
+  void header(String name, String value) {
+    headerAdd(name, value);
+  }
+
+  //================================================================
+  // Cookies
 
   /// Set a cookie.
   ///
@@ -92,7 +126,7 @@ abstract class Response {
     if (_headersOutputted) {
       throw new StateError("Header already outputted");
     }
-    _cookies.add(cookie);
+    cookies.add(cookie);
   }
 
   /// Delete a cookie.
@@ -115,6 +149,10 @@ abstract class Response {
     }
   }
 
+  //================================================================
+  // Response prodction methods
+
+  //----------------------------------------------------------------
   /// Output the status and headers.
   ///
   void _outputHeaders(Request req) {
@@ -124,7 +162,7 @@ abstract class Response {
 
     // Check that application has not tried to use the session cookie
     final sessionCookieName = req.server.sessionCookieName;
-    for (var c in _cookies) {
+    for (var c in cookies) {
       if (c.name == sessionCookieName) {
         throw new ArgumentError.value(
             c.name, "cookieName", "Clashes with name of session cookie");
@@ -149,21 +187,15 @@ abstract class Response {
         cookieDelete(req.server.sessionCookieName, req.server.basePath);
       }
     }
+
     // Output the status, headers and cookies
 
-    req.request.response.statusCode = _status;
-    req.request.response.headers.contentType = _contentType;
-    req.request.response.cookies.addAll(_cookies);
-
-    for (var name in _headers.keys) {
-      for (var value in _headers[name]) {
-        req.request.response.headers.add(name, value);
-      }
-    }
+    req._produceResponseHeaders(_status, contentType, cookies, headers);
 
     _headersOutputted = true;
   }
 
+  //----------------------------------------------------------------
   /// Method that is invoked at the end of creating the HTTP response.
   ///
   /// The framework automatically invokes this method when it creates a HTTP
@@ -182,6 +214,7 @@ abstract class Response {
     // do nothing
   }
 
+  //----------------------------------------------------------------
   /// The internal finish method is called at the end of the response.
   ///
   /// The framework automatically invokes this method when it creates a HTTP
@@ -212,16 +245,12 @@ abstract class Response {
 /// [ResponseStream] for those types of responses.
 
 class ResponseBuffered extends Response {
+  /// Constructor
+
+  ResponseBuffered(ContentType ct) : super(ct);
+
   final StringBuffer _buf = new StringBuffer();
   bool _contentOutputted = false;
-
-  /// Constructor
-  ///
-  ResponseBuffered(ContentType ct) {
-    if (ct != null) {
-      _contentType = ct;
-    }
-  }
 
   /// Append to the content.
   ///
@@ -245,7 +274,8 @@ class ResponseBuffered extends Response {
     super._outputHeaders(req);
 
     final str = _buf.toString();
-    req.request.response.write(str);
+
+    req._outputBody(str);
 
     _logResponse.fine("[${req.id}] status=$_status, size=${str.length}");
     _contentOutputted = true;
@@ -266,16 +296,13 @@ class ResponseBuffered extends Response {
 /// using the [String.codeUnits] method.
 
 class ResponseStream extends Response {
-  int _streamState = 0; // 0 = no stream, 1 = set, 2 = finished
-
   /// Constructor.
   ///
-  ResponseStream(ContentType ct) {
-    if (ct != null) {
-      _contentType = ct;
-    }
+  ResponseStream(ContentType ct) : super(ct) {
     _streamState = 0;
   }
+
+  int _streamState = 0; // 0 = no stream, 1 = set, 2 = finished
 
   /// Provide a stream that produces the content.
   ///
@@ -297,7 +324,8 @@ class ResponseStream extends Response {
     }
     _streamState = 1;
 
-    await req.request.response.addStream(stream);
+    await req._streamBody(stream);
+
     _streamState = 2;
 
     return this;
@@ -329,12 +357,6 @@ class ResponseStream extends Response {
 /// HTTP response that redirects the browser to a URL.
 ///
 class ResponseRedirect extends Response {
-  // The address to redirect to.
-  //
-  // Can be a internal relative-path or an external URL.
-
-  String _addr;
-
   /// Constructor.
   ///
   /// The response will redirect the browser to [addr], which can be
@@ -354,7 +376,8 @@ class ResponseRedirect extends Response {
   /// For more information on HTTP status codes, see
   /// <https://www.w3.org/Protocols/rfc2616/rfc2616-sec10.html#sec10.3>
 
-  ResponseRedirect(String addr, {int status = HttpStatus.seeOther}) {
+  ResponseRedirect(String addr, {int status = HttpStatus.seeOther})
+      : super(null) {
     if (status < 300 || 399 < status) {
       throw new ArgumentError.value(
           status, "status", "ResponseRedirect: not a redirection HTTP status");
@@ -376,6 +399,12 @@ class ResponseRedirect extends Response {
     this.status = status;
   }
 
+  // The address to redirect to.
+  //
+  // Can be a internal relative-path or an external URL.
+
+  String _addr;
+
   /// Produce the response.
   ///
   @override
@@ -388,8 +417,10 @@ class ResponseRedirect extends Response {
 
     _logResponse.fine("[${req.id}] status=$_status, redirect=$url");
 
-    header('Location', url);
+    headerAdd('Location', url);
     super._outputHeaders(req);
+    // Note: there is no body
+
     super._finish(req);
   }
 }
