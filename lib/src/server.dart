@@ -428,7 +428,7 @@ class Server {
   //----------------------------------------------------------------
   // Handles a HTTP request. This method processes the stream of HTTP requests.
 
-  Future _handleRawRequest(HttpRequest request, String requestId) async {
+  Future _handleRawRequest(HttpRequest httpRequest, String requestId) async {
     try {
       // Create context
 
@@ -438,16 +438,15 @@ class Server {
         // Application uses a custom request: invoke it for the request object
         _logRequest.finest("_handleRequest: creating custom request object");
 
-        final x = requestCreator(request, requestId, this);
-        req = (x is Request) ? x : await x;
+        final x = requestCreator(httpRequest, requestId, this);
+        req = (x is Request) ? x : await x; // await if it is a Future
       } else {
         // No custom request: create a [Request] object
         _logRequest.finest("_handleRequest: creating standard request object");
 
-        req = new RequestImpl(request, requestId, this);
+        req = new Request(httpRequest, requestId, this);
       }
       assert(req != null);
-      assert(req is Request);
 
       await _processRequest(req);
 
@@ -482,13 +481,13 @@ class Server {
 
       if (status != null) {
         // Can generate error page as a response
-        request.response
+        httpRequest.response
           ..statusCode = status
           ..write("$message\n");
         _logResponse.fine("[$requestId] status=$status ($message)");
       }
     } finally {
-      await request.response.close(); // always close the response
+      await httpRequest.response.close(); // always close the response
     }
 
     _logRequest.finest("_handleRequest: done");
@@ -795,14 +794,25 @@ class Server {
   ///
   /// This is used for testing a server.
   ///
-  /// Pass in a [RequestSimulated] for the server to process. The response
-  /// is returned can then be examined.
+  /// Pass in a [Request] for the server to process. This will be a _Request_
+  /// created using one of these constructors:
+  /// [Request.simulated], [Request.simulatedGet] or [Request.simulatedPost].
+  ///
+  /// The response returned can then be examined to determine if the server
+  /// produced the expected HTTP response.
 
-  Future<ResponseSimulated> simulate(RequestSimulated req) async {
+  Future<SimulatedResponse> simulate(Request req) async {
+    // Provide a generated ID for the request, if one has not been set for it.
+
     _simulatedInvocations++;
-    req._id ??= 's$_simulatedInvocations';
+    req._id ??= 'SIM:$id$_simulatedInvocations'; // "S:123" or "S:serverId123"
+
+    // Set the server for the request. This is done here, so a simulated
+    // request doesn't need to have its server set when it is constructed.
 
     req._serverSet(this);
+
+    // Get the server to process the request
 
     _logRequest.fine("[${req.id}] ${req.method} ${req.requestPath()}");
 
@@ -810,10 +820,18 @@ class Server {
 
     req._serverSet(null); // clears it so it can be set again in the future
 
+    // Return the response
+
     return req._simulatedResponse;
   }
 
-  static int _simulatedInvocations = 0;
+  //----------------
+  // Internal count of the number of invocations of [simulate] for the server.
+  //
+  // This is used to generate a unique ID for simulated requests (if one is
+  // needed).
+
+  int _simulatedInvocations = 0;
 
   //================================================================
 
@@ -863,7 +881,7 @@ class Server {
 
   /// The default expiry time for sessions in this server.
   ///
-  /// The [woomera.Session.refresh] method refreshes the session to expire in
+  /// The [Session._refresh] method refreshes the session to expire in
   /// this amount of time, if no explicit value was passed to it. If this value
   /// is not set (null), an internal default expiry time is used.
   ///

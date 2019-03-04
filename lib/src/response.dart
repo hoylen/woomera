@@ -8,14 +8,9 @@ part of woomera;
 
 abstract class Response {
   //================================================================
-  /// Default constructor
-
-  Response(ContentType ct) : contentType = ct ?? ContentType.binary;
-
-  //================================================================
 
   /// Content-type of the response.
-  final ContentType contentType;
+  ContentType contentType;
 
   /// HTTP headers in the response.
   final Map<String, List<String>> headers = {};
@@ -109,10 +104,11 @@ abstract class Response {
   /// Note: the name and value of the cookie cannot contain whitespace.
   /// Cookie names are case sensitive
   ///
-  /// Typically, the [io.Cookies.path] should be set to the server's [Server.basePath].
-  /// For improved security, the [io.Cookies.httpOnly] should be set to true.
+  /// Typically, the [Cookie.path] should be set to the server's
+  /// [Server.basePath]. For improved security, the [Cookie.httpOnly] should be
+  /// set to true.
   ///
-  /// The [io.Cookies.name] must not be the same as the server's [Server.sessionCookieName].
+  /// The [Cookie.name] must not be the same as the server's [Server.sessionCookieName].
   ///
   /// A refresher on cookies:
   ///
@@ -247,7 +243,9 @@ abstract class Response {
 class ResponseBuffered extends Response {
   /// Constructor
 
-  ResponseBuffered(ContentType ct) : super(ct);
+  ResponseBuffered(ContentType ct) {
+    contentType = ct;
+  }
 
   final StringBuffer _buf = new StringBuffer();
   bool _contentOutputted = false;
@@ -298,7 +296,8 @@ class ResponseBuffered extends Response {
 class ResponseStream extends Response {
   /// Constructor.
   ///
-  ResponseStream(ContentType ct) : super(ct) {
+  ResponseStream(ContentType ct) {
+    contentType = ct;
     _streamState = 0;
   }
 
@@ -376,8 +375,7 @@ class ResponseRedirect extends Response {
   /// For more information on HTTP status codes, see
   /// <https://www.w3.org/Protocols/rfc2616/rfc2616-sec10.html#sec10.3>
 
-  ResponseRedirect(String addr, {int status = HttpStatus.seeOther})
-      : super(null) {
+  ResponseRedirect(String addr, {int status = HttpStatus.seeOther}) : super() {
     if (status < 300 || 399 < status) {
       throw new ArgumentError.value(
           status, "status", "ResponseRedirect: not a redirection HTTP status");

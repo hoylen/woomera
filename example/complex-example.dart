@@ -1179,7 +1179,7 @@ Server _serverSetup() {
 Future simulatedRun(Server server) async {
   mainLog.fine("GET /test");
 
-  final req = new RequestSimulated('GET', '~/test', id: 'foosim');
+  final req = new Request.simulated('GET', '~/test', id: 'simulated');
 
   final r = await server.simulate(req);
   print(r);

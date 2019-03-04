@@ -507,12 +507,12 @@ Future simulatedRun(Server server) async {
 
     simLog.info("GET home page");
 
-    final req = new RequestSimulated.get('~/');
+    final req = new Request.simulatedGet('~/');
     final resp = await server.simulate(req);
     simLog.info('home page content-type: ${resp.contentType}');
     assert(resp.status == HttpStatus.ok);
     assert(resp.contentType == ContentType.html);
-    simLog.finer('home page body:\n${resp.body}');
+    simLog.finer('home page body:\n${resp.bodyStr}');
   }
 
   {
@@ -520,12 +520,12 @@ Future simulatedRun(Server server) async {
 
     simLog.info("GET form");
 
-    var req = new RequestSimulated.get(pathFormGet);
+    var req = new Request.simulatedGet(pathFormGet);
     var resp = await server.simulate(req);
     assert(resp.status == HttpStatus.ok);
-    simLog.finer('form page body:\n${resp.body}');
-    assert(resp.body.contains('<form '));
-    assert(resp.body.contains('<input '));
+    simLog.finer('form page body:\n${resp.bodyStr}');
+    assert(resp.bodyStr.contains('<form '));
+    assert(resp.bodyStr.contains('<input '));
 
     // Simulate a POST request from submitting the form
 
@@ -536,18 +536,18 @@ Future simulatedRun(Server server) async {
       ..add(_pParamFromDate, '2019-01-01')
       ..add(_pParamToDate, '2019-02-28');
 
-    req = new RequestSimulated.post(pathFormPost, postParams);
+    req = new Request.simulatedPost(pathFormPost, postParams);
     resp = await server.simulate(req);
     assert(resp.status == HttpStatus.ok);
-    simLog.finer('form response body:\n${resp.body}');
-    assert(resp.body.contains('58 days'));
+    simLog.finer('form response body:\n${resp.bodyStr}');
+    assert(resp.bodyStr.contains('58 days'));
 
     // Simulate a POST request from submitting the form with invalid dates
     // This causes an error that the handler takes care of.
 
     simLog.info("POST form: exception 0");
 
-    req = new RequestSimulated.post(
+    req = new Request.simulatedPost(
         pathFormPost,
         new RequestParamsMutable()
           ..add(_pParamTitle, 'Testing')
@@ -556,15 +556,15 @@ Future simulatedRun(Server server) async {
 
     resp = await server.simulate(req);
     assert(resp.status == HttpStatus.badRequest);
-    simLog.finer('form error body 0:\n${resp.body}');
-    assert(resp.body.contains('invalid date(s) entered'));
+    simLog.finer('form error body 0:\n${resp.bodyStr}');
+    assert(resp.bodyStr.contains('invalid date(s) entered'));
 
     // Simulate a POST request from submitting the form with invalid values
     // This raises an exception for the pipeline exception handler.
 
     simLog.info("POST form: exception 1");
 
-    req = new RequestSimulated.post(
+    req = new Request.simulatedPost(
         pathFormPost,
         new RequestParamsMutable()
           ..add(_pParamTitle, '') // no title
@@ -573,15 +573,15 @@ Future simulatedRun(Server server) async {
 
     resp = await server.simulate(req);
     assert(resp.status == HttpStatus.badRequest);
-    simLog.finer('form error body 1:\n${resp.body}');
-    assert(resp.body.contains('<strong>pipeline</strong>'));
+    simLog.finer('form error body 1:\n${resp.bodyStr}');
+    assert(resp.bodyStr.contains('<strong>pipeline</strong>'));
 
     // Simulate a POST request from submitting the form with invalid values
     // This raises an exception for the server exception handler.
 
     simLog.info("POST form: exception 2");
 
-    req = new RequestSimulated.post(
+    req = new Request.simulatedPost(
         pathFormPost,
         new RequestParamsMutable()
           ..add(_pParamTitle, 'Testing') // title present
@@ -590,8 +590,8 @@ Future simulatedRun(Server server) async {
 
     resp = await server.simulate(req);
     assert(resp.status == HttpStatus.badRequest);
-    simLog.finer('form error body 2:\n${resp.body}');
-    assert(resp.body.contains('<strong>server</strong>'));
+    simLog.finer('form error body 2:\n${resp.bodyStr}');
+    assert(resp.bodyStr.contains('<strong>server</strong>'));
   }
 
   {
@@ -599,7 +599,7 @@ Future simulatedRun(Server server) async {
 
     simLog.info("GET non-existent page");
 
-    final req = new RequestSimulated.get('~/no/such/page', id: 'noSuchUrl');
+    final req = new Request.simulatedGet('~/no/such/page', id: 'noSuchUrl');
     final resp = await server.simulate(req);
     assert(resp.status == HttpStatus.notFound); // 404
   }
@@ -609,14 +609,14 @@ Future simulatedRun(Server server) async {
 
     simLog.info("GET stream");
 
-    final req = new RequestSimulated.get('~/stream',
+    final req = new Request.simulatedGet('~/stream',
         queryParams: new RequestParamsMutable()..add('milliseconds', '100'));
     final resp = await server.simulate(req);
     assert(resp.status == HttpStatus.ok);
     assert(resp.contentType == ContentType.text);
-    simLog.fine('stream body:\n${resp.body}');
-    assert(resp.body.contains('Started:'));
-    assert(resp.body.contains('Finished:'));
+    simLog.fine('stream body:\n${resp.bodyStr}');
+    assert(resp.bodyStr.contains('Started:'));
+    assert(resp.bodyStr.contains('Finished:'));
   }
 
   {
@@ -624,13 +624,13 @@ Future simulatedRun(Server server) async {
 
     simLog.info("GET json");
 
-    final req = new RequestSimulated.get('~/json');
+    final req = new Request.simulatedGet('~/json');
     final resp = await server.simulate(req);
     assert(resp.status == HttpStatus.ok);
     assert(resp.contentType == ContentType.json);
-    simLog.finer('JSON body:\n${resp.body}');
+    simLog.finer('JSON body:\n${resp.bodyStr}');
     // ignore: avoid_as
-    final j = json.decode(resp.body) as Object;
+    final j = json.decode(resp.bodyStr) as Object;
     assert(j is Map<String, Object>);
     if (j is Map<String, Object>) {
       assert(j.containsKey('name'));

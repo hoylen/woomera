@@ -83,7 +83,7 @@ class RequestParams {
   // because we want to add the sanitization of values feature,
   // and to avoid having a dependency on a third-party multi-map
   // implementation. If a multi-map implementation is added to the
-  // core Dart packages, this can be reconsidered.
+  // standard Dart packages, this can be reconsidered.
 
   final Map<String, List<String>> _data = {};
 

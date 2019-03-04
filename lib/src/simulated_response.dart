@@ -4,26 +4,38 @@ part of woomera;
 /// Response returned by simulations.
 ///
 /// The [Server.simulate] method returns an instance of this class.
+///
+/// This class extends [Response] with methods to retrieve the body of the
+/// HTTP response. The other response classes (used by request handlers to
+/// produce HTTP responses) only allow the body to be produced.
 
-class ResponseSimulated extends Response {
+class SimulatedResponse extends Response {
   //----------------------------------------------------------------
   /// Constructor
 
-  ResponseSimulated(int stat, ContentType ct, List<Cookie> cookies,
-      Map<String, List<String>> headers)
-      : super(ct) {
-    _status = stat;
+  SimulatedResponse(_CoreResponseSimulated core) {
+    _status = core.status;
 
-    for (var c in cookies) {
+    contentType = core.headers.contentType;
+
+    for (var c in core.cookies) {
       assert(c != null);
       cookieAdd(c);
     }
 
-    for (var k in headers.keys) {
-      for (var v in headers[k]) {
+    // TODO: copy headers from core
+    /*for (var k in core.headers.keys) {
+      for (var v in core.headers[k]) {
         headerAdd(k, v);
       }
     }
+    */
+
+    // Set the body using one of (but not both) string or bytes
+
+    assert(!(core.bodyStr != null && core.bodyBytes != null), 'both set');
+    _bodyStr = core.bodyStr;
+    _bodyBytes = core.bodyBytes;
   }
 
   //----------------------------------------------------------------
@@ -51,7 +63,7 @@ class ResponseSimulated extends Response {
   ///
   /// Use [bodyBytes] to retrieve the body as a sequence of bytes.
 
-  String get body {
+  String get bodyStr {
     if (_bodyStr != null) {
       assert(_bodyBytes == null, 'both _bodyBytes and _bodyStr are set');
       return _bodyStr;
@@ -70,7 +82,7 @@ class ResponseSimulated extends Response {
   /// If the handler produced a String value, the UTF-8 encoding of that
   /// value is returned.
   ///
-  /// Use [body] to retrieve the body as a String.
+  /// Use [bodyStr] to retrieve the body as a String.
 
   List<int> get bodyBytes {
     if (_bodyBytes != null) {
@@ -100,7 +112,7 @@ class ResponseSimulated extends Response {
       buf.write('COOKIE: $c\n');
     }
 
-    buf..write('\n')..write(body);
+    buf..write('\n')..write(bodyStr);
 
     return buf.toString();
   }

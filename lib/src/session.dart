@@ -110,7 +110,7 @@ part of woomera;
 /// To support URL rewriting, every URL within the application must be rewritten
 /// to add the session ID as a query parameter. This is done using the
 /// [Request.rewriteUrl], [Request.ura] or
-/// [RequestImpl.sessionHiddenInputElement]
+/// [Request.sessionHiddenInputElement]
 /// methods.
 ///
 /// ```dart
