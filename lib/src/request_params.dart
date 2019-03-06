@@ -45,7 +45,7 @@ class RequestParams {
   /// [HTML 4.01 specification section 17.13.4]
   /// (http://www.w3.org/TR/REC-html40/interact/forms.html#h-17.13.4
   /// "HTML 4.01 section 17.13.4"). Each key and value in the returned
-  /// map has been decoded. If the [query]
+  /// map has been decoded. If the [queryStr]
   /// is the empty string an empty map is returned.
   ///
   /// Keys in the query string with no value are mapped to the empty string.
@@ -53,8 +53,20 @@ class RequestParams {
   /// Each query component will be decoded using [encoding]. The default encoding
   /// is UTF-8.
   ///
-  RequestParams._fromQueryString(String query, {Encoding encoding = utf8}) {
-    for (var pair in query.split("&")) {
+  RequestParams._fromQueryString(String queryStr, {Encoding encoding = utf8}) {
+    _populateFromQueryString(queryStr, encoding: encoding);
+  }
+
+  //----------------------------------------------------------------
+  /// Populate parameters from a query string.
+  ///
+  /// Parses [queryStr] for parameters and adds them to the request parameters.
+  /// Any existing parameters are retained.
+
+  void _populateFromQueryString(String queryStr, {Encoding encoding = utf8}) {
+    assert(!queryStr.contains('?'));
+
+    for (var pair in queryStr.split("&")) {
       if (pair.isNotEmpty) {
         final index = pair.indexOf("=");
         if (index == -1) {
@@ -261,6 +273,18 @@ class RequestParamsMutable extends RequestParams {
   /// Creates a new mutable [RequestParams] that is initially empty.
 
   RequestParamsMutable() : super._internalConstructor();
+
+  //----------------------------------------------------------------
+  /// Parse the query parameters from a URI.
+  ///
+  /// All the other parts of the URI are ignored.
+
+  RequestParamsMutable.fromUrl(String uri) : super._internalConstructor() {
+    final q = uri.indexOf('?');
+    final queryString = (0 <= q) ? uri.substring(q + 1) : uri;
+
+    _populateFromQueryString(queryString);
+  }
 
   //----------------------------------------------------------------
   /// Adds a key:value to the parameters.

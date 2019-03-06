@@ -36,6 +36,9 @@ abstract class _CoreRequest {
 
   /// The body of the HTTP request, decoded as UTF-8 into a String.
   Future<String> bodyStr(int maxBytes);
+
+  /// The passed in session (for simulated core requests only) or null.
+  String get sessionId;
 }
 
 //================================================================
@@ -162,6 +165,11 @@ class _CoreRequestReal implements _CoreRequest {
     }
     return _bodyStr;
   }
+
+  //================================================================
+
+  @override
+  String get sessionId => null;
 }
 
 //================================================================
@@ -177,7 +185,8 @@ class _CoreRequestSimulated implements _CoreRequest {
   /// Constructor
 
   _CoreRequestSimulated(this._method, this._internalPath,
-      {this.queryParams,
+      {String sessionId,
+      this.queryParams,
       SimulatedHttpHeaders headers,
       List<Cookie> cookies,
       String bodyStr,
@@ -190,6 +199,10 @@ class _CoreRequestSimulated implements _CoreRequest {
     if (!_internalPath.startsWith('~/')) {
       throw ArgumentError.value(
           _internalPath, 'path', 'does not start with "~/"');
+    }
+
+    if (sessionId != null && sessionId.isNotEmpty) {
+      this.sessionId = sessionId;
     }
   }
 
@@ -351,4 +364,12 @@ class _CoreRequestSimulated implements _CoreRequest {
       return <int>[];
     }
   }
+
+  //================================================================
+  /// Session ID
+  ///
+  /// Value is null if the simulated request didn't provide a session ID.
+
+  @override
+  String sessionId;
 }

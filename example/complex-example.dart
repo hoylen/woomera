@@ -1188,7 +1188,15 @@ Future simulatedRun(Server server) async {
 //================================================================
 
 Future main(List<String> args) async {
-  final simulate = true;
+  final simulate = args.contains('-t');
+  final quietMode = args.contains('-q'); // quiet mode
+  if (args.contains('-h')) {
+    print('Usage: complex-example.dart [-t] [-q] [-h]');
+  }
+
+  if (!quietMode) {
+    _loggingSetup();
+  }
 
   _loggingSetup();
 

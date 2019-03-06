@@ -5,9 +5,13 @@ homepage: https://github.com/hoylen/woomera
 author: Hoylen Sue <hoylen@hoylen.com>
 
 environment:
-  sdk: '>=2.2.0 <3.0.0'
-  # Also works with v2.0.0, but not with Dart 2.1.0 and 2.1.1: both of which
-  # have a bug that prevents cookies from being deleted.
+  sdk: '2.0.0'
+  # sdk: '>=2.x.x <3.0.0'
+  # Note: does NOT work with these versions of Dart, since they have a bug
+  # that prevents cookies from being deleted:
+  # - Dart 2.1.0
+  # - Dart 2.1.1
+  # - Dart 2.2.0
 
 dev_dependencies:
   test: ">=0.12.10 <1.4.0"

@@ -10,26 +10,48 @@ part of woomera;
 /// produce HTTP responses) only allow the body to be produced.
 
 class SimulatedResponse extends Response {
+  /// Identification of the session.
+  ///
+  /// When not simulating, this value is communicated in the response using a
+  /// session cookie or URL rewriting.
+
+  String sessionId;
+
   //----------------------------------------------------------------
   /// Constructor
 
-  SimulatedResponse(_CoreResponseSimulated core) {
+  SimulatedResponse(_CoreResponseSimulated core, String sessionCookieName) {
     _status = core.status;
 
     contentType = core.headers.contentType;
 
-    for (var c in core.cookies) {
-      assert(c != null);
-      cookieAdd(c);
-    }
+    // Copy cookies from core's cookies (omitting any session cookie)
 
-    // TODO: copy headers from core
-    /*for (var k in core.headers.keys) {
-      for (var v in core.headers[k]) {
-        headerAdd(k, v);
+    assert(sessionId == null);
+
+    for (var c in core.cookies) {
+      if (c.name == sessionCookieName) {
+        // Session cookie: do not copy it
+        if (c.value.isNotEmpty &&
+            (c.maxAge == null || 0 < c.maxAge) &&
+            (c.expires == null || 1970 < c.expires.year)) {
+          // Is setting the session cookie (not deleting it): set the session
+          assert(sessionId == null);
+          sessionId = c.value;
+        } else {
+          // Not the session cookie: copy it
+          cookieAdd(c);
+        }
       }
     }
-    */
+
+    // Copy headers from core's headers
+
+    core.headers.forEach((name, values) {
+      for (var v in values) {
+        headerAdd(name, v);
+      }
+    });
 
     // Set the body using one of (but not both) string or bytes
 
@@ -99,8 +121,15 @@ class SimulatedResponse extends Response {
 
   @override
   String toString() {
-    final buf = new StringBuffer('HTTP $status\n')
-      ..write('Content-Type: $contentType\n');
+    final buf = new StringBuffer('HTTP $status\n');
+
+    if (sessionId != null) {
+      buf.write('SESSION ID: $sessionId\n');
+    }
+
+    if (contentType != null) {
+      buf.write('CONTENT-TYPE: $contentType\n');
+    }
 
     for (var k in headers.keys) {
       for (var v in headers[k]) {

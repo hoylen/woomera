@@ -22,8 +22,6 @@ class Request {
     _logRequest.fine(
         "[$id] ${_coreRequest.method} ${_coreRequest.internalPath(server._basePath)}");
 
-    _sessionUsingCookies = false; // todo
-
     _serverSet(server);
 
     _logRequestHeader.finer(() {
@@ -83,7 +81,8 @@ class Request {
   /// Constructor for a simulated request.
 
   Request.simulated(String method, String internalPath,
-      {String id,
+      {String sessionId,
+      String id,
       RequestParams queryParams,
       SimulatedHttpHeaders headers,
       List<Cookie> cookies,
@@ -92,6 +91,7 @@ class Request {
       this.postParams})
       : _id = id,
         _coreRequest = new _CoreRequestSimulated(method, internalPath,
+            sessionId: sessionId,
             queryParams: queryParams,
             headers: headers,
             cookies: cookies,
@@ -105,7 +105,8 @@ class Request {
   /// Constructor for a simulated GET request.
 
   Request.simulatedGet(String internalPath,
-      {String id,
+      {String sessionId,
+      String id,
       RequestParams queryParams,
       SimulatedHttpHeaders headers,
       List<Cookie> cookies,
@@ -113,6 +114,7 @@ class Request {
       List<int> bodyBytes})
       : _id = id,
         _coreRequest = new _CoreRequestSimulated('GET', internalPath,
+            sessionId: sessionId,
             queryParams: queryParams,
             headers: headers,
             cookies: cookies,
@@ -126,7 +128,8 @@ class Request {
   /// Constructor for a simulated Post request.
 
   Request.simulatedPost(String internalPath, this.postParams,
-      {String id,
+      {String sessionId,
+      String id,
       RequestParams queryParams,
       SimulatedHttpHeaders headers,
       List<Cookie> cookies,
@@ -134,6 +137,7 @@ class Request {
       List<int> bodyBytes})
       : _id = id,
         _coreRequest = new _CoreRequestSimulated('POST', internalPath,
+            sessionId: sessionId,
             queryParams: queryParams,
             headers: headers,
             cookies: cookies,
@@ -149,13 +153,25 @@ class Request {
   // Used by [simulated], [simulatedGet] and [simulatedPost].
 
   void _simulatedConstructorCommon(RequestParams queryParams) {
+    _id ??= 'SIM:${++_simulatedRequestCount}';
+
     this.queryParams =
         (queryParams ?? new RequestParams._internalConstructor());
     if (this.queryParams.isNotEmpty) {
       _logRequestParam.finer(() => "[$id] query: $queryParams");
     }
-    _sessionUsingCookies = false; // todo: defaultToCookiesForSession;
+
+    // Force the use of cookies to maintain session.
+    //
+    // When the [SimulatedResponse] is produced, the session cookie is
+    // extracted to populate the sessionId.
+
+    _sessionUsingCookies = true;
   }
+
+  // Used to generate a unique ID for simulated requests, if none was set on it.
+
+  static int _simulatedRequestCount = 0;
 
   //================================================================
 
@@ -244,7 +260,8 @@ class Request {
     assert(_coreResponse is _CoreResponseSimulated);
     if (_coreResponse is _CoreResponseSimulated) {
       // ignore: avoid_as
-      result = new SimulatedResponse(_coreResponse as _CoreResponseSimulated);
+      final simCoreResp = _coreResponse as _CoreResponseSimulated;
+      result = new SimulatedResponse(simCoreResp, server.sessionCookieName);
     }
     return result;
   }
@@ -483,16 +500,26 @@ class Request {
 
     // First, try finding a session cookie
 
+    assert(_coreRequest != null); // todo: if never false, remove following if
+
     if (_coreRequest != null) {
-      for (var cookie in _coreRequest.cookies) {
-        if (cookie.name == server.sessionCookieName) {
-          if (sessionId == null) {
-            sessionId = cookie.value;
-            assert(conflictingSessionId == null);
-            conflictingSessionId = false;
-          } else {
-            if (sessionId != cookie.value) {
-              conflictingSessionId = true;
+      if (_coreRequest.sessionId != null) {
+        // Explicitly passed in sessionId (simulations only)
+        sessionId = _coreRequest.sessionId;
+        conflictingSessionId = false;
+      } else {
+        // Examine cookies for the session cookie
+
+        for (var cookie in _coreRequest.cookies) {
+          if (cookie.name == server.sessionCookieName) {
+            if (sessionId == null) {
+              sessionId = cookie.value;
+              assert(conflictingSessionId == null);
+              conflictingSessionId = false;
+            } else {
+              if (sessionId != cookie.value) {
+                conflictingSessionId = true;
+              }
             }
           }
         }

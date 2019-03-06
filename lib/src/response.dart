@@ -78,7 +78,8 @@ abstract class Response {
   //----------------------------------------------------------------
   /// Set a HTML header
   ///
-  /// Use [headerAdd] instead.
+  /// Use [headerAdd] instead. This old method name should be avoided, because
+  /// it is easily confused with the new [headers] member.
 
   @deprecated
   void header(String name, String value) {

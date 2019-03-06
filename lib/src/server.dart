@@ -802,11 +802,6 @@ class Server {
   /// produced the expected HTTP response.
 
   Future<SimulatedResponse> simulate(Request req) async {
-    // Provide a generated ID for the request, if one has not been set for it.
-
-    _simulatedInvocations++;
-    req._id ??= 'SIM:$id$_simulatedInvocations'; // "S:123" or "S:serverId123"
-
     // Set the server for the request. This is done here, so a simulated
     // request doesn't need to have its server set when it is constructed.
 
@@ -818,20 +813,15 @@ class Server {
 
     await _processRequest(req);
 
-    req._serverSet(null); // clears it so it can be set again in the future
-
     // Return the response
 
-    return req._simulatedResponse;
+    final result = req._simulatedResponse;
+
+    // Clear server in the simulated request, so it can be set in the future
+    req._serverSet(null); // must do this AFTER calling req._simulatedResponse.
+
+    return result;
   }
-
-  //----------------
-  // Internal count of the number of invocations of [simulate] for the server.
-  //
-  // This is used to generate a unique ID for simulated requests (if one is
-  // needed).
-
-  int _simulatedInvocations = 0;
 
   //================================================================
 

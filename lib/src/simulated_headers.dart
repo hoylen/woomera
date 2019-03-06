@@ -4,56 +4,74 @@ part of woomera;
 /// Headers in a simulated request or response
 
 class SimulatedHttpHeaders extends HttpHeaders {
-  // TODO: case insensitive keys
-
   final Map<String, List<String>> _data = <String, List<String>>{};
+
+  //----------------------------------------------------------------
 
   @override
   void add(String name, Object value) {
+    final lcName = name.toLowerCase();
+
     List<String> values;
-    if (_data.containsKey(name)) {
-      values = _data[name];
+    if (_data.containsKey(lcName)) {
+      values = _data[lcName];
     } else {
-      values = (_data[name] = <String>[]);
+      values = (_data[lcName] = <String>[]);
     }
     values.add(value.toString());
   }
 
+  //----------------------------------------------------------------
+
   @override
-  List<String> operator [](String name) => _data[name];
+  List<String> operator [](String name) => _data[name.toLowerCase()];
+
+  //----------------------------------------------------------------
 
   @override
   String value(String name) {
-    if (_data.containsKey(name)) {
-      final values = _data[name];
+    final lcName = name.toLowerCase();
+
+    if (_data.containsKey(lcName)) {
+      final values = _data[lcName];
       if (values.isEmpty) {
         return null;
       } else if (values.length == 1) {
         return values.first;
       } else {
-        throw StateError('multiple values in header: $name');
+        throw StateError('multiple values in header: $lcName');
       }
     } else {
       return null;
     }
   }
 
+  //----------------------------------------------------------------
+
   @override
   void set(String name, Object value) {
-    _data[name] = [value.toString()];
+    _data[name.toLowerCase()] = [value.toString()];
   }
+
+  //----------------------------------------------------------------
 
   @override
   void remove(String name, Object value) {
-    if (_data.containsKey(name)) {
-      _data[name].remove(value);
+    final lcName = name.toLowerCase();
+
+    if (_data.containsKey(lcName)) {
+      _data[lcName].remove(value);
     }
   }
 
+  //----------------------------------------------------------------
+
   @override
   void removeAll(String name) {
-    _data.remove(name);
+    _data.remove(name.toLowerCase());
   }
+
+  //----------------------------------------------------------------
 
   @override
   void forEach(void f(String name, List<String> values)) {
@@ -62,8 +80,12 @@ class SimulatedHttpHeaders extends HttpHeaders {
     }
   }
 
+  //----------------------------------------------------------------
+
   @override
   void noFolding(String name) {}
+
+  //----------------------------------------------------------------
 
   @override
   void clear() {
