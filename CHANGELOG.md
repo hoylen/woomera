@@ -2,7 +2,7 @@
 
 ## 4.0.0
 
-- Detects bug in Dart 2.1.x which prevents cookies from being deleted.
+- Workaround for bug in Dart 2.1.x which prevents cookies from being deleted.
 - Merged in changes from v2.2.2.
 - Added proxy handler.
 - Simulation mechanism for testing servers.

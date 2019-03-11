@@ -133,7 +133,11 @@ abstract class Response {
       throw new StateError("Header already outputted");
     }
     try {
-      final delCookie = new Cookie(name, "")
+      // Normally, to delete a cookie, the value can be an empty string, but
+      // since Dart 2.1.0 (at least until and including Dart 2.2.0), the
+      // Cookie constructor throws a RangeError if passed an empty string.
+      // So the dummy value of "_DEL_" is used.
+      final delCookie = new Cookie(name, "_DEL_")
         ..path = path
         ..domain = domain
         ..expires = new DateTime.utc(1970, 1, 1, 0, 0, 1, 0)
@@ -142,7 +146,7 @@ abstract class Response {
       // ignore: avoid_catching_errors
     } on RangeError {
       throw new UnsupportedError(
-          'do not use Dart 2.1.x: a bug prevents cookie deletion');
+          'do not use Dart 2.1.x, 2.2.0: a bug prevents cookie deletion');
     }
   }
 

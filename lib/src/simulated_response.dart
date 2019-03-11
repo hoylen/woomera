@@ -10,13 +10,6 @@ part of woomera;
 /// produce HTTP responses) only allow the body to be produced.
 
 class SimulatedResponse extends Response {
-  /// Identification of the session.
-  ///
-  /// When not simulating, this value is communicated in the response using a
-  /// session cookie or URL rewriting.
-
-  String sessionId;
-
   //----------------------------------------------------------------
   /// Constructor
 
@@ -59,6 +52,14 @@ class SimulatedResponse extends Response {
     _bodyStr = core.bodyStr;
     _bodyBytes = core.bodyBytes;
   }
+
+  //----------------------------------------------------------------
+  /// Identification of the session.
+  ///
+  /// When not simulating, this value is communicated in the response using a
+  /// session cookie or URL rewriting.
+
+  String sessionId;
 
   //----------------------------------------------------------------
   // The response body is either stored in [_bodyStr] or [_bodyBytes],

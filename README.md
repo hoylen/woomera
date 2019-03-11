@@ -40,10 +40,6 @@ Main features include:
 **Note:** This version **requires Dart 2**.  Please use version
 "<3.0.0" if running **Dart 1**.
 
-**Do not use Dart 2.1.0 or 2.1.1 if you need to delete cookies.
-They both have a bug which makes it impossible to delete cookies.
-Stick with Dart 2.0.0 until that bug is fixed.**
-
 This following is a tutorial which provides an overview the main
 features of the package. For details about the package and its
 advanced features, please see the API documentation.
