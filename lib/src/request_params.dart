@@ -184,7 +184,7 @@ class RequestParams {
     if (values == null) {
       return ""; // no value for key
     } else if (values.length == 1) {
-      return _sanitize(values[0]); // returns sanitized single value
+      return _sanitize(values[0] ?? ''); // returns sanitized single value
     } else {
       assert(values.length == 1, 'multi-valued: do not use [] with "$key"');
       return ""; // error value

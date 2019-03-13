@@ -6,6 +6,7 @@
 - Merged in changes from v2.2.2.
 - Added proxy handler.
 - Simulation mechanism for testing servers.
+- Added external path to internal path conversion method.
 
 ## 3.0.1
 

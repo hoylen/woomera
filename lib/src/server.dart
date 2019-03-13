@@ -859,11 +859,40 @@ class Server {
     if (value == null || value.isEmpty) {
       _basePath = "/";
     } else if (value.startsWith("/")) {
-      _basePath = value;
+      if (value == '/' || ! value.endsWith('/')) {
+        _basePath = value;
+      } else {
+        throw new ArgumentError.value(value, "value",
+            'basePath: cannot end with "/" (unless it is just "/")');
+      }
     } else {
       throw new ArgumentError.value(value, "value",
           "basePath: does not start with a '/' and is not null/blank");
     }
+  }
+
+  //----------------------------------------------------------------
+  /// Convert an external path to an internal path.
+  ///
+  /// This is the inverse of [Request.rewriteUrl], converting a string like
+  /// "/foo/bar/baz" into "~/foo/bar/baz" (if the server's base path is "/").
+  /// Or converting "/abc/def/foo/bar/baz" to "~/foo/bar/baz" (if the server's
+  /// base path is "/abc/def").
+  ///
+  /// If the external path contains query parameters, they are removed.
+
+  String internalPath(String externalPath) {
+    if (externalPath != null && externalPath.startsWith(_basePath)) {
+      // Strip off any query parameters
+      final q = externalPath.indexOf('?');
+      final noQueryParams = (0 < q) ? externalPath.substring(0, q) : externalPath;
+
+      return '~/${noQueryParams.substring(_basePath.length)}';
+    } else {
+      throw new ArgumentError.value(externalPath, "externalPath",
+          'does not start with "$_basePath"');
+    }
+
   }
 
   //================================================================
