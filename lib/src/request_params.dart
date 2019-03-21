@@ -149,7 +149,7 @@ class RequestParams {
   /// whitespace are removed and multiple whitespaces are treated as a single
   /// space.
 
-  void _remove(String key, String value, {bool raw: false}) {
+  void _remove(String key, String value, {bool raw = false}) {
     final values = _data[key];
     if (values != null) {
       values.removeWhere((raw)
@@ -310,7 +310,7 @@ class RequestParamsMutable extends RequestParams {
   /// whitespace are removed and multiple whitespaces are treated as a single
   /// space.
 
-  void remove(String key, String value, {bool raw: false}) =>
+  void remove(String key, String value, {bool raw = false}) =>
       _remove(key, value, raw: raw);
 
   //----------------------------------------------------------------

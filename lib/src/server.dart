@@ -859,7 +859,7 @@ class Server {
     if (value == null || value.isEmpty) {
       _basePath = "/";
     } else if (value.startsWith("/")) {
-      if (value == '/' || ! value.endsWith('/')) {
+      if (value == '/' || !value.endsWith('/')) {
         _basePath = value;
       } else {
         throw new ArgumentError.value(value, "value",
@@ -885,14 +885,14 @@ class Server {
     if (externalPath != null && externalPath.startsWith(_basePath)) {
       // Strip off any query parameters
       final q = externalPath.indexOf('?');
-      final noQueryParams = (0 < q) ? externalPath.substring(0, q) : externalPath;
+      final noQueryParams =
+          (0 < q) ? externalPath.substring(0, q) : externalPath;
 
       return '~/${noQueryParams.substring(_basePath.length)}';
     } else {
-      throw new ArgumentError.value(externalPath, "externalPath",
-          'does not start with "$_basePath"');
+      throw new ArgumentError.value(
+          externalPath, "externalPath", 'does not start with "$_basePath"');
     }
-
   }
 
   //================================================================

@@ -1,5 +1,10 @@
 # Changelog
 
+## 4.0.1
+
+- Fixed content-type for redirections.
+- Fixed bug with redirection URL for directories with static files.
+
 ## 4.0.0
 
 - Workaround for bug in Dart 2.1.x which prevents cookies from being deleted.

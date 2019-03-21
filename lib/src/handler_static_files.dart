@@ -226,9 +226,10 @@ class StaticFiles {
 
         if (allowDirectoryListing || await _findDefaultFile("$path/") != null) {
           // Can tell the browser to treat it as a directory
-          // Note: must change URL in browser, otherwise relative links break
+          // Note: must change URL in browser to have a "/" at the end,
+          // otherwise any relative links would break.
           _logStaticFiles.finest("[${req.id}] treating as static directory");
-          return new ResponseRedirect("${req.requestPath}/");
+          return new ResponseRedirect('${req.requestPath()}/');
         }
       } else {
         _logStaticFiles.finest("[${req.id}] static file not found");
