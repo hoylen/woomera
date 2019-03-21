@@ -696,8 +696,13 @@ class Request {
   void _produceResponseHeaders(int status, ContentType ct, List<Cookie> cookies,
       Map<String, List<String>> headers) {
     _coreResponse.status = status;
-    _coreResponse.headers.contentType = ct;
     _coreResponse.cookies.addAll(cookies);
+
+    if (ct != null) {
+      // Only set the contentType if there is one.
+      // Redirection responses don't: they will have the default (text/plain).
+      _coreResponse.headers.contentType = ct;
+    }
 
     for (var name in headers.keys) {
       for (var value in headers[name]) {
