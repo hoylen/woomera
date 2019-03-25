@@ -23,12 +23,16 @@ class StaticFiles {
   /// returns one of the [defaultFilenames] in the directory (if it is set and
   /// a file exists), otherwise if [allowDirectoryListing] is true
   /// a listing of the directory is produced, otherwise an exception is thrown.
+  ///
+  /// The [defaultFilenames] default to [standardFilenames], if not specified.
 
   StaticFiles(String baseDir,
       {List<String> defaultFilenames,
       this.allowFilePathsAsDirectories = true,
-      this.allowDirectoryListing = false}) {
-    // Check if directory is usable.
+      this.allowDirectoryListing = false,
+      this.publicServerUrl}) {
+    // Check if provided [baseDir] directory is usable.
+
     if (baseDir == null) {
       throw new ArgumentError.notNull("baseDir");
     }
@@ -54,8 +58,10 @@ class StaticFiles {
     }
     assert(baseDir.isNotEmpty);
 
+    // Save values
+
     _baseDir = baseDir;
-    this.defaultFilenames = defaultFilenames ?? [];
+    this.defaultFilenames = defaultFilenames ?? standardFilenames;
   }
 
   //================================================================
@@ -88,6 +94,15 @@ class StaticFiles {
     "js": new ContentType("application", "javascript"),
     "dart": new ContentType("application", "dart"),
   };
+
+  /// Standard directory files.
+  ///
+  /// The default values used for [defaultFilenames].
+
+  static const List<String> standardFilenames = const [
+    'index.html',
+    'index.htm'
+  ];
 
   //================================================================
 
@@ -156,6 +171,37 @@ class StaticFiles {
   /// This map is initially empty.
 
   Map<String, ContentType> mimeTypes = {};
+
+  /// Public URL used by browsers to send requests to the server.
+  ///
+  /// This value only needs to be set if using a reverse proxy on a non-standard
+  /// port (i.e. not port 80 for HTTP or not port 443 for HTTPS), that forwards
+  /// requests to the server for processing.
+  ///
+  /// If not using reverse proxy, this value should be set to null or the
+  /// empty string.
+  ///
+  /// When a request arrives that matches a directory, and the requested URL
+  /// did not end with a slash, the response is a HTTP redirection that adds
+  /// a slash to the URL. This is necessary, because otherwise relative links
+  /// in the returned document (either a generated directory listing or the
+  /// contents of a default file from that directory) will not resolve properly.
+  /// If a proxy is being used, the redirection URL must be for the proxy rather
+  /// than the actual server, otherwise the browser will not be able to get to
+  /// he new URL. This member contains the URL exposed by the proxy.
+  ///
+  /// For example, consider a server running on port 10000, which has been
+  /// deployed behind a reverse proxy running on port 8080.
+  /// The browser visits http://example.com:8080/foo/bar, and the reverse proxy
+  /// forwards a request for "/foo/bar" to port 10000. The server find a
+  /// directory called "bar" and would normally respond with a HTTP redirect to
+  /// "/foo/bar/" (adding the extra slash). But in this situation, the browser
+  /// would attempt to retrieve http://example.com/foo/bar/ which will
+  /// fail (since the reverse proxy is on port 8080). The value of
+  /// this member needs to be set to "http://example.com:8080" so that
+  /// the HTTP redirect will be to "http://example.com:8080/foo/bar/".
+
+  String publicServerUrl;
 
   //================================================================
 
@@ -229,7 +275,32 @@ class StaticFiles {
           // Note: must change URL in browser to have a "/" at the end,
           // otherwise any relative links would break.
           _logStaticFiles.finest("[${req.id}] treating as static directory");
-          return new ResponseRedirect('${req.requestPath()}/');
+
+          // Determine the actual URL that was requested, taking into account
+          // any proxying (indicated by [publicUrlPrefix]). If the proxying
+          // is not taken into account, the browser won't be able to resolve
+          // the URL in the redirect response.
+          //
+          // In the following, remember `req.requestPath()` is an internal URL
+          // that always starts with "~/".
+          //
+          // See [publicUrlPrefix] for details.
+
+          String requestedUrl;
+          if (publicServerUrl == null || publicServerUrl.trim().isEmpty) {
+            // No proxying
+            requestedUrl = req.requestPath();
+          } else if (publicServerUrl.endsWith('/')) {
+            // Public URL prefix already ends in a slash, so don't use the
+            // slash at the beginning of the requestPath when concatenating.
+            requestedUrl = publicServerUrl + req.requestPath().substring(2);
+          } else {
+            // Public URL prefix does not end in a slash, so use the slash at
+            // the beginning of the requestPath
+            requestedUrl = publicServerUrl + req.requestPath().substring(1);
+          }
+
+          return new ResponseRedirect('$requestedUrl/'); // append a slash
         }
       } else {
         _logStaticFiles.finest("[${req.id}] static file not found");

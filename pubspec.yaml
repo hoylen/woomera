@@ -1,5 +1,5 @@
 name: woomera
-version: 4.0.1
+version: 4.1.0
 description: Web framework for handling HTTP requests, managing sessions and generating responses
 homepage: https://github.com/hoylen/woomera
 author: Hoylen Sue <hoylen@hoylen.com>

@@ -1,5 +1,9 @@
 # Changelog
 
+## 4.1.0
+
+- Support for using static file handler with reverse proxies on non-standard ports.
+
 ## 4.0.1
 
 - Fixed content-type for redirections.
