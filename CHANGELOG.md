@@ -1,5 +1,9 @@
 # Changelog
 
+## 4.2.0
+
+- Removed warning when redirecting to an absolute path/URL.
+
 ## 4.1.0
 
 - Support for using static file handler with reverse proxies on non-standard ports.

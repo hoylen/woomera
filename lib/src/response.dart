@@ -364,7 +364,8 @@ class ResponseRedirect extends Response {
   /// Constructor.
   ///
   /// The response will redirect the browser to [addr], which can be
-  /// a relative to the deployment URL (i.e. starts with "~/") or a real URL.
+  /// a relative to the deployment URL (i.e. starts with "~/") or a real URI
+  /// (absolute or relative).
   ///
   /// The [status] must be a redirection HTTP status code.
   ///
@@ -391,10 +392,6 @@ class ResponseRedirect extends Response {
     if (addr.isEmpty) {
       throw new ArgumentError.value(
           addr, "addr", "ResponseRedirect: empty string");
-    }
-    if (addr.startsWith("/")) {
-      _logResponse
-          .warning("ResponseRedirect address should start with '~/' : $addr");
     }
 
     _addr = addr;
