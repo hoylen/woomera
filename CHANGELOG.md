@@ -3,6 +3,7 @@
 ## 4.2.0
 
 - Removed warning when redirecting to an absolute path/URL.
+- Updated dependencies to allow uuid v2.0.1 and test v1.6.3 to be used.
 
 ## 4.1.0
 

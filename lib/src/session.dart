@@ -189,6 +189,23 @@ class Session {
   }
 
   //================================================================
+  // Static members
+
+  /// UUID source used for the session identifiers.
+
+  static final Uuid _sessionIdUuid = new Uuid();
+
+  /// Generates a new identifier for the session.
+  ///
+  /// Using a UUID without the hyphens.
+  ///
+  /// Note: casting the value returned by v4() as a String is required by
+  /// the uuid package version 1.0.3. It is no longer needed in uuid 2.0.0.
+
+  static String _generateSessionId() =>
+      (_sessionIdUuid.v4() as String).replaceAll('-', ''); // ignore: avoid_as
+
+  //================================================================
   // Members
 
   final Server _server;
@@ -196,10 +213,9 @@ class Session {
   /// Session ID
   ///
   /// The unique identifier for the session which can be used
-  /// for logging. It is a UUID that is initialized to a unique value.
+  /// for logging.
 
-  final String id =
-      (new Uuid().v4() as String).replaceAll("-", ""); // ignore: avoid_as
+  final String id = _generateSessionId();
 
   final DateTime _created; // When the session was created
 
