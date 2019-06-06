@@ -197,13 +197,19 @@ class Session {
 
   /// Generates a new identifier for the session.
   ///
-  /// Using a UUID without the hyphens.
-  ///
-  /// Note: casting the value returned by v4() as a String is required by
-  /// the uuid package version 1.0.3. It is no longer needed in uuid 2.0.0.
+  /// Currently, it produces a unique UUID string without the hyphens.
 
-  static String _generateSessionId() =>
-      (_sessionIdUuid.v4() as String).replaceAll('-', ''); // ignore: avoid_as
+  static String _generateSessionId() {
+    final s = _sessionIdUuid.v4();
+    if (s is String) {
+      return s.replaceAll('-', '');
+    } else {
+      throw new TypeError(); // this should never happen
+      // Above "is String" is only to deal with uuid v1.0.3 which returns a
+      // dynamic instead of a String. But uuid v2.0.1 returns a String, so
+      // casting it would produce an "unnecessary cast" warning.
+    }
+  }
 
   //================================================================
   // Members

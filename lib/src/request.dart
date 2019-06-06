@@ -5,6 +5,9 @@ part of woomera;
 
 class Request {
   //================================================================
+  // Constructors
+
+  //----------------------------------------------------------------
   /// Constructor
   ///
   /// Creates a Woomera Request from a [HttpRequest].

@@ -1,5 +1,9 @@
 # Changelog
 
+## TBD
+
+- Include query parameters in URL of proxy requests.
+
 ## 4.2.0
 
 - Removed warning when redirecting to an absolute path/URL.

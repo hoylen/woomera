@@ -118,16 +118,39 @@ class Proxy {
 
   String _targetUri(Request req) {
     final values = req.pathParams.values('*');
-    assert(values.length == 1,
+
+    assert(values.isEmpty || values.length == 1,
         'Proxy registered without exactly one *: $_proxyHost/$_pathPrefix');
 
-    final subPath = values.first;
+    final subPath = (values.isNotEmpty) ? values.first : null;
 
     final fullPath = (_pathPrefix != null && _pathPrefix.isNotEmpty)
-        ? '$_pathPrefix/$subPath'
-        : subPath;
+        ? ((subPath != null) ? '$_pathPrefix/$subPath' : _pathPrefix)
+        : ((subPath != null) ? subPath : '');
 
-    return '$_proxyHost/$fullPath';
+    // Build the target URL
+
+    final buf = new StringBuffer('$_proxyHost/$fullPath');
+
+    if (req.queryParams.isNotEmpty) {
+      // Add all the query parameters to the URL
+
+      var sep = '?';
+      for (var key in req.queryParams.keys) {
+        for (var value in req.queryParams.values(key, raw: true)) {
+          buf
+            ..write(sep)
+            ..write(Uri.encodeQueryComponent(key))
+            ..write('=')
+            ..write(Uri.encodeQueryComponent(value));
+          sep = '&';
+        }
+      }
+    }
+
+    // Return the target URI
+
+    return buf.toString();
   }
 
   //----------------------------------------------------------------
