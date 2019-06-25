@@ -429,7 +429,7 @@ class StaticFiles {
 """);
 
     final resp = new ResponseBuffered(ContentType.html)
-      ..headerAdd("Date", _rfc1123DateFormat(new DateTime.now()))
+      ..headerAddDate("Date", DateTime.now())
       ..headerAdd("Content-Length", buf.length.toString())
       ..write(buf.toString());
     return resp;
@@ -460,42 +460,12 @@ class StaticFiles {
     // Last-Modified, Date and Content-Length helps browsers cache the contents.
 
     final resp = new ResponseStream(contentType)
-      ..headerAdd("Date", _rfc1123DateFormat(new DateTime.now()))
-      ..headerAdd("Last-Modified", _rfc1123DateFormat(file.lastModifiedSync()))
+      ..headerAddDate('Date', new DateTime.now())
+      ..headerAddDate('Last-Modified', file.lastModifiedSync())
       ..headerAdd("Content-Length", (await file.length()).toString());
 
     return await resp.addStream(req, file.openRead());
   }
 
-  //----------------------------------------------------------------
-  // Formats a DateTime for use in HTTP headers.
-  //
-  // Format a DateTime in the `rfc1123-date` format as defined by section 3.3.1
-  // of RFC 2616 <https://tools.ietf.org/html/rfc2616#section-3.3>.
 
-  String _rfc1123DateFormat(DateTime datetime) {
-    final u = datetime.toUtc();
-    final wd = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"][u.weekday - 1];
-    final mon = [
-      "Jan",
-      "Feb",
-      "Mar",
-      "Apr",
-      "May",
-      "Jun",
-      "Jul",
-      "Aug",
-      "Sep",
-      "Oct",
-      "Nov",
-      "Dec"
-    ][u.month - 1];
-    final dd = u.day.toString().padLeft(2, "0");
-    final year = u.year.toString().padLeft(4, "0");
-    final hh = u.hour.toString().padLeft(2, "0");
-    final mm = u.minute.toString().padLeft(2, "0");
-    final ss = u.second.toString().padLeft(2, "0");
-
-    return "$wd, $dd $mon $year $hh:$mm:$ss GMT";
-  }
 }

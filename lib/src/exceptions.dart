@@ -85,7 +85,7 @@ class NotFoundException extends WoomeraException {
   /// [HttpStatus.methodNotAllowed]. In the later situation, the HTTP
   /// response should return a status of [HttpStatus.notFound].
 
-  int found;
+  final int found;
 
   /// String representation
   @override

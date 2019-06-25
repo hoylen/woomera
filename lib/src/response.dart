@@ -76,6 +76,21 @@ abstract class Response {
   }
 
   //----------------------------------------------------------------
+  /// Set a HTTP header to a RFC1123 formatted date.
+  ///
+  /// A header is added with the [date] in `rfc1123-date` format as defined by
+  /// section 3.3.1 of RFC 2616
+  /// <https://tools.ietf.org/html/rfc2616#section-3.3>. This is the date format
+  /// that is preferred as an Internet standard and required by HTTP 1.1.
+  /// The supplied date can be in localtime or UTC.
+  ///
+  /// For example, "Sun, 06 Nov 1994 08:49:37 GMT".
+
+  void headerAddDate(String name, DateTime date) {
+    headerAdd(name, _rfc1123DateFormat(date));
+  }
+
+  //----------------------------------------------------------------
   /// Set a HTML header
   ///
   /// Use [headerAdd] instead. This old method name should be avoided, because
@@ -235,6 +250,41 @@ abstract class Response {
     if (!_headersOutputted) {
       throw new StateError("Header has not been outputted");
     }
+  }
+
+  //================================================================
+  // Static methods
+
+  //----------------------------------------------------------------
+  // Formats a DateTime for use in HTTP headers.
+  //
+  // Format a DateTime in the `rfc1123-date` format as defined by section 3.3.1
+  // of RFC 2616 <https://tools.ietf.org/html/rfc2616#section-3.3>.
+
+  static String _rfc1123DateFormat(DateTime datetime) {
+    final u = datetime.toUtc();
+    final wd = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'][u.weekday - 1];
+    final mon = [
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'May',
+      'Jun',
+      'Jul',
+      'Aug',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dec'
+    ][u.month - 1];
+    final dd = u.day.toString().padLeft(2, '0');
+    final year = u.year.toString().padLeft(4, '0');
+    final hh = u.hour.toString().padLeft(2, '0');
+    final mm = u.minute.toString().padLeft(2, '0');
+    final ss = u.second.toString().padLeft(2, '0');
+
+    return '$wd, $dd $mon $year $hh:$mm:$ss GMT';
   }
 }
 

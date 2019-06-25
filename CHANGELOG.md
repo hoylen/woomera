@@ -3,6 +3,8 @@
 ## TBD
 
 - Include query parameters in URL of proxy requests.
+- Added support for a low-level exception handler.
+- Added headerAddDate method for adding headers with dates.
 
 ## 4.2.0
 

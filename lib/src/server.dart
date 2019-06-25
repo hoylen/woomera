@@ -218,6 +218,15 @@ class Server {
 
   ExceptionHandler exceptionHandler;
 
+  /// Low-level exception/error handler.
+  ///
+  /// If an exception occurs outside of a pipeline, or is not handled by the
+  /// pipeline's exception handler, normally the exception is passed to
+  /// the server's [exceptionHandler]. But in situations where that is not
+  /// possible, it will be passed to this handler (if it is set).
+
+  ExceptionHandlerRaw rawExceptionHandler;
+
   bool _isSecure;
 
   /// Function used to create a [Request] object for each HTTP request.
@@ -456,35 +465,26 @@ class Server {
       // context could not be created (which is also very bad).
 
     } catch (e, s) {
-      int status;
-      String message;
+      // Exception occurred.
 
       _logRequest
         ..finer("[$requestId] exception raised outside context: $e")
         ..finest("[$requestId] exception stack trace:\n$s");
 
-      // Since there is no context, the exception handlers cannot be used
-      // to generate the response, this will generate a simple HTTP response.
+      if ((!(e is StateError) && e.message == "Header already sent")) {
+        // In this situation there is no [Request], so any high-level
+        // exceptionHandler provided by the application cannot be invoked to
+        // generate an error page. So use the low-level exception handler.
 
-      if (e is StateError && e.message == "Header already sent") {
-        // Cannot generate error page, since a page has already been started
-        status = null;
-      } else if (e is FormatException ||
-          e is PathTooLongException ||
-          e is PostTooLongException) {
-        status = HttpStatus.badRequest;
-        message = "Bad request";
+        if (rawExceptionHandler != null) {
+          // Application has provided a low-level exception handler: use it
+          await rawExceptionHandler(httpRequest, requestId, e, s);
+        } else {
+          await _defaultRawExceptionHandler(httpRequest, requestId, e, s);
+        }
       } else {
-        status = HttpStatus.internalServerError;
-        message = "Internal error";
-      }
-
-      if (status != null) {
-        // Can generate error page as a response
-        httpRequest.response
-          ..statusCode = status
-          ..write("$message\n");
-        _logResponse.fine("[$requestId] status=$status ($message)");
+        // Cannot generate an error page, since a page has already started
+        _logRequest.fine('_handleRequest: error (${e.runtimeType}): $e\n$s');
       }
     } finally {
       await httpRequest.response.close(); // always close the response
@@ -787,6 +787,34 @@ class Server {
 </html>
 """);
     return resp;
+  }
+
+  //----------------------------------------------------------------
+  /// Default internal low-level exception handler.
+
+  Future _defaultRawExceptionHandler(
+      HttpRequest httpRequest, String requestId, Object e, StackTrace s) async {
+    int status;
+    String message;
+
+    if (e is FormatException ||
+        e is PathTooLongException ||
+        e is PostTooLongException) {
+      status = HttpStatus.badRequest;
+      message = 'Bad request';
+    } else {
+      status = HttpStatus.internalServerError;
+      message = 'Internal error';
+    }
+
+    httpRequest.response
+      ..statusCode = status
+      ..write(message)
+      ..write('\n');
+
+    _logResponse.fine('[$requestId] status=$status ($message)');
+
+    // Note: do not invoke "response.close", since the caller will do that.
   }
 
   //================================================================

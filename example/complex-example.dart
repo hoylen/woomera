@@ -1198,8 +1198,6 @@ Future main(List<String> args) async {
     _loggingSetup();
   }
 
-  _loggingSetup();
-
   final server = _serverSetup();
 
   mainLog.fine("started");

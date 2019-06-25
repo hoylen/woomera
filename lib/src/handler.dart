@@ -31,8 +31,18 @@ typedef Future<Response> RequestHandler(Request req);
 typedef Future<Response> ExceptionHandler(Request r, Object ex, StackTrace st);
 
 //----------------------------------------------------------------
+/// Exception handler for low-level situations.
+///
+/// These exception handlers are only used when the Woomera framework is unable
+/// to use an [ExceptionHandler].
+///
+/// The handler should not close the response. The framework will close it.
 
-/// Invoke the handler making sure all exceptions are captured.
+typedef Future ExceptionHandlerRaw(HttpRequest rawRequest, String requestId, Object ex, StackTrace st);
+
+//----------------------------------------------------------------
+
+/// Invoke the request handler making sure all exceptions are captured.
 ///
 Future<Response> _invokeRequestHandler(
     RequestHandler handler, Request req) async {
@@ -76,7 +86,7 @@ Future<Response> _invokeRequestHandler(
 
 //----------------------------------------------------------------
 
-/// Invoke the handler making sure all exceptions are captured.
+/// Invoke the exception handler making sure all exceptions are captured.
 ///
 Future<Response> _invokeExceptionHandler(
     ExceptionHandler eh, Request req, Object ex, StackTrace st) async {
