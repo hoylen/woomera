@@ -8,12 +8,12 @@ part of woomera;
 
 abstract class Response {
   //================================================================
+  // Members
 
   /// Content-type of the response.
   ContentType contentType;
 
-  /// HTTP headers in the response.
-  final Map<String, List<String>> headers = {};
+   final Map<String, List<String>> _headers = {};
 
   /// Cookies in the response.
   final List<Cookie> cookies = [];
@@ -52,8 +52,45 @@ abstract class Response {
   // Setting the HTTP headers
 
   //----------------------------------------------------------------
+  /// HTTP headers in the response.
+  ///
+  /// This is deprecated because it is dangerous to access the Map directly.
+  /// Since headers names are case insensitive, accidentally using Strings with
+  /// capital letters for the keys may produce unexpected results.
+  ///
+  /// The methods [headerAdd], [headerAddDate] and [headerExists] handle case
+  /// properly (even when passed a name with uppercase letters).
+  ///
+  /// Avoid using this member directly. If you have a reason to need it,
+  /// please submit an issue in GitHub and a case-safe method can be created
+  /// for it. <https://github.com/hoylen/woomera/issues>
+
+  @deprecated
+  Map<String, List<String>> get headers => _headers;
+
+  //----------------------------------------------------------------
+  /// Whether a header has been set or not.
+  ///
+  /// Returns true if a header (or multiple headers) with the field [name]
+  /// has been set.
+  ///
+  /// Since HTTP headers names are case-insensitive, the case of [name] does
+  /// not matter.
+
+  bool headerExists(String name) {
+    final lowercaseName = name.trim().toLowerCase();
+
+    return _headers.containsKey(lowercaseName);
+  }
+
+  //----------------------------------------------------------------
   /// Set a HTTP header
   ///
+  /// Since HTTP headers names are case-insensitive, the case of [name] does
+  /// not matter. Internally, the lowercase version of the name is used.
+  ///
+  /// The [value] is case sensitive.
+
   void headerAdd(String name, String value) {
     if (name == null) {
       throw new ArgumentError.notNull("name");
@@ -68,10 +105,12 @@ abstract class Response {
       throw new StateError("Header already outputted");
     }
 
-    if (!headers.containsKey(name)) {
-      headers[name] = <String>[value]; // create new values list
+    final lowercaseName = name.trim().toLowerCase();
+
+    if (!_headers.containsKey(lowercaseName)) {
+      _headers[lowercaseName] = <String>[value]; // create new values list
     } else {
-      headers[name].add(value); // append to existing
+      _headers[lowercaseName].add(value); // append to existing
     }
   }
 
@@ -89,6 +128,27 @@ abstract class Response {
   void headerAddDate(String name, DateTime date) {
     headerAdd(name, _rfc1123DateFormat(date));
   }
+
+  /*
+  //----------------------------------------------------------------
+  /// Removes all headers with the matching [name].
+  ///
+  /// Returns true if there were one or more headers with the [name] and they
+  /// were all removed. Otherwise, returns false and nothing was changed.
+  ///
+  /// The case of [name] does not matter.
+
+  bool headerRemoveAll(String name) {
+    final lowercaseName = name.trim().toLowerCase();
+
+    if (_headers.containsKey(lowercaseName)) {
+      _headers.remove(lowercaseName);
+      return true;
+    } else {
+      return false;
+    }
+  }
+  */
 
   //----------------------------------------------------------------
   /// Set a HTML header
@@ -206,7 +266,7 @@ abstract class Response {
 
     // Output the status, headers and cookies
 
-    req._produceResponseHeaders(_status, contentType, cookies, headers);
+    req._produceResponseHeaders(_status, contentType, cookies, _headers);
 
     _headersOutputted = true;
   }
@@ -324,9 +384,14 @@ class ResponseBuffered extends Response {
     if (_contentOutputted) {
       throw new StateError("Content already outputted");
     }
-    super._outputHeaders(req);
-
     final str = _buf.toString();
+
+    if (!headerExists('content-length')) {
+      // Automatically add a Content-Length header, if there is not one already
+      headerAdd('content-length', str.length.toString());
+    }
+
+    super._outputHeaders(req);
 
     req._outputBody(str);
 

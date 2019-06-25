@@ -5,6 +5,8 @@
 - Include query parameters in URL of proxy requests.
 - Added support for a low-level exception handler.
 - Added headerAddDate method for adding headers with dates.
+- Automatically add Content-Length header when using ResponseBuffered.
+- Made settings headers in the Response case-independent.
 
 ## 4.2.0
 

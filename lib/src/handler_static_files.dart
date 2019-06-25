@@ -430,7 +430,6 @@ class StaticFiles {
 
     final resp = new ResponseBuffered(ContentType.html)
       ..headerAddDate("Date", DateTime.now())
-      ..headerAdd("Content-Length", buf.length.toString())
       ..write(buf.toString());
     return resp;
   }

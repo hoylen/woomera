@@ -132,8 +132,8 @@ class SimulatedResponse extends Response {
       buf.write('CONTENT-TYPE: $contentType\n');
     }
 
-    for (var k in headers.keys) {
-      for (var v in headers[k]) {
+    for (var k in _headers.keys) {
+      for (var v in _headers[k]) {
         buf.write('$k: $v\n');
       }
     }
