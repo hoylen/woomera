@@ -13,7 +13,7 @@ abstract class Response {
   /// Content-type of the response.
   ContentType contentType;
 
-   final Map<String, List<String>> _headers = {};
+  final Map<String, List<String>> _headers = {};
 
   /// Cookies in the response.
   final List<Cookie> cookies = [];
@@ -52,14 +52,23 @@ abstract class Response {
   // Setting the HTTP headers
 
   //----------------------------------------------------------------
-  /// HTTP headers in the response.
+  // Internal method to canonicalize name of headers.
+  //
+  // The keys to the [_headers] map use the canonical name.
+
+  String _headerCanonicalName(String str) => str.trim().toUpperCase();
+
+  //----------------------------------------------------------------
+  /// HTTP headers that will be added to the response
   ///
-  /// This is deprecated because it is dangerous to access the Map directly.
-  /// Since headers names are case insensitive, accidentally using Strings with
-  /// capital letters for the keys may produce unexpected results.
+  /// This has been deprecated because it is dangerous to access the headers
+  /// Map directly.  Since header names are case insensitive, accidentally
+  /// using strings containing capital letters with the Map may produce
+  /// unexpected results.
   ///
-  /// The methods [headerAdd], [headerAddDate] and [headerExists] handle case
-  /// properly (even when passed a name with uppercase letters).
+  /// Use methods [headerAdd], [headerAddDate], [headerExists] and
+  /// [headerValues] instead. They work correctly when the names contain
+  /// uppercase letters, lowercase letters or a mixture of both.
   ///
   /// Avoid using this member directly. If you have a reason to need it,
   /// please submit an issue in GitHub and a case-safe method can be created
@@ -71,25 +80,60 @@ abstract class Response {
   //----------------------------------------------------------------
   /// Whether a header has been set or not.
   ///
-  /// Returns true if a header (or multiple headers) with the field [name]
-  /// has been set.
+  /// Returns true if one or more headers with the [name] has been set.
   ///
-  /// Since HTTP headers names are case-insensitive, the case of [name] does
-  /// not matter.
+  /// The name is case-insensitive. The name is considered the same, whether it
+  /// is represented using uppercase or lowercase letters.
 
-  bool headerExists(String name) {
-    final lowercaseName = name.trim().toLowerCase();
-
-    return _headers.containsKey(lowercaseName);
-  }
+  bool headerExists(String name) =>
+      _headers.containsKey(_headerCanonicalName(name));
 
   //----------------------------------------------------------------
-  /// Set a HTTP header
+  /// Header names
   ///
-  /// Since HTTP headers names are case-insensitive, the case of [name] does
-  /// not matter. Internally, the lowercase version of the name is used.
+  /// Returns an iterator to the names of the HTTP headers.
   ///
-  /// The [value] is case sensitive.
+  /// This includes all the headers set using [headerAdd] or [headerAddDate],
+  /// but will not necessarily be all the HTTP headers in the response.
+  /// For example, "cookies" never appears and "content-type" usually does not
+  /// appear.
+
+  Iterable<String> headerNames() => _headers.keys;
+
+  //----------------------------------------------------------------
+  /// Header values
+  ///
+  /// Returns an iterator to the values of the HTTP headers that will be added
+  /// to the HTTP response with [name].
+  ///
+  /// The name is case-insensitive. The name is considered the same, whether it
+  /// is represented using uppercase or lowercase letters.
+  ///
+  /// Returns null if no headers exist with the name.
+
+  Iterable<String> headerValues(String name) =>
+      _headers[_headerCanonicalName(name)];
+
+  //----------------------------------------------------------------
+  /// Adds a HTTP header
+  ///
+  /// Adds a HTTP header with the [name] and String [value] to the HTTP
+  /// response.
+  ///
+  /// The name is case-insensitive. The name is considered the same, whether it
+  /// is represented using uppercase or lowercase letters.
+  ///
+  /// The value is case sensitive.
+  ///
+  /// HTTP allows for multiple headers with the same name: the new header is
+  /// added after any existing headers with the same name.
+  ///
+  /// Do not use this method for setting the content type. Use the
+  /// [contentType] member instead.
+  ///
+  /// Do not use this method for setting cookies. Use the [cookieAdd] and
+  /// [cookieDelete] methods. An exception will be raised if the name matches
+  /// "set-cookie".
 
   void headerAdd(String name, String value) {
     if (name == null) {
@@ -105,56 +149,86 @@ abstract class Response {
       throw new StateError("Header already outputted");
     }
 
-    final lowercaseName = name.trim().toLowerCase();
+    final canonicalName = _headerCanonicalName(name);
 
-    if (!_headers.containsKey(lowercaseName)) {
-      _headers[lowercaseName] = <String>[value]; // create new values list
+    if (canonicalName == _headerCanonicalName('content-type')) {
+      throw ArgumentError.value(
+          canonicalName, 'name', 'use contentType to set Content-Type');
+    }
+    if (canonicalName == _headerCanonicalName('set-cookie')) {
+      throw ArgumentError.value(
+          canonicalName, 'name', 'use cookieAdd to set a cookie');
+    }
+
+    if (!_headers.containsKey(canonicalName)) {
+      _headers[canonicalName] = <String>[value]; // create new list
     } else {
-      _headers[lowercaseName].add(value); // append to existing
+      _headers[canonicalName].add(value); // append to existing list
     }
   }
 
   //----------------------------------------------------------------
-  /// Set a HTTP header to a RFC1123 formatted date.
+  /// Adds a HTTP header containing a RFC1123 formatted date.
   ///
-  /// A header is added with the [date] in `rfc1123-date` format as defined by
-  /// section 3.3.1 of RFC 2616
+  /// Adds a HTTP header with the [name] and whose value is the [date] formatted
+  /// according to `rfc1123-date` as defined by section 3.3.1 of RFC 2616
   /// <https://tools.ietf.org/html/rfc2616#section-3.3>. This is the date format
   /// that is preferred as an Internet standard and required by HTTP 1.1.
-  /// The supplied date can be in localtime or UTC.
-  ///
   /// For example, "Sun, 06 Nov 1994 08:49:37 GMT".
+  ///
+  /// The name is case-insensitive. The name is considered the same, whether it
+  /// is represented using uppercase or lowercase letters.
+  ///
+  /// The date can either be in localtime or UTC. (The rfc1123-date is always
+  /// encoded as GMT. This implementation assumes the GMT value is the same as
+  /// UTC, even though in reality they are different.)
+  ///
+  /// HTTP allows for multiple headers with the same name: the new header is
+  /// added after any existing headers with the same name.
 
   void headerAddDate(String name, DateTime date) {
     headerAdd(name, _rfc1123DateFormat(date));
   }
 
-  /*
   //----------------------------------------------------------------
-  /// Removes all headers with the matching [name].
+  /// Removes headers
   ///
-  /// Returns true if there were one or more headers with the [name] and they
-  /// were all removed. Otherwise, returns false and nothing was changed.
+  /// If no [value] is provided, removes all headers matching the [name]. That
+  /// is, the header's value is ignored; and multiple headers are removed if
+  /// there are more than one header with the name.
   ///
-  /// The case of [name] does not matter.
+  /// If a [value] is provided, removes the first header that matches the [name]
+  /// and has that value. If there are multiple headers for the name, those with
+  /// other values or the other headers with the same value are not removed.
+  ///
+  /// Returns false if there was nothing to remove. Otherwise, true is returned.
+  ///
+  /// The name is case-insensitive. The name is considered the same, whether it
+  /// is represented using uppercase or lowercase letters.
 
-  bool headerRemoveAll(String name) {
-    final lowercaseName = name.trim().toLowerCase();
+  bool headerRemove(String name, [String value]) {
+    final canonicalName = _headerCanonicalName(name);
 
-    if (_headers.containsKey(lowercaseName)) {
-      _headers.remove(lowercaseName);
-      return true;
+    if (_headers.containsKey(canonicalName)) {
+      if (value == null) {
+        // Remove all headers, regardless of their value(s)
+        _headers.remove(canonicalName);
+        return true;
+      } else {
+        // Only remove the first header with a matching value, if there is any.
+        return _headers[canonicalName].remove(value);
+      }
     } else {
+      // Name does not exist
       return false;
     }
   }
-  */
 
   //----------------------------------------------------------------
   /// Set a HTML header
   ///
-  /// Use [headerAdd] instead. This old method name should be avoided, because
-  /// it is easily confused with the new [headers] member.
+  /// Use [headerAdd] instead. This old method should be avoided, because
+  /// its name is easily confused with the new [headers] member.
 
   @deprecated
   void header(String name, String value) {
@@ -351,22 +425,62 @@ abstract class Response {
 //================================================================
 /// A response where the contents is buffered text.
 ///
+/// The body is produced by one more more invocations of the [write] method,
+/// which appends String values to form the body. The encoding of the body
+/// is determined by the encoding specified to the constructor.
+///
+/// In the HTTP headers, a "Content-Type" header is automatically produced.
+///
 /// Do not use this type of response if the contents is binary data
 /// (i.e. not [String]) and/or needs to be streamed to the client. Use the
 /// [ResponseStream] for those types of responses.
 
 class ResponseBuffered extends Response {
-  /// Constructor
+  //================================================================
+  // Constructors
 
-  ResponseBuffered(ContentType ct) {
+  //----------------------------------------------------------------
+  /// Constructor
+  ///
+  /// The body of the HTTP response will be encoded using [encoding] (utf8 by
+  /// default).
+  ///
+  /// If the content type [ct] has a character set, it must match the encoding.
+
+  ResponseBuffered(ContentType ct, {Encoding encoding})
+      : _encoding = encoding ?? _defaultEncoding {
+    // Check content type's character set is compatible with the encoding
+
+    if (ct.charset != null && ct.charset != _encoding.name) {
+      throw ArgumentError.value(ct, 'ct',
+          'character set "${ct.charset}" != encoding "${_encoding.name}"');
+    }
+
     contentType = ct;
   }
 
+  //================================================================
+  // Static members
+
+  static final Encoding _defaultEncoding = utf8;
+
+  //================================================================
+  // Members
+
   final StringBuffer _buf = new StringBuffer();
+
+  final Encoding _encoding;
+
   bool _contentOutputted = false;
 
+  //================================================================
+  // Methods
+
+  //----------------------------------------------------------------
   /// Append to the content.
   ///
+  /// The string value of [obj] is appended to make up the body.
+
   void write(Object obj) {
     if (_contentOutputted) {
       throw new StateError("Content already outputted");
@@ -374,8 +488,9 @@ class ResponseBuffered extends Response {
     _buf.write(obj);
   }
 
+  //----------------------------------------------------------------
   /// Produce the response.
-  ///
+
   @override
   void _finish(Request req) {
     if (req == null) {
@@ -384,18 +499,21 @@ class ResponseBuffered extends Response {
     if (_contentOutputted) {
       throw new StateError("Content already outputted");
     }
-    final str = _buf.toString();
+    final body = _buf.toString();
+    final encodedBody = _encoding.encode(body);
 
     if (!headerExists('content-length')) {
       // Automatically add a Content-Length header, if there is not one already
-      headerAdd('content-length', str.length.toString());
+      // Need to used the encoded body to get this number.
+      headerAdd('content-length', encodedBody.length.toString());
     }
 
     super._outputHeaders(req);
 
-    req._outputBody(str);
+    req._outputBody(body, encodedBody);
 
-    _logResponse.fine("[${req.id}] status=$_status, size=${str.length}");
+    _logResponse
+        .fine('[${req.id}] status=$_status, size=${encodedBody.length}');
     _contentOutputted = true;
 
     super._finish(req);

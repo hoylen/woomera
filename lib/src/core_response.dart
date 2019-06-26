@@ -23,11 +23,14 @@ abstract class _CoreResponse {
   /// Cookies
   List<Cookie> get cookies;
 
-  // Produce body
-  /// Converts [obj] to a String by invoking [Object.toString] and
-  //  [add]s the encoding of the result to the target consumer.
+  /// Set the body
+  ///
+  /// This method requires both the String representation as well as the
+  /// encoded representation of that string. That is because the
+  /// [_CoreResponseReal] uses the encoded version and the
+  /// [_CoreResponseSimulated] uses the string version.
 
-  void write(Object obj);
+  void _setBody(String unencoded, List<int> encoded);
 
   /// Adds all elements of the given [stream] to `this`.
   ///
@@ -66,8 +69,9 @@ class _CoreResponseReal extends _CoreResponse {
   List<Cookie> get cookies => _httpResponse.cookies;
 
   @override
-  void write(Object obj) {
-    _httpResponse.write(obj);
+  void _setBody(String unencoded, List<int> encoded) {
+    // Use the encoded version of the body
+    _httpResponse.add(encoded);
   }
 
   @override
@@ -98,16 +102,17 @@ class _CoreResponseSimulated extends _CoreResponse {
 
   //----------------------------------------------------------------
 
-  StringBuffer _strBuf;
+  String _bodyStr;
 
   @override
-  void write(Object obj) {
-    _strBuf ??= new StringBuffer();
-    _strBuf.write(obj);
+  void _setBody(String unencoded, List<int> encoded) {
+    // Use the string version of the body
+    assert(_bodyStr == null, 'string value for body already set');
+    _bodyStr = unencoded;
   }
 
-  /// Returns the string value of the body, or null if [write] was not used.
-  String get bodyStr => _strBuf?.toString();
+  /// Returns the string value of the body, or null if [_setBody] was not used.
+  String get bodyStr => _bodyStr;
 
   List<int> _byteBuf;
 

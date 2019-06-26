@@ -719,8 +719,8 @@ class Request {
   /// This is used by the [ResponseBuffered._finish] method to produce the
   /// response body.
 
-  void _outputBody(String str) {
-    _coreResponse.write(str);
+  void _outputBody(String body, List<int> encodedBody) {
+    _coreResponse._setBody(body, encodedBody);
   }
 
   /// Sets the body of the response using a stream.

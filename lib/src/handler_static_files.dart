@@ -14,6 +14,11 @@ part of woomera;
 ///
 /// srv.pipelines.first.get("~/myfiles/*", sf.handler);
 /// ```
+///
+/// **Known issues**
+///
+/// - The encoding of text and HTML files (where the filenames end with .txt,
+/// .html or .htm) must be UTF-8.
 
 class StaticFiles {
   //----------------------------------------------------------------
@@ -465,6 +470,4 @@ class StaticFiles {
 
     return await resp.addStream(req, file.openRead());
   }
-
-
 }

@@ -38,7 +38,8 @@ typedef Future<Response> ExceptionHandler(Request r, Object ex, StackTrace st);
 ///
 /// The handler should not close the response. The framework will close it.
 
-typedef Future ExceptionHandlerRaw(HttpRequest rawRequest, String requestId, Object ex, StackTrace st);
+typedef Future ExceptionHandlerRaw(
+    HttpRequest rawRequest, String requestId, Object ex, StackTrace st);
 
 //----------------------------------------------------------------
 
