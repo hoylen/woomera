@@ -17,18 +17,45 @@ typedef Future<Response> RequestHandler(Request req);
 
 //----------------------------------------------------------------
 
-/// Exception/error handler function type.
+/// Exception handler for high-level situations.
 ///
-/// Define server exception handlers or pipeline exception
-/// handlers matching this type.
+/// These high-level situations usually occur because a server exception
+/// handler or pipeline exception handler raised an exception.
 ///
-/// The [ex] is `Object` because these methods are expected to handle anything
-/// that can be thrown or raised in Dart. This includes `Error` and `Exception`,
-/// but can be any type of object.
+/// Implementations of this function type are used for setting the
+/// [Server.exceptionHandler] and [ServerPipeline.exceptionHandler].
 ///
-/// Used for [Server.exceptionHandler] and [ServerPipeline.exceptionHandler].
+/// The implementation must return a Future to a Woomera [Response], which
+/// should be an error page for the HTTP response.
+///
+/// The exception [exception] can be used to detect certain conditions and
+/// customize the message in the response.
+///
+/// In addition to the exception, the stack trace [stackTrace] can provide
+/// additional information about the problem. But exposing
+/// internal implementation details in the response is not recommended.
+///
+/// Example:
+/// ```
+/// Future<Response> myExceptionHandler(Request request,
+///  Object e, StackTrace st) async {
+///   final r = new ResponseBuffered(ContentType.html);
+///    r.status = HttpStatus.internalServerError;
+///    r.write('''<!doctype html>
+///<html>
+///  <head><title>Error</title></head>
+///  <body>
+///     <h1>Error</h1>
+///     <p>Something went wrong.</p>
+///  </body>
+///</html>
+///''');
+///    return r;
+///}
+/// ```
 
-typedef Future<Response> ExceptionHandler(Request r, Object ex, StackTrace st);
+typedef Future<Response> ExceptionHandler(
+    Request request, Object exception, StackTrace stackTrace);
 
 //----------------------------------------------------------------
 /// Exception handler for low-level situations.
@@ -36,10 +63,50 @@ typedef Future<Response> ExceptionHandler(Request r, Object ex, StackTrace st);
 /// These exception handlers are only used when the Woomera framework is unable
 /// to use an [ExceptionHandler].
 ///
-/// The handler should not close the response. The framework will close it.
+/// Implementations of this function type are used for setting the
+/// [Server.exceptionHandlerRaw].
+///
+/// The implementation must produce a HTTP response without the aid of the
+/// Woomera Response classes. As always, when producing a response using the
+/// standard Dart HttpResponse, the "rawRequest.response" must be closed.
+///
+/// The exception [exception] can be used to detect certain conditions and
+/// customize the message in the response.
+///
+/// In addition to the exception, the stack trace [stackTrace] can provide
+/// additional information about the problem. But exposing
+/// internal implementation details in the response is not recommended.
+/// The [requestId] is an internal identifier assigned to the raw request by
+/// Woomera, and is used in log messages produced by Woomera.
+///
+/// Example:
+///
+/// ```
+/// Future<void> myLowLevelExceptionHandler(HttpRequest rawRequest,
+///      String requestId, Object ex, StackTrace st) async {
+///    _log.severe('[$requestId] raw exception (${ex.runtimeType}): $ex\n$st');
+///
+///    final resp = rawRequest.response;
+///
+///    resp
+///      ..statusCode = HttpStatus.internalServerError
+///      ..headers.contentType = ContentType.html
+///      ..write('''<!doctype html>
+///<html>
+///<head><title>Error</title></head>
+///<body>
+///  <h1>Error</h1>
+///  <p>Something went wrong.</p>
+///</body>
+///</html>
+///''');
+///
+///    await resp.close();
+///  }
+/// ```
 
-typedef Future ExceptionHandlerRaw(
-    HttpRequest rawRequest, String requestId, Object ex, StackTrace st);
+typedef Future<void> ExceptionHandlerRaw(HttpRequest rawRequest,
+    String requestId, Object exception, StackTrace stackTrace);
 
 //----------------------------------------------------------------
 

@@ -201,31 +201,53 @@ class Server {
 
   final List<ServerPipeline> pipelines = <ServerPipeline>[];
 
-  /// Server level exception/error handler.
+  /// Server exception/error handler (high-level).
   ///
   /// If an exception occurs outside of a pipeline, or is not handled by
   /// the pipeline's exception handler, the exception is passed to
   /// this exception handler to process.
   ///
-  /// If this exception/exception handler is not set (i.e. null), an internal
-  /// default exception/error handler will be used. Its output is very plain and
-  /// basic, so most applications should provide their own server-level
-  /// exception/error handler.
+  /// It is recommended for applications to set this exception handler, so it
+  /// can produce error pages that are consistent with the application's theme.
+  /// If an application uses multiple pipelines, it may also want to set
+  /// individual exception handlers on some/all of them. An application may
+  /// also set a low-level exception handler (using [exceptionHandlerRaw]).
   ///
-  /// Ideally, an application's server-level exception/error handler should not
-  /// thrown an exception.  But if it did throw an exception, the internal
-  /// default exception/error handler will also be used to handle it.
+  /// If this exception handler is not set (i.e. null) or cannot be invoked,
+  /// the low-level exception handler is used.
+  ///
+  /// Ideally, this exception handler should not thrown an exception.  But if it
+  /// did, the low-level exception handler will handle it.
 
   ExceptionHandler exceptionHandler;
 
-  /// Low-level exception/error handler.
+  /// Server exception/error handler (low-level)
   ///
-  /// If an exception occurs outside of a pipeline, or is not handled by the
-  /// pipeline's exception handler, normally the exception is passed to
-  /// the server's [exceptionHandler]. But in situations where that is not
-  /// possible, it will be passed to this handler (if it is set).
+  /// Exception handler for situations where the high-level [exceptionHandler]
+  /// is normally used, but it cannot be invoked. That is, if the
+  /// _exceptionHandler_ is not set, or a Woomera _Request_ object is not
+  /// available to pass to it (e.g. if the [requestCreator] function throws an
+  /// exception).
+  ///
+  /// An application can set this exception handler, to produce error pages
+  /// that are consistent with the application's theme. But usually that
+  /// is achieved by setting a the high-level exception handler, perhaps along
+  /// with pipeline exception handlers.
+  ///
+  /// This low-level exception handler is recommended if the application
+  /// uses a custom _requestCreator_ and it may raise exceptions.
+  ///
+  /// If this exception handler is not set (i.e. null) then a default low-level
+  /// exception handler is used. That default exception handler just produces
+  /// a "text/plain" HTTP response with a one line message. That is functional,
+  /// but not something a polished application would want its users to see.
+  /// Therefore, an application should provide a low-level and/or a high-level
+  /// exception handler. If only one is provided, unless there is a special need
+  /// to handle exceptions raised by _requestCreator_ the high-level one is
+  /// probably better; since the application is using this package to avoid
+  /// dealing with the low-level Dart HttpRequest.
 
-  ExceptionHandlerRaw rawExceptionHandler;
+  ExceptionHandlerRaw exceptionHandlerRaw;
 
   bool _isSecure;
 
@@ -459,6 +481,8 @@ class Server {
 
       await _processRequest(req);
 
+      await httpRequest.response.close(); // always close the response
+
       // The _handleRequestWithContext normally deals with any exceptions
       // that might be thrown, otherwise something very bad went wrong!
       // The following catch statements deal with that situation, or if the
@@ -471,23 +495,30 @@ class Server {
         ..finer("[$requestId] exception raised outside context: $e")
         ..finest("[$requestId] exception stack trace:\n$s");
 
-      if ((!(e is StateError) && e.message == "Header already sent")) {
-        // In this situation there is no [Request], so any high-level
-        // exceptionHandler provided by the application cannot be invoked to
-        // generate an error page. So use the low-level exception handler.
+      if (e is StateError && e.message == "Header already sent") {
+        // Cannot generate an error page, since a page has already started
 
-        if (rawExceptionHandler != null) {
+        _logRequest.fine('_handleRequest: error (${e.runtimeType}): $e\n$s');
+        try {
+          await httpRequest.response.close(); // try to close the response
+        } catch (e) {
+          // ignore any exceptions while closing: nothing can be done
+        }
+      } else {
+        // In this situation there is no Woomera [Request], so any high-level
+        // exceptionHandler provided by the application cannot be invoked to
+        // generate an error page. So use the low-level exception handler,
+        // if there is one. Otherwise, use the default.
+
+        if (exceptionHandlerRaw != null) {
           // Application has provided a low-level exception handler: use it
-          await rawExceptionHandler(httpRequest, requestId, e, s);
+          await exceptionHandlerRaw(httpRequest, requestId, e, s);
         } else {
           await _defaultRawExceptionHandler(httpRequest, requestId, e, s);
         }
-      } else {
-        // Cannot generate an error page, since a page has already started
-        _logRequest.fine('_handleRequest: error (${e.runtimeType}): $e\n$s');
+
+        // Note: the above raw handlers are expected to close the response
       }
-    } finally {
-      await httpRequest.response.close(); // always close the response
     }
 
     _logRequest.finest("_handleRequest: done");
@@ -807,14 +838,14 @@ class Server {
       message = 'Internal error';
     }
 
+    _logResponse.fine('[$requestId] status=$status ($message)');
+
     httpRequest.response
       ..statusCode = status
       ..write(message)
       ..write('\n');
 
-    _logResponse.fine('[$requestId] status=$status ($message)');
-
-    // Note: do not invoke "response.close", since the caller will do that.
+    await httpRequest.response.close();
   }
 
   //================================================================
