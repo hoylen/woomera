@@ -1,6 +1,6 @@
 # Changelog
 
-## TBD
+## 4.3.0
 
 - Include query parameters in URL of proxy requests.
 - Added support for a low-level exception handler.

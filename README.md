@@ -552,12 +552,38 @@ Both the names and values are always strings.
 
 ### 4. Exceptions
 
-Exception handlers are a type of handler used to process exceptions
-that are raised. They are passed the request and the exception, and
-are expected to generate a _Response_. The exception handler should
-create a response that serves as an error page for the client.
+#### 4.1. Standard exceptions
 
-```
+All the exceptions thrown by the framework are subclasses
+of the `WoomeraException` class.
+
+- The `NotFoundException` is thrown when a matching rule is not found.
+  The exception handler should produce a "page not found" error page
+  with a HTTP response status of either `HttpStatus.NOT_FOUND` or
+  `HttpStatus.METHOD_NOT_ALLOWED` depending on the value of its
+  "found" member.
+
+- The `ExceptionHandlerException` is a wrapper that is thrown if an
+  application provided exception handler throws an exception while it
+  is processing another exception.
+
+See the package's documentation for the other exceptions. Most of them
+are in response to a malformed or potentially malicious HTTP request.
+
+These exceptions, along with all exceptions thrown by the
+application's handlers, are processed according to the exception
+handling process. The application can provide its own high-level and
+low-level exception handlers for customizing this process.
+
+#### 4.2 High-level exception handlers
+
+High-level exception handlers are a type of handler used to process
+exceptions that are raised. They are passed the request and the
+exception, and are expected to generate a _Response_. The exception
+handler should create a response that is as an error page for the
+client.
+
+```dart
 Future<Response> myExceptionHandler(Request req
     Object exception, StackTrace st) async {
   var resp = new ResponseBuffered(ContentType.HTML);
@@ -574,35 +600,57 @@ Future<Response> myExceptionHandler(Request req
 }
 ```
 
-Exception handlers can be attached to the pipelines and the server.
+Exception handlers can be associated with each pipelines and with the
+server by setting the _exceptionHandler_ members.
 
-A hierarchy determines which exception handler is invoked. If an
-exception occurs inside a request handler method (and has not been
-caught and processed within the handler) it is passed to the exception
-handler attached to the pipeline: the pipeline with the rule that
-invoked the request handler method. If no exception handler was
-attached to the pipeline, the exception handler attached to the server
-is used. If no exception handler was attached to the server, a default
-exception handler is used.
+Different exception handlers for different pipelines can be used to
+handle exceptions differently. For example, one pipeline could be used
+for a RESTful API and its exception handler produces a XML or JSON
+error response; and other pipeline's exception handler could produce a
+HTML error page.
 
-The hierarchy is also used if an exception handler itself throws an
-exception. (Though, hopefully, exception handlers will not throw an
-exception). In that situation, a _ExceptionHandlerException_ is
-thrown.
+#### 4.3 Low-level exception handling
 
-#### 4.1. Standard exceptions
+In addition to the high-level exception handlers, a low-level
+exception handler that can be associated with the server by setting
+the _exceptionHandlerRaw_ member.
 
-The framework throws exceptions that are also processed by the same
-exception handling hierarchy.
+It is called a "low-level" or "raw" exception handler, because it
+needs to process a Dart HttpRequest and generate a HTTP response
+without the aid of the Woomera classes.
 
-The `NotFoundException` is thrown when a matching rule is not found.
-The exception handler should produce a "page not found" error page
-with a HTTP response status of either `HttpStatus.NOT_FOUND` or
-`HttpStatus.METHOD_NOT_ALLOWED`.
+#### 4.4 Exception handling process
 
-Other exceptions defined in the package are subclasses of
-`WoomeraException`.
+The process of dealing with exceptions depends on where the initial
+exception was thrown from, and what custom exception handlers the
+application has provided.
 
+- If an exception occurs inside a request handler method (and has not
+  been caught and processed within the handler) it is passed to the
+  exception handler attached to the pipeline: the pipeline with the
+  rule that invoked the request handler method.
+
+- If no exception handler was attached to the pipeline, the high-level
+  exception handler on the server is used. Exceptions that occur
+  outside of any handler or pipeline (commonly when a matching handler
+  is not found) are also handled by the server's high-level exception
+  handler.
+
+- If no high-level exception handler was attached to the server, the
+  low-level exeption handler on the server is used.
+
+- If there is no custom low-level exception handler, a default
+  exception handler is used.
+
+If one of those exception handlers throws an exception, the exception
+it was processing is wrapped in an _ExceptionHandlerException_, which
+is then passed to the next handler in the process.
+
+It is recommended to provide at least one custom exception handler,
+since the default exception handler just produces a plain text
+response that purely functional and not pretty. It is common to just
+provide a high-level server exception handler; and only provide the
+others if there is a special need for them.
 
 ### 5. Responses
 

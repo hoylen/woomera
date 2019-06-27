@@ -461,7 +461,9 @@ class Server {
 
   Future _handleRawRequest(HttpRequest httpRequest, String requestId) async {
     try {
-      // Create context
+      // Create the context representing the HTTP request (i.e. a Woomera
+      // Request object) using the application supplied [requestCreator]
+      // function or simply by creating a new [Request].
 
       Request req;
 
@@ -478,6 +480,9 @@ class Server {
         req = new Request(httpRequest, requestId, this);
       }
       assert(req != null);
+
+      // Process the request using the Request object (or a subtype of it).
+      // Note: _processRequest will always invoke release on the Request.
 
       await _processRequest(req);
 
