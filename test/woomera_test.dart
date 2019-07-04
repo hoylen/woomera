@@ -253,7 +253,7 @@ Future<String> getRequest(String path) async {
 
   final contents = new StringBuffer();
   // ignore: prefer_foreach
-  await for (var chunk in response.cast<List<int>>().transform(utf8.decoder)) {
+  await for (var chunk in utf8.decoder.bind(response)) {
     contents.write(chunk);
   }
 
@@ -276,7 +276,7 @@ Future<String> postRequest(String path, String data) async {
 
   final contents = new StringBuffer();
   // ignore: prefer_foreach
-  await for (var chunk in response.cast<List<int>>().transform(utf8.decoder)) {
+  await for (var chunk in utf8.decoder.bind(response)) {
     contents.write(chunk);
   }
 
