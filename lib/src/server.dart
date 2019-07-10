@@ -135,28 +135,35 @@ class Server {
 
   /// Bind address for the server.
   ///
-  /// Can be a String containing a hostname or IP address, or one of these
-  /// values from the [InternetAddress] class: [InternetAddress.loopbackIPv4],
+  /// An [InternetAddress] for the server to bind to. This can be a real IP
+  /// address or one of these special values: [InternetAddress.loopbackIPv4],
   /// [InternetAddress.loopbackIPv6], [InternetAddress.anyIPv4] or
   /// [InternetAddress.anyIPv6].
   ///
-  /// The default value is loopbackIPv4, which means it only listens on the
+  /// The default value is _loopbackIPv4_, which means it only listens on the
   /// IPv4 loopback address of 127.0.0.1. This option is usually used when
   /// the service is run behind a reverse proxy server (e.g. Apache or Nginx).
-  /// The server can only be contacted over IPv4 from the same machine.
+  /// The server can only be contacted over IPv4 from the same host.
+  /// When configuring a reverse proxy server, sometimes it should be explicitly
+  /// configured to use 127.0.0.1 instead of "localhost", since the later might
+  /// cause it to try ::1 first (which will always fail) and then 127.0.0.1.
   ///
   /// If deployed without a reverse proxy, this value needs to be change
   /// otherwise clients external to the machine will not be allowed to connect
   /// to the Web server.
   ///
-  /// If it is set to [InternetAddress.anyIPv6], it listens on any IPv4 or
-  /// IPv6 address (including the loop-back addresses),
-  /// unless [v6Only] is set to true (in which case it only listens on any IPv6
-  /// address and the IPv6 loopback address).
+  /// If a non-loopback IPv6 _InternetAddress_ is provided (and it has a IPv4
+  /// equivalent) it will listen on _both_ the IPv6 and IPv4 address, unless
+  /// [v6Only] is set to true. If it is set to true, then the IPv4 equivalent
+  /// address will not be used and only the IPv6 address is used.
+  ///
+  /// Important: the _v6Only_ property does not apply to the loopback address
+  /// _InternetAddress.loopbackIPv6_. So it is impossible to listen on both
+  /// 127.0.0.1 and ::1 at the same time.
 
   InternetAddress bindAddress = InternetAddress.loopbackIPv4;
 
-  /// Indicates how a [bindAddress] value of [InternetAddress.anyIPv6] treats IPv4 addresses.
+  /// Indicates how an IPv6 [bindAddress] treats IPv4 addresses.
   ///
   /// The default is false, which means it listens to any IPv4 and any IPv6
   /// addresses.
@@ -164,8 +171,9 @@ class Server {
   /// If set to true, it only listens on any IPv6 address. That is, it will not
   /// listen on any IPv4 address.
   ///
-  /// This value has no effect if the [bindAddress] is not
-  /// [InternetAddress.anyIPv6]. Therefore, it is not possible to listen on
+  /// This value has no effect if the [bindAddress] is not an IPv6 address or
+  /// [InternetAddress.anyIPv6]. In particular, it has no effect when using
+  /// [InternetAddress.loopbackIPv6]. Therefore, it is not possible to listen on
   /// both IPv4 and IPv6 loop-back addresses at the same time (not without also
   /// listening on every IPv4 and IPv6 address too).
 
