@@ -37,7 +37,7 @@ abstract class Response {
   ///
   set status(int value) {
     if (_headersOutputted) {
-      throw new StateError("Header already outputted");
+      throw StateError('Header already outputted');
     }
     _status = value;
   }
@@ -137,16 +137,16 @@ abstract class Response {
 
   void headerAdd(String name, String value) {
     if (name == null) {
-      throw new ArgumentError.notNull("name");
+      throw ArgumentError.notNull('name');
     }
     if (name.isEmpty) {
-      throw new ArgumentError.value(name, "name", "Empty string");
+      throw ArgumentError.value(name, 'name', 'Empty string');
     }
     if (value == null) {
-      throw new ArgumentError.notNull("value");
+      throw ArgumentError.notNull('value');
     }
     if (_headersOutputted) {
-      throw new StateError("Header already outputted");
+      throw StateError('Header already outputted');
     }
 
     final canonicalName = _headerCanonicalName(name);
@@ -270,7 +270,7 @@ abstract class Response {
 
   void cookieAdd(Cookie cookie) {
     if (_headersOutputted) {
-      throw new StateError("Header already outputted");
+      throw StateError('Header already outputted');
     }
     cookies.add(cookie);
   }
@@ -279,22 +279,22 @@ abstract class Response {
   ///
   void cookieDelete(String name, [String path, String domain]) {
     if (_headersOutputted) {
-      throw new StateError("Header already outputted");
+      throw StateError('Header already outputted');
     }
     try {
       // Normally, to delete a cookie, the value can be an empty string, but
       // since Dart 2.1.0 (at least until and including Dart 2.2.0), the
       // Cookie constructor throws a RangeError if passed an empty string.
       // So the dummy value of "_DEL_" is used.
-      final delCookie = new Cookie(name, "_DEL_")
+      final delCookie = Cookie(name, '_DEL_')
         ..path = path
         ..domain = domain
-        ..expires = new DateTime.utc(1970, 1, 1, 0, 0, 1, 0)
+        ..expires = DateTime.utc(1970, 1, 1, 0, 0, 1, 0)
         ..maxAge = 0;
       return cookieAdd(delCookie);
       // ignore: avoid_catching_errors
     } on RangeError {
-      throw new UnsupportedError(
+      throw UnsupportedError(
           'do not use Dart 2.1.x, 2.2.0: a bug prevents cookie deletion');
     }
   }
@@ -307,15 +307,15 @@ abstract class Response {
   ///
   void _outputHeaders(Request req) {
     if (_headersOutputted) {
-      throw new StateError("Header already outputted");
+      throw StateError('Header already outputted');
     }
 
     // Check that application has not tried to use the session cookie
     final sessionCookieName = req.server.sessionCookieName;
     for (var c in cookies) {
       if (c.name == sessionCookieName) {
-        throw new ArgumentError.value(
-            c.name, "cookieName", "Clashes with name of session cookie");
+        throw ArgumentError.value(
+            c.name, 'cookieName', 'Clashes with name of session cookie');
       }
     }
 
@@ -324,7 +324,7 @@ abstract class Response {
 
       if (req.session != null) {
         // Need to set the session cookie
-        final c = new Cookie(req.server.sessionCookieName, req.session.id)
+        final c = Cookie(req.server.sessionCookieName, req.session.id)
           ..path = req.server.basePath
           ..httpOnly = true;
         if (req.server.sessionCookieForceSecure ||
@@ -382,7 +382,7 @@ abstract class Response {
   void _finish(Request req) {
     // Do nothing
     if (!_headersOutputted) {
-      throw new StateError("Header has not been outputted");
+      throw StateError('Header has not been outputted');
     }
   }
 
@@ -467,7 +467,7 @@ class ResponseBuffered extends Response {
   //================================================================
   // Members
 
-  final StringBuffer _buf = new StringBuffer();
+  final StringBuffer _buf = StringBuffer();
 
   final Encoding _encoding;
 
@@ -483,7 +483,7 @@ class ResponseBuffered extends Response {
 
   void write(Object obj) {
     if (_contentOutputted) {
-      throw new StateError("Content already outputted");
+      throw StateError('Content already outputted');
     }
     _buf.write(obj);
   }
@@ -494,10 +494,10 @@ class ResponseBuffered extends Response {
   @override
   void _finish(Request req) {
     if (req == null) {
-      throw new ArgumentError.notNull("req");
+      throw ArgumentError.notNull('req');
     }
     if (_contentOutputted) {
-      throw new StateError("Content already outputted");
+      throw StateError('Content already outputted');
     }
     final body = _buf.toString();
     final encodedBody = _encoding.encode(body);
@@ -549,10 +549,10 @@ class ResponseStream extends Response {
   Future<ResponseStream> addStream(
       Request req, Stream<List<int>> stream) async {
     if (req == null) {
-      throw new ArgumentError.notNull("req");
+      throw ArgumentError.notNull('req');
     }
     if (_streamState == 1) {
-      throw new StateError("addStream invoked when stream not finished");
+      throw StateError('addStream invoked when stream not finished');
     }
 
     if (_streamState == 0) {
@@ -573,18 +573,18 @@ class ResponseStream extends Response {
   @override
   void _finish(Request req) {
     if (req == null) {
-      throw new ArgumentError.notNull("req");
+      throw ArgumentError.notNull('req');
     }
 
     if (_streamState == 0) {
-      throw new StateError("Stream content was never added");
+      throw StateError('Stream content was never added');
     }
     if (_streamState == 1) {
-      throw new StateError("Stream content stream source was not finished");
+      throw StateError('Stream content stream source was not finished');
     }
     assert(_streamState == 2);
 
-    _logResponse.fine("[${req.id}] status=$_status, stream");
+    _logResponse.fine('[${req.id}] status=$_status, stream');
 
     super._finish(req);
   }
@@ -616,15 +616,14 @@ class ResponseRedirect extends Response {
 
   ResponseRedirect(String addr, {int status = HttpStatus.seeOther}) : super() {
     if (status < 300 || 399 < status) {
-      throw new ArgumentError.value(
-          status, "status", "ResponseRedirect: not a redirection HTTP status");
+      throw ArgumentError.value(
+          status, 'status', 'ResponseRedirect: not a redirection HTTP status');
     }
     if (addr == null) {
-      throw new ArgumentError.notNull("ResponseRedirect.addr");
+      throw ArgumentError.notNull('ResponseRedirect.addr');
     }
     if (addr.isEmpty) {
-      throw new ArgumentError.value(
-          addr, "addr", "ResponseRedirect: empty string");
+      throw ArgumentError.value(addr, 'addr', 'ResponseRedirect: empty string');
     }
 
     _addr = addr;
@@ -643,12 +642,12 @@ class ResponseRedirect extends Response {
   @override
   void _finish(Request req) {
     if (req == null) {
-      throw new ArgumentError.notNull("req");
+      throw ArgumentError.notNull('req');
     }
 
-    final url = (_addr.startsWith("~/")) ? req.rewriteUrl(_addr) : _addr;
+    final url = (_addr.startsWith('~/')) ? req.rewriteUrl(_addr) : _addr;
 
-    _logResponse.fine("[${req.id}] status=$_status, redirect=$url");
+    _logResponse.fine('[${req.id}] status=$_status, redirect=$url');
 
     headerAdd('Location', url);
     super._outputHeaders(req);

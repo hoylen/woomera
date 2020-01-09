@@ -30,7 +30,7 @@ import 'package:woomera/woomera.dart';
 
 /// Application logger.
 
-Logger mainLog = new Logger("main");
+Logger mainLog = Logger('main');
 
 // The Web server and pipelines.
 //
@@ -92,7 +92,7 @@ String homeButton(Request req) =>
 /// Main page for the demonstration Web server.
 
 Future<Response> homePage(Request req) async {
-  final resp = new ResponseBuffered(ContentType.html)
+  final resp = ResponseBuffered(ContentType.html)
     ..write("""
 <!doctype html>
 <html>
@@ -271,7 +271,7 @@ Future<Response> homePage(Request req) async {
 
     // Static files and directories
 
-    ..write("""
+    ..write('''
         <tr>
           <td colspan="3"><a name="staticFiles"><h3>Static files and directories from disk</h3></a></td>
         </tr>
@@ -347,17 +347,17 @@ Future<Response> homePage(Request req) async {
       </tbody>
     </table>
   </div>
-""");
+''');
 
   // Exception handling
 
   final eh1checked =
-      (webServer.exceptionHandler != null) ? "checked='checked'" : "";
-  final eh2checked = (p1.exceptionHandler != null) ? "checked='checked'" : "";
-  final eh3checked = (p2.exceptionHandler != null) ? "checked='checked'" : "";
+      (webServer.exceptionHandler != null) ? 'checked="checked"' : '';
+  final eh2checked = (p1.exceptionHandler != null) ? 'checked="checked"' : '';
+  final eh3checked = (p2.exceptionHandler != null) ? 'checked="checked"' : '';
 
   resp
-    ..write("""
+    ..write('''
   <div class="section">
     <h2>Exception handling</h2>
 
@@ -381,45 +381,45 @@ Future<Response> homePage(Request req) async {
       <input type="submit" value="Set Exception Handlers"/>
     </form>
   </div>
-""")
+''')
 
     // Sessions
 
-    ..write("""
+    ..write('''
   <div class="section">
     <h2>Sessions</h2>
     <p>Sessions can be used to maintain state between HTTP requests. It can use
     either session cookies or URL rewriting to remember the current session.</p>
-    """);
+    ''');
 
   final requestSession = req.session;
   if (requestSession == null) {
     // Not logged in
-    resp.write("""
+    resp.write('''
   <ul>
     <li><a href=\"${req.rewriteUrl("~/session/loginWithCookies")}\">Login using
         cookies to preserve the session</a> (if the browser uses them)</li>
     <li><a href=\"${req.rewriteUrl("~/session/login")}\">Login without cookies</a></li>
   </ul>
-  """);
+  ''');
   } else if (requestSession is LoginSession) {
     // Logged in
     assert(requestSession != null);
-    resp.write("""
+    resp.write('''
   <ul>
-    <li><a href=\"${req.rewriteUrl("~/session/info")}\">Session information page</a></li>
-    <li><a href=\"${req.rewriteUrl("~/session/logout")}\">Logout</a></li>
+    <li><a href="${req.rewriteUrl("~/session/info")}">Session information page</a></li>
+    <li><a href="${req.rewriteUrl("~/session/logout")}">Logout</a></li>
   </ul>
   <p style="font-size: smaller">Logged in at: ${requestSession.when}</p>
-  """);
+  ''');
   }
 
   resp
-    ..write("</div>")
+    ..write('</div>')
 
     // Stream response
 
-    ..write("""
+    ..write('''
     <div class="section">
     <h2>Stream test</h2>
 
@@ -433,11 +433,11 @@ Future<Response> homePage(Request req) async {
     </ul>
 
   </div>
-  """)
+  ''')
 
     // End of content div, and footer
 
-    ..write("""</div>
+    ..write('''</div>
 
   </div>
 
@@ -446,7 +446,7 @@ Future<Response> homePage(Request req) async {
   </footer>
 </body>
 </html>
-""");
+''');
 
   return resp;
 }
@@ -455,9 +455,9 @@ Future<Response> homePage(Request req) async {
 /// Handler for post operation
 ///
 Future<Response> handleTestPost(Request req) async {
-  assert(req.method == "POST");
+  assert(req.method == 'POST');
 
-  mainLog.fine("[${req.id}] Test POST");
+  mainLog.fine('[${req.id}] Test POST');
 /*
   for (var key in req.params.keys()) {
     var values = req.params.mvalues(key, raw: true);
@@ -476,7 +476,7 @@ Future<Response> handleTestPost(Request req) async {
   }
 */
 
-  final resp = new ResponseBuffered(ContentType.text)..write("Test post\n");
+  final resp = ResponseBuffered(ContentType.text)..write('Test post\n');
   return resp;
 }
 
@@ -484,16 +484,16 @@ Future<Response> handleTestPost(Request req) async {
 /// Exception handler
 ///
 Future<Response> handleExceptionHandlers(Request req) async {
-  final eh0 = req.postParams["eh0"] == "on";
-  final eh1 = req.postParams["eh1"] == "on";
-  final eh2 = req.postParams["eh2"] == "on";
+  final eh0 = req.postParams['eh0'] == 'on';
+  final eh1 = req.postParams['eh1'] == 'on';
+  final eh2 = req.postParams['eh2'] == 'on';
 
   webServer.exceptionHandler = (eh0) ? exceptionHandlerOnServer : null;
   p1.exceptionHandler = (eh1) ? exceptionHandlerOnPipe1 : null;
   p2.exceptionHandler = (eh2) ? exceptionHandlerOnPipe2 : null;
 
-  mainLog.fine("[${req.id}] setting exception handlers");
-  final resp = new ResponseBuffered(ContentType.html)..write("""
+  mainLog.fine('[${req.id}] setting exception handlers');
+  final resp = ResponseBuffered(ContentType.html)..write('''
 <html>
 <head></head>
 <body>
@@ -506,7 +506,7 @@ Future<Response> handleExceptionHandlers(Request req) async {
 </ul>
 
 ${homeButton(req)}
-""");
+''');
   return resp;
 }
 
@@ -515,9 +515,9 @@ ${homeButton(req)}
 ///
 Future<Response> handleStop(Request req) async {
   await webServer.stop();
-  mainLog.fine("[${req.id}] stopped");
-  final resp = new ResponseBuffered(ContentType.text)
-    ..write("Web server has been stopped\n");
+  mainLog.fine('[${req.id}] stopped');
+  final resp = ResponseBuffered(ContentType.text)
+    ..write('Web server has been stopped\n');
   return resp;
 }
 
@@ -525,34 +525,34 @@ Future<Response> handleStop(Request req) async {
 /// Handler that throws exceptions.
 ///
 Future<Response> handleThrow(Request req) async {
-  mainLog.fine("[${req.id}] exception test");
+  mainLog.fine('[${req.id}] exception test');
 
-  final type = req.pathParams["name"];
+  final type = req.pathParams['name'];
 
   switch (type) {
-    case "":
+    case '':
       break;
-    case "0":
-    case "IntegerDivisionByZeroException":
+    case '0':
+    case 'IntegerDivisionByZeroException':
       final _ = 42 ~/ 0;
       break;
 
-    case "1":
-    case "FormatException":
-      final _ = int.parse("16C");
+    case '1':
+    case 'FormatException':
+      final _ = int.parse('16C');
       break;
 
-    case "2":
-    case "StateError":
+    case '2':
+    case 'StateError':
       return await oldStyleFuture(throwException: true);
 
     default:
-      throw new ArgumentError("Unknown name: $type");
+      throw  ArgumentError('Unknown name: $type');
   }
 
-  final resp = new ResponseBuffered(ContentType.html)
+  final resp = ResponseBuffered(ContentType.html)
     ..status = HttpStatus.notAcceptable
-    ..write("""
+    ..write('''
 <html>
 <head><title>Exception test</title></head>
 <body>
@@ -577,7 +577,7 @@ what the path parameter is:</p>
 returned. It is deliberately uninformative so no internal information
 can be accidently leaked.</body>
 </html>
-""");
+''');
   return resp;
 }
 
@@ -586,19 +586,19 @@ can be accidently leaked.</body>
 Future<ResponseBuffered> oldStyleFuture({bool throwException: false}) {
   const duration = const Duration(seconds: 3);
 
-  final c = new Completer<ResponseBuffered>();
+  final c = Completer<ResponseBuffered>();
 
-  final _ = new Timer(duration, () {
+  final _ = Timer(duration, () {
     if (throwException) {
       // This exception is thrown from a function that is not using the new
       // async/await syntax. This means it won't be caught by the try/catch
       // mechanism. The framework will catch these using zones.
-      throw new StateError(new DateTime.now().toString());
+      throw StateError( DateTime.now().toString());
     }
 
-    final resp = new ResponseBuffered(ContentType.text)
+    final resp = ResponseBuffered(ContentType.text)
       ..status = HttpStatus.notAcceptable
-      ..write("""This worked, but it should not have.""");
+      ..write('''This worked, but it should not have.''');
     c.complete(resp);
   });
 
@@ -617,13 +617,13 @@ Future<Response> streamTest(Request req) async {
   final numIterations = 10;
 
   var secs = 0;
-  if (req.queryParams["seconds"].isNotEmpty) {
-    secs = int.parse(req.queryParams["seconds"]);
+  if (req.queryParams['seconds'].isNotEmpty) {
+    secs = int.parse(req.queryParams['seconds']);
   }
 
   // Produce the stream response
 
-  final resp = new ResponseStream(ContentType.text)..status = HttpStatus.ok;
+  final resp = ResponseStream(ContentType.text)..status = HttpStatus.ok;
   await resp.addStream(req, _streamSource(req, numIterations, secs));
 
   return resp;
@@ -635,33 +635,33 @@ Future<Response> streamTest(Request req) async {
 // the response.
 
 Stream<List<int>> _streamSource(Request req, int iterations, int secs) async* {
-  final delay = new Duration(seconds: secs);
+  final delay = Duration(seconds: secs);
 
-  yield "Stream of $iterations items (delay: $secs seconds)\n".codeUnits;
+  yield 'Stream of $iterations items (delay: $secs seconds)\n'.codeUnits;
 
-  yield "Started: ${new DateTime.now()}\n".codeUnits;
+  yield 'Started: ${ DateTime.now()}\n'.codeUnits;
 
   for (var x = 1; x <= iterations; x++) {
-    final completer = new Completer<int>();
-    new Timer(delay, () => completer.complete(0));
+    final completer = Completer<int>();
+     Timer(delay, () => completer.complete(0));
     await completer.future;
 
-    yield "Item $x\n".codeUnits;
+    yield 'Item $x\n'.codeUnits;
   }
-  yield "Finished: ${new DateTime.now()}\n".codeUnits;
+  yield 'Finished: ${DateTime.now()}\n'.codeUnits;
 }
 
 //----------------------------------------------------------------
 /// Handler that returns JSON in the response.
 ///
 Future<Response> handleJson(Request req) async {
-  final data = {'name': "John Citizen", 'address': "foo"};
+  final data = {'name': 'John Citizen', 'address': 'foo'};
 
   // response.headers.contentType = ContentType.json
   print(json.encode(data));
   // json.decode(str);
 
-  final resp = new ResponseBuffered(ContentType.text)..write("JSON test");
+  final resp = ResponseBuffered(ContentType.text)..write('JSON test');
   return resp;
 }
 
@@ -679,7 +679,7 @@ Future<Response> handleJson(Request req) async {
 Future<Response> exceptionHandlerOnServer(
     Request req, Object exception, StackTrace st) {
   assert(req != null);
-  return _exceptionHandler(req, exception, st, "server");
+  return _exceptionHandler(req, exception, st, 'server');
 }
 
 //----------------------------------------------------------------
@@ -692,7 +692,7 @@ Future<Response> exceptionHandlerOnPipe1(
   if (exception is StateError) {
     return null;
   }
-  return _exceptionHandler(req, exception, st, "pipeline1");
+  return _exceptionHandler(req, exception, st, 'pipeline1');
 }
 
 //----------------------------------------------------------------
@@ -705,7 +705,7 @@ Future<Response> exceptionHandlerOnPipe2(
   if (exception is StateError) {
     return null;
   }
-  return _exceptionHandler(req, exception, st, "pipeline2");
+  return _exceptionHandler(req, exception, st, 'pipeline2');
 }
 
 //----------------------------------------------------------------
@@ -715,7 +715,7 @@ Future<Response> _exceptionHandler(
     Request req, Object exception, StackTrace st, String who) async {
   // Create a response
 
-  final resp = new ResponseBuffered(ContentType.html);
+  final resp = ResponseBuffered(ContentType.html);
 
   // Set the status depending on the type of exception
 
@@ -729,7 +729,7 @@ Future<Response> _exceptionHandler(
 
   // The body of the response
 
-  resp.write("""
+  resp.write('''
 <html>
 <head>
   <title>Exception</title>
@@ -743,21 +743,21 @@ An exception was thrown and was handled by the <strong>$who</strong> exception h
 
 <p>Exception object type: <code>${exception.runtimeType}</code></p>
 <p>String representation of object: <strong>$exception</strong></p>
-""");
+''');
 
   if (st != null) {
-    resp.write("""
+    resp.write('''
 <h2>Stack trace</h2>
 <pre>
 $st
 </pre>
-    """);
+    ''');
   }
-  resp.write("""
+  resp.write('''
 ${homeButton(req)}
 </body>
 </html>
-""");
+''');
 
   return resp;
 }
@@ -765,16 +765,16 @@ ${homeButton(req)}
 //================================================================
 // Session
 
-const String _testCookieName = "browser-test";
+const String _testCookieName = 'browser-test';
 
 Future<Response> _handleLoginWithCookies(Request req) async {
-  final testCookie = new Cookie(_testCookieName, "cookies_work!")
+  final testCookie = Cookie(_testCookieName, 'cookies_work!')
     ..path = req.server.basePath
     ..httpOnly = true;
 
-  final resp = new ResponseBuffered(ContentType.html)
+  final resp = ResponseBuffered(ContentType.html)
     ..cookieAdd(testCookie)
-    ..write("""
+    ..write('''
 <html>
 <head></head>
 <body>
@@ -791,11 +791,11 @@ they have been disabled, or if the login page is visited directly
 (without going via this page).</p>
 
 <p>Now please visit the
-<a href="${req.rewriteUrl("~/session/login")}">login page</a>.</p>
+<a href="${req.rewriteUrl('~/session/login')}">login page</a>.</p>
 
 </body>
 </html>
-""");
+''');
 
   return resp;
 }
@@ -805,11 +805,11 @@ they have been disabled, or if the login page is visited directly
 Future<Response> _handleLogin(Request req) async {
   const keepAlive = const Duration(minutes: 1);
 
-  req.session = new LoginSession(webServer, keepAlive, new DateTime.now());
+  req.session = LoginSession(webServer, keepAlive,  DateTime.now());
 
-  final resp = new ResponseBuffered(ContentType.html)
+  final resp = ResponseBuffered(ContentType.html)
     ..cookieDelete(_testCookieName, req.server.basePath)
-    ..write("""
+    ..write('''
 <html>
 <head></head>
 <body>
@@ -820,64 +820,64 @@ Future<Response> _handleLogin(Request req) async {
 <p>The session will remain alive for ${keepAlive.inSeconds} seconds, after the
 last HTTP request was received for the session.</p>
 
-<p><a href="${req.rewriteUrl("~/session/info")}">Session information page</a></p>
+<p><a href="${req.rewriteUrl('~/session/info')}">Session information page</a></p>
 
 ${homeButton(req)}
 </body>
 </html>
-""");
+''');
   return resp;
 }
 
 //----------------------------------------------------------------
 
 Future<Response> _handleLogout(Request req) async {
-  final resp = new ResponseBuffered(ContentType.html)..write("""
+  final resp = ResponseBuffered(ContentType.html)..write('''
 <html>
 <head></head>
 <body>
 <h1>Session: logout</h1>
-""");
+''');
 
   if (req.session != null) {
     await req.session
         .terminate(); // terminate the session (also removes the timer)
     req.session = null; // clear the session so it is no longer preserved
 
-    resp.write("<p>You have been logged out.</p>");
+    resp.write('<p>You have been logged out.</p>');
   } else {
-    resp.write("<p>Error: not logged in: you should not see this page.</p>");
+    resp.write('<p>Error: not logged in: you should not see this page.</p>');
   }
 
-  resp.write("""
+  resp.write('''
 ${homeButton(req)}
 </body>
 </html>
-""");
+''');
   return resp;
 }
 
 //----------------------------------------------------------------
 
 Future<Response> _handleSessionInfoPage(Request req) async {
-  final resp = new ResponseBuffered(ContentType.html)..write("""
+  final resp = ResponseBuffered(ContentType.html)..write('''
 <html>
 <head></head>
 <body>
 <h1>Session information</h1>
-""");
+''');
 
   final requestSession = req.session;
   if (requestSession is LoginSession) {
     assert(requestSession != null);
 
-    final duration = new DateTime.now().difference(requestSession.when);
+    final duration = DateTime.now().difference(requestSession.when);
 
     if (requestSession.name != null) {
       resp.write(
-          "<p>Welcome <strong>${HEsc.text(requestSession.name)}</strong>.</p>");
+          '<p>Welcome <strong>${HEsc.text(requestSession.name)}</strong>.</p>');
     }
-    resp.write("""
+    resp.write('''
 <p>Logged in at ${requestSession.when}.
 You have been logged in for over ${duration.inSeconds} seconds.</p>
 
@@ -888,20 +888,20 @@ Otherwise URL rewriting is used to preserve the session for GET requests,
 and the following link (back to this page) will have a session query parameters</p>
 
 <ul>
-  <li><a href="${req.rewriteUrl("~/session/info")}">Session info page</a></li>
-  <li><a href="${req.rewriteUrl("~/session/info?foo=bar&foo=baz&abc=xyz")}">With other query parameters</a></li>
+  <li><a href="${req.rewriteUrl('~/session/info')}">Session info page</a></li>
+  <li><a href="${req.rewriteUrl('~/session/info?foo=bar&foo=baz&abc=xyz')}">With other query parameters</a></li>
 </ul>
 
 <p>Note: any session query parameters are stripped out so the application never
 sees them. The handler that processed this request saw
-""");
+''');
     if (req.queryParams.isEmpty) {
-      resp.write("no query parameters.");
+      resp.write('no query parameters.');
     } else {
-      resp.write("these query parameters: ${req.queryParams}");
+      resp.write('these query parameters: ${req.queryParams}');
     }
 
-    resp.write("""
+    resp.write('''
 <h2>Session preserved across POST requests</h2>
 
 <p>If using cookies, the session is preserved using a session cookie.
@@ -912,7 +912,7 @@ So the POST request actually has both query parameters and POST parameters
 (though the application never sees this, because the session parameter is
 stripped out after processing it).</p>
 
-<form method="POST" action="${req.rewriteUrl("~/session/set-name")}">
+<form method="POST" action="${req.rewriteUrl('~/session/set-name')}">
   <label for="n">Name:</label>
   <input type="text" name="name" id="n"/>
   <input type="submit" value="Set name"/>
@@ -935,51 +935,51 @@ and the session will be lost.</p>
 must stay within the application to preserve the session, when cookies are
 not used. A session will also be lost if/when it times out.</p>
 
-""");
+''');
   } else {
-    resp.write("<p>No session.</p>");
+    resp.write('<p>No session.</p>');
   }
 
-  resp.write("""
+  resp.write('''
 ${homeButton(req)}
 </body>
 </html>
-""");
+''');
   return resp;
 }
 
 //----------------------------------------------------------------
 
 Future<Response> _handleSessionSetName(Request req) async {
-  final resp = new ResponseBuffered(ContentType.html)..write("""
+  final resp = ResponseBuffered(ContentType.html)..write('''
 <html>
 <head></head>
 <body>
 <h1>Session: name set</h1>
-""");
+''');
 
   final requestSession = req.session;
   if (requestSession is LoginSession) {
     assert(requestSession != null);
-    requestSession.name = req.postParams["name"];
+    requestSession.name = req.postParams['name'];
 
     if (requestSession.name.isNotEmpty) {
       resp.write(
-          "<p>Your name has been set to \"${HEsc.text(requestSession.name)}\".</p>");
+          '<p>Your name has been set to "${HEsc.text(requestSession.name)}".</p>');
     } else {
-      resp.write("<p>Your name has been cleared.</p>");
+      resp.write('<p>Your name has been cleared.</p>');
     }
     resp.write(
-        "<p>Return to the <a href=\"${req.rewriteUrl("~/session/info")}\">session info page</a>.</p>");
+        '<p>Return to the <a href="${req.rewriteUrl('~/session/info')}">session info page</a>.</p>');
   } else {
-    resp.write("<p>Error: not logged in: you should not see this page.</p>");
+    resp.write('<p>Error: not logged in: you should not see this page.</p>');
   }
 
-  resp.write("""
+  resp.write('''
 ${homeButton(req)}
 </body>
 </html>
-""");
+''');
   return resp;
 }
 
@@ -1001,13 +1001,13 @@ void _loggingSetup() {
 
   final commonLevel = Level.INFO;
 
-  new Logger("main").level = commonLevel;
-  new Logger("woomera.server").level = commonLevel;
-  new Logger("woomera.request").level = Level.FINE;
-  new Logger("woomera.request.header").level = commonLevel;
-  new Logger("woomera.request.param").level = commonLevel;
-  new Logger("woomera.response").level = commonLevel;
-  new Logger("woomera.session").level = commonLevel;
+  Logger('main').level = commonLevel;
+  Logger('woomera.server').level = commonLevel;
+  Logger('woomera.request').level = Level.FINE;
+  Logger('woomera.request.header').level = commonLevel;
+  Logger('woomera.request.param').level = commonLevel;
+  Logger('woomera.response').level = commonLevel;
+  Logger('woomera.session').level = commonLevel;
 }
 
 //----------------------------------------------------------------
@@ -1028,13 +1028,13 @@ Server _serverSetup() {
 
   final port = 1024;
 
-  webServer = new Server()
+  webServer = Server()
     ..bindAddress = InternetAddress.anyIPv6
     ..v6Only = false // false = listen to any IPv4 and any IPv6 address
     ..bindPort = port
     ..exceptionHandler = exceptionHandlerOnServer; // set exception handler
 
-  mainLog.info("Web server running on port $port");
+  mainLog.info('Web server running on port $port');
 
   //--------
   // Setup the first pipeline
@@ -1059,9 +1059,9 @@ Server _serverSetup() {
   //
   // Note: the other way to create multiple pipelines is to specify the number
   // of pipelines when the server is created:
-  //     webServer = new Server(numberOfPipelines: 2);
+  //     webServer = Server(numberOfPipelines: 2);
 
-  p2 = new ServerPipeline();
+  p2 = ServerPipeline();
   webServer.pipelines.add(p2);
 
   // Set the second pipeline's exception handler
@@ -1079,33 +1079,33 @@ Server _serverSetup() {
     // request method (e.g. GET or POST), a pattern to match against the request
     // path and the handler method.
 
-    ..get("~/", homePage)
-    ..get("~/must/all/match", debugHandler)
-    ..post("~/must/all/match", debugHandler)
-    ..get("~/one/:first", debugHandler)
-    ..get("~/two/:first/:second", debugHandler)
-    ..get("~/three/:first/:second/:third", debugHandler)
-    ..post("~/one/:first", debugHandler)
-    ..post("~/two/:first/:second", debugHandler)
-    ..post("~/three/:first/:second/:third", debugHandler)
-    ..get("~/double/:name/:name", debugHandler)
-    ..get("~/triple/:name/:name/:name", debugHandler)
-    ..post("~/double/:name/:name", debugHandler)
-    ..post("~/triple/:name/:name/:name", debugHandler)
-    ..get("~/wildcard1/*", debugHandler)
-    ..get("~/wildcard2/*/foo/bar", debugHandler)
-    ..get("~/wildcard3/*/*", debugHandler)
-    ..get("~/wildcard4/*/foo/bar/*/baz", debugHandler)
-    ..get("~/throw/:name", handleThrow) // tests exception handling
+    ..get('~/', homePage)
+    ..get('~/must/all/match', debugHandler)
+    ..post('~/must/all/match', debugHandler)
+    ..get('~/one/:first', debugHandler)
+    ..get('~/two/:first/:second', debugHandler)
+    ..get('~/three/:first/:second/:third', debugHandler)
+    ..post('~/one/:first', debugHandler)
+    ..post('~/two/:first/:second', debugHandler)
+    ..post('~/three/:first/:second/:third', debugHandler)
+    ..get('~/double/:name/:name', debugHandler)
+    ..get('~/triple/:name/:name/:name', debugHandler)
+    ..post('~/double/:name/:name', debugHandler)
+    ..post('~/triple/:name/:name/:name', debugHandler)
+    ..get('~/wildcard1/*', debugHandler)
+    ..get('~/wildcard2/*/foo/bar', debugHandler)
+    ..get('~/wildcard3/*/*', debugHandler)
+    ..get('~/wildcard4/*/foo/bar/*/baz', debugHandler)
+    ..get('~/throw/:name', handleThrow) // tests exception handling
 
-    ..get("~/test", debugHandler)
-    ..post("~/test", debugHandler)
-    ..get("~/streamTest", streamTest)
-    ..get("~/session/login", _handleLogin)
-    ..get("~/session/loginWithCookies", _handleLoginWithCookies)
-    ..get("~/session/info", _handleSessionInfoPage)
-    ..post("~/session/set-name", _handleSessionSetName)
-    ..get("~/session/logout", _handleLogout);
+    ..get('~/test', debugHandler)
+    ..post('~/test', debugHandler)
+    ..get('~/streamTest', streamTest)
+    ..get('~/session/login', _handleLogin)
+    ..get('~/session/loginWithCookies', _handleLoginWithCookies)
+    ..get('~/session/info', _handleSessionInfoPage)
+    ..post('~/session/set-name', _handleSessionSetName)
+    ..get('~/session/logout', _handleLogout);
 
   // Serve static files
   //
@@ -1124,49 +1124,49 @@ Server _serverSetup() {
   final dirContainingThisFile = FileSystemEntity.parentOf(Platform.script.path);
   final projectDir = FileSystemEntity.parentOf(dirContainingThisFile);
 
-  //mainLog.info("projectDir: $projectDir");
+  //mainLog.info('projectDir: $projectDir');
 
   // Map paths without an end slash to a directory, allow directory listing
 
-  final staticFiles = new StaticFiles("$projectDir/web",
-      defaultFilenames: ["index.html", "index.htm"],
+  final staticFiles = StaticFiles('$projectDir/web',
+      defaultFilenames: ['index.html', 'index.htm'],
       allowFilePathsAsDirectories: true,
       allowDirectoryListing: true);
 
-  p2.get("~/diskfiles/*", staticFiles.handler);
+  p2.get('~/diskfiles/*', staticFiles.handler);
 
   // Do not try to treat paths without an end slash as directories, no listing
 
-  final staticDir0List0 = new StaticFiles("$projectDir/web",
-      defaultFilenames: ["index.html", "index.htm"],
+  final staticDir0List0 = StaticFiles('$projectDir/web',
+      defaultFilenames: ['index.html', 'index.htm'],
       allowFilePathsAsDirectories: false,
       allowDirectoryListing: false);
 
-  p2.get("~/diskfilesDir0List0/*", staticDir0List0.handler);
+  p2.get('~/diskfilesDir0List0/*', staticDir0List0.handler);
 
   // Maps paths without an end slash to a directory, no directory listing
 
-  final staticDir1List0 = new StaticFiles("$projectDir/web",
-      defaultFilenames: ["index.html", "index.htm"],
+  final staticDir1List0 = StaticFiles('$projectDir/web',
+      defaultFilenames: ['index.html', 'index.htm'],
       allowFilePathsAsDirectories: true,
       allowDirectoryListing: false);
 
-  p2.get("~/diskfilesDir1List0/*", staticDir1List0.handler);
+  p2.get('~/diskfilesDir1List0/*', staticDir1List0.handler);
 
   // Do not try to treat paths without an end slash as directories, allow listing
 
-  final staticDir0List1 = new StaticFiles("$projectDir/web",
-      defaultFilenames: ["index.html", "index.htm"],
+  final staticDir0List1 = StaticFiles('$projectDir/web',
+      defaultFilenames: ['index.html', 'index.htm'],
       allowFilePathsAsDirectories: false,
       allowDirectoryListing: true);
 
   p2
-    ..get("~/diskfilesDir0List1/*", staticDir0List1.handler)
+    ..get('~/diskfilesDir0List1/*', staticDir0List1.handler)
 
     // Special handlers for demonstrating Woomera features
 
-    ..post("~/system/exceptionHandler", handleExceptionHandlers)
-    ..post("~/system/stop", handleStop);
+    ..post('~/system/exceptionHandler', handleExceptionHandlers)
+    ..post('~/system/stop', handleStop);
 
   return webServer;
 }
@@ -1177,9 +1177,9 @@ Server _serverSetup() {
 //----------------------------------------------------------------
 
 Future simulatedRun(Server server) async {
-  mainLog.fine("GET /test");
+  mainLog.fine('GET /test');
 
-  final req = new Request.simulated('GET', '~/test', id: 'simulated');
+  final req = Request.simulated('GET', '~/test', id: 'simulated');
 
   final r = await server.simulate(req);
   print(r);
@@ -1200,7 +1200,7 @@ Future main(List<String> args) async {
 
   final server = _serverSetup();
 
-  mainLog.fine("started");
+  mainLog.fine('started');
 
   if (!simulate) {
     await server.run(); // run Web server
@@ -1213,5 +1213,5 @@ Future main(List<String> args) async {
   // running "forever", so normally the server's [stop] method never gets
   // invoked.
 
-  mainLog.fine("finished");
+  mainLog.fine('finished');
 }

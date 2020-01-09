@@ -90,7 +90,7 @@ class NotFoundException extends WoomeraException {
   /// String representation
   @override
   String toString() {
-    var s = "unknown";
+    var s = 'unknown';
     switch (found) {
       case foundNothing:
         s = 'method not supported';

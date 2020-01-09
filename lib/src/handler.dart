@@ -13,7 +13,7 @@ part of woomera;
 ///
 /// Used for in the rules of a [ServerPipeline].
 
-typedef Future<Response> RequestHandler(Request req);
+typedef RequestHandler = Future<Response> Function(Request req);
 
 //----------------------------------------------------------------
 
@@ -39,7 +39,7 @@ typedef Future<Response> RequestHandler(Request req);
 /// ```
 /// Future<Response> myExceptionHandler(Request request,
 ///  Object e, StackTrace st) async {
-///   final r = new ResponseBuffered(ContentType.html);
+///   final r = ResponseBuffered(ContentType.html);
 ///    r.status = HttpStatus.internalServerError;
 ///    r.write('''<!doctype html>
 ///<html>
@@ -54,7 +54,7 @@ typedef Future<Response> RequestHandler(Request req);
 ///}
 /// ```
 
-typedef Future<Response> ExceptionHandler(
+typedef ExceptionHandler = Future<Response> Function(
     Request request, Object exception, StackTrace stackTrace);
 
 //----------------------------------------------------------------
@@ -105,7 +105,7 @@ typedef Future<Response> ExceptionHandler(
 ///  }
 /// ```
 
-typedef Future<void> ExceptionHandlerRaw(HttpRequest rawRequest,
+typedef ExceptionHandlerRaw = Future<void> Function(HttpRequest rawRequest,
     String requestId, Object exception, StackTrace stackTrace);
 
 //----------------------------------------------------------------
@@ -117,7 +117,7 @@ Future<Response> _invokeRequestHandler(
   Object thrownObject; // can be any object, not just Exception or Error
   // var stacktrace;
 
-  final hCompleter = new Completer<Response>();
+  final hCompleter = Completer<Response>();
 
   // Invoke the handler in its own zone, so all exceptions are captured
   // (both those thrown from async methods and those thrown from methods
@@ -132,11 +132,11 @@ Future<Response> _invokeRequestHandler(
     thrownObject = e;
     // stacktrace = s;
     if (!hCompleter.isCompleted) {
-      _logRequest.finest("[${req.id}] handler onError (${e.runtimeType}): $e");
+      _logRequest.finest('[${req.id}] handler onError (${e.runtimeType}): $e');
       hCompleter.complete(null);
     } else {
       _logRequest
-          .finest("[${req.id}] handler onError ignored (${e.runtimeType}): $e");
+          .finest('[${req.id}] handler onError ignored (${e.runtimeType}): $e');
     }
   });
 
@@ -161,7 +161,7 @@ Future<Response> _invokeExceptionHandler(
   Object thrownObject; // can be any object, not just Exception or Error
   // var stacktrace;
 
-  final hCompleter = new Completer<Response>();
+  final hCompleter = Completer<Response>();
 
   // Invoke the handler in its own zone, so all exceptions are captured
   // (both those thrown from async methods and those thrown from methods

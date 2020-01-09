@@ -9,7 +9,7 @@ part of woomera;
 /// Example:
 ///
 /// ```dart
-/// var sf = new StaticFiles("/var/www/myfiles",
+/// var sf = StaticFiles("/var/www/myfiles",
 ///                          defaultFilenames: ["index.html", "index.htm"]);
 ///
 /// srv.pipelines.first.get("~/myfiles/*", sf.handler);
@@ -39,27 +39,27 @@ class StaticFiles {
     // Check if provided [baseDir] directory is usable.
 
     if (baseDir == null) {
-      throw new ArgumentError.notNull("baseDir");
+      throw ArgumentError.notNull('baseDir');
     }
     if (baseDir.isEmpty) {
-      throw new ArgumentError.value(
-          baseDir, "baseDir", "empty string not permitted for StaticFiles");
+      throw ArgumentError.value(
+          baseDir, 'baseDir', 'empty string not permitted for StaticFiles');
     }
-    while (baseDir.endsWith("/")) {
+    while (baseDir.endsWith('/')) {
       // Remove all trailing slashes
       baseDir = baseDir.substring(0, baseDir.length - 1);
     }
     if (baseDir.isEmpty) {
-      throw new ArgumentError.value(
-          "/", "baseDir", "not permitted for StaticFiles");
+      throw ArgumentError.value(
+          '/', 'baseDir', 'not permitted for StaticFiles');
     }
-    if (["/bin", "/etc", "/home", "/lib", "/tmp", "/var"].contains(baseDir)) {
-      throw new ArgumentError.value(
-          baseDir, "baseDir", "not permitted for StaticFiles");
+    if (['/bin', '/etc', '/home', '/lib', '/tmp', '/var'].contains(baseDir)) {
+      throw ArgumentError.value(
+          baseDir, 'baseDir', 'not permitted for StaticFiles');
     }
-    if (!new Directory(baseDir).existsSync()) {
-      throw new ArgumentError.value(
-          baseDir, "baseDir", "directory does not exist for StaticFiles");
+    if (!Directory(baseDir).existsSync()) {
+      throw ArgumentError.value(
+          baseDir, 'baseDir', 'directory does not exist for StaticFiles');
     }
     assert(baseDir.isNotEmpty);
 
@@ -86,28 +86,25 @@ class StaticFiles {
   /// will match.
 
   static Map<String, ContentType> defaultMimeTypes = {
-    "txt": ContentType.text,
-    "html": ContentType.html,
-    "htm": ContentType.html,
-    "json": ContentType.json,
-    "css": new ContentType("text", "css"),
-    "png": new ContentType("image", "png"),
-    "jpg": new ContentType("image", "jpeg"),
-    "jpeg": new ContentType("image", "jpeg"),
-    "gif": new ContentType("image", "gif"),
-    "xml": new ContentType("application", "xml"),
-    "js": new ContentType("application", "javascript"),
-    "dart": new ContentType("application", "dart"),
+    'txt': ContentType.text,
+    'html': ContentType.html,
+    'htm': ContentType.html,
+    'json': ContentType.json,
+    'css': ContentType('text', 'css'),
+    'png': ContentType('image', 'png'),
+    'jpg': ContentType('image', 'jpeg'),
+    'jpeg': ContentType('image', 'jpeg'),
+    'gif': ContentType('image', 'gif'),
+    'xml': ContentType('application', 'xml'),
+    'js': ContentType('application', 'javascript'),
+    'dart': ContentType('application', 'dart'),
   };
 
   /// Standard directory files.
   ///
   /// The default values used for [defaultFilenames].
 
-  static const List<String> standardFilenames = const [
-    'index.html',
-    'index.htm'
-  ];
+  static const List<String> standardFilenames = ['index.html', 'index.htm'];
 
   //================================================================
 
@@ -166,11 +163,11 @@ class StaticFiles {
   ///
   /// Example:
   /// ```dart
-  /// var sf =  new StaticFiles("/var/show/assets/publish");
-  /// sf.mimeTypes["rss"] = new ContentType("application", "rss+xml");
-  /// sf.mimeTypes["mp3"] = new ContentType("audio", "mpeg");
+  /// var sf =   StaticFiles('/var/show/assets/publish');
+  /// sf.mimeTypes['rss'] = ContentType('application', 'rss+xml');
+  /// sf.mimeTypes['mp3'] = ContentType('audio', 'mpeg');
   ///
-  /// pipeline.get("~/podcast/*", sf.handler);
+  /// pipeline.get('~/podcast/*', sf.handler);
   /// ```
   ///
   /// This map is initially empty.
@@ -230,56 +227,55 @@ class StaticFiles {
 
     // Get the relative path
 
-    final values = req.pathParams.values("*");
+    final values = req.pathParams.values('*');
     if (values.isEmpty) {
-      throw new ArgumentError("Static file handler registered with no *");
+      throw ArgumentError('Static file handler registered with no *');
     } else if (1 < values.length) {
-      throw new ArgumentError("Static file handler registered with multiple *");
+      throw ArgumentError('Static file handler registered with multiple *');
     }
 
-    final components = values[0].split("/");
+    final components = values[0].split('/');
     var depth = 0;
     while (0 <= depth && depth < components.length) {
       final c = components[depth];
-      if (c == "..") {
+      if (c == '..') {
         components.removeAt(depth);
         depth--;
         if (depth < 0) {
           if (throwNotFoundExceptions) {
             // tried to climb above base directory
-            throw new NotFoundException(NotFoundException.foundStaticHandler);
+            throw NotFoundException(NotFoundException.foundStaticHandler);
           } else {
             return null;
           }
         }
-      } else if (c == ".") {
+      } else if (c == '.') {
         components.removeAt(depth);
       } else if (c.isEmpty && depth != components.length - 1) {
-        components.removeAt(depth); // keep last "" to indicate dir listing
+        components.removeAt(depth); // keep last '' to indicate dir listing
       } else {
         depth++;
       }
     }
 
-    final path = "$_baseDir/${components.join("/")}";
-    _logStaticFiles.finer("[${req.id}] static file/directory requested: $path");
+    final path = '$_baseDir/${components.join('/')}';
+    _logStaticFiles.finer('[${req.id}] static file/directory requested: $path');
 
-    if (!path.endsWith("/")) {
+    if (!path.endsWith('/')) {
       // Probably a file
 
-      final file = new File(path);
+      final file = File(path);
       if (file.existsSync()) {
-        _logStaticFiles.finest("[${req.id}] static file found: $path");
+        _logStaticFiles.finest('[${req.id}] static file found: $path');
         return await _serveFile(req, file);
-      } else if (allowFilePathsAsDirectories &&
-          await new Directory(path).exists()) {
+      } else if (allowFilePathsAsDirectories && Directory(path).existsSync()) {
         // A directory exists with the same name
 
-        if (allowDirectoryListing || await _findDefaultFile("$path/") != null) {
+        if (allowDirectoryListing || await _findDefaultFile('$path/') != null) {
           // Can tell the browser to treat it as a directory
-          // Note: must change URL in browser to have a "/" at the end,
+          // Note: must change URL in browser to have a '/' at the end,
           // otherwise any relative links would break.
-          _logStaticFiles.finest("[${req.id}] treating as static directory");
+          _logStaticFiles.finest('[${req.id}] treating as static directory');
 
           // Determine the actual URL that was requested, taking into account
           // any proxying (indicated by [publicUrlPrefix]). If the proxying
@@ -287,7 +283,7 @@ class StaticFiles {
           // the URL in the redirect response.
           //
           // In the following, remember `req.requestPath()` is an internal URL
-          // that always starts with "~/".
+          // that always starts with '~/'.
           //
           // See [publicUrlPrefix] for details.
 
@@ -305,45 +301,45 @@ class StaticFiles {
             requestedUrl = publicServerUrl + req.requestPath().substring(1);
           }
 
-          return new ResponseRedirect('$requestedUrl/'); // append a slash
+          return ResponseRedirect('$requestedUrl/'); // append a slash
         }
       } else {
-        _logStaticFiles.finest("[${req.id}] static file not found");
+        _logStaticFiles.finest('[${req.id}] static file not found');
       }
     } else {
       // Request for a directory
 
-      final dir = new Directory(path);
+      final dir = Directory(path);
 
-      if (await dir.exists()) {
+      if (dir.existsSync()) {
         // Try to find one of the default files in that directory
 
         final defaultFile = await _findDefaultFile(path);
 
         if (defaultFile != null) {
           _logStaticFiles.finest(
-              "[${req.id}] static directory: default file found: $defaultFile");
+              '[${req.id}] static directory: default file found: $defaultFile');
           return await _serveFile(req, defaultFile);
         }
 
         if (allowDirectoryListing) {
           // List the contents of the directory
-          _logStaticFiles.finest("[${req.id}] returning directory listing");
+          _logStaticFiles.finest('[${req.id}] returning directory listing');
           final notTop = (1 < components.length);
           return await directoryListing(req, dir, linkToParent: notTop);
         } else {
           _logStaticFiles
-              .finest("[${req.id}] static directory listing not allowed");
+              .finest('[${req.id}] static directory listing not allowed');
         }
       } else {
-        _logStaticFiles.finest("[${req.id}] static directory not found");
+        _logStaticFiles.finest('[${req.id}] static directory not found');
       }
     }
 
     // Not found (or directory listing not allowed)
 
     if (throwNotFoundExceptions) {
-      throw new NotFoundException(NotFoundException.foundStaticHandler);
+      throw NotFoundException(NotFoundException.foundStaticHandler);
     } else {
       return null;
     }
@@ -351,8 +347,8 @@ class StaticFiles {
 
   Future<File> _findDefaultFile(String path) async {
     for (var defaultFilename in defaultFilenames) {
-      final dfName = "$path$defaultFilename";
-      final df = new File(dfName);
+      final dfName = '$path$defaultFilename';
+      final df = File(dfName);
       if (df.existsSync()) {
         return df;
       }
@@ -376,17 +372,17 @@ class StaticFiles {
 
   Future<Response> directoryListing(Request req, Directory dir,
       {bool linkToParent}) async {
-    final components = dir.path.split("/");
+    final components = dir.path.split('/');
     String title;
     if (2 <= components.length &&
         components[components.length - 2].isNotEmpty &&
         components.last.isEmpty) {
       title = components[components.length - 2];
     } else {
-      title = "Listing";
+      title = 'Listing';
     }
 
-    final buf = new StringBuffer("""
+    final buf = StringBuffer('''
 <!doctype html>
 <html>
   <head>
@@ -407,34 +403,34 @@ class StaticFiles {
 <body>
   <h1>${HEsc.text(title)}</h1>
   <ul>
-""");
+''');
 
     if (linkToParent) {
       buf.write(
-          "<li><a href='..' title='Parent' class='parent'>&#x2191;</a></li>\n");
+          '<li><a href=".." title="Parent" class="parent">&#x2191;</a></li>\n');
     }
 
     await for (var entity in dir.list()) {
       String n;
       String cl;
       if (entity is Directory) {
-        n = "${entity.uri.pathSegments[entity.uri.pathSegments.length - 2]}/";
-        cl = "class=\"dir\"";
+        n = '${entity.uri.pathSegments[entity.uri.pathSegments.length - 2]}/';
+        cl = 'class="dir"';
       } else {
         n = entity.uri.pathSegments.last;
-        cl = "class=\"file\"";
+        cl = 'class="file"';
       }
-      buf.write("<li><a href='${HEsc.attr(n)}' $cl>${HEsc.text(n)}</a></li>\n");
+      buf.write('<li><a href="${HEsc.attr(n)}" $cl>${HEsc.text(n)}</a></li>\n');
     }
 
-    buf.write("""
+    buf.write('''
   </ul>
 </body>
 </html>
-""");
+''');
 
-    final resp = new ResponseBuffered(ContentType.html)
-      ..headerAddDate("Date", DateTime.now())
+    final resp = ResponseBuffered(ContentType.html)
+      ..headerAddDate('Date', DateTime.now())
       ..write(buf.toString());
     return resp;
   }
@@ -447,9 +443,9 @@ class StaticFiles {
     ContentType contentType;
 
     final p = file.path;
-    final dotIndex = p.lastIndexOf(".");
+    final dotIndex = p.lastIndexOf('.');
     if (0 < dotIndex) {
-      final slashIndex = p.lastIndexOf("/");
+      final slashIndex = p.lastIndexOf('/');
       if (slashIndex < dotIndex) {
         // Dot is in the last segment
         var suffix = p.substring(dotIndex + 1);
@@ -463,10 +459,10 @@ class StaticFiles {
     // Return contents of file
     // Last-Modified, Date and Content-Length helps browsers cache the contents.
 
-    final resp = new ResponseStream(contentType)
-      ..headerAddDate('Date', new DateTime.now())
+    final resp = ResponseStream(contentType)
+      ..headerAddDate('Date', DateTime.now())
       ..headerAddDate('Last-Modified', file.lastModifiedSync())
-      ..headerAdd("Content-Length", (await file.length()).toString());
+      ..headerAdd('Content-Length', (await file.length()).toString());
 
     return await resp.addStream(req, file.openRead());
   }

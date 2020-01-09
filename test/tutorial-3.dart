@@ -8,7 +8,7 @@ import 'package:woomera/woomera.dart';
 Future main() async {
   // Create and configure server
 
-  final ws = new Server()
+  final ws = Server()
     ..bindAddress = InternetAddress.anyIPv6
     ..bindPort = 1024
     ..exceptionHandler = _myExceptionHandler;
@@ -16,13 +16,13 @@ Future main() async {
   // Register rules
 
   ws.pipelines.first
-    ..get("~/", _handleTopLevel)
-    ..get("~/foo/bar/baz", debugHandler)
-    ..get("~/user/:name", debugHandler)
-    ..get("~/user/:name/:orderNumber", debugHandler)
-    ..get("~/product/*", debugHandler)
-    ..get("~/form", _handleTestForm)
-    ..post("~/formProcessor", debugHandler);
+    ..get('~/', _handleTopLevel)
+    ..get('~/foo/bar/baz', debugHandler)
+    ..get('~/user/:name', debugHandler)
+    ..get('~/user/:name/:orderNumber', debugHandler)
+    ..get('~/product/*', debugHandler)
+    ..get('~/form', _handleTestForm)
+    ..post('~/formProcessor', debugHandler);
 
   // Run the server
 
@@ -30,10 +30,10 @@ Future main() async {
 }
 
 Future<Response> _handleTopLevel(Request req) async {
-  var name = req.queryParams["name"];
-  name = (name.isEmpty) ? "world" : name;
+  var name = req.queryParams['name'];
+  name = (name.isEmpty) ? 'world' : name;
 
-  final resp = new ResponseBuffered(ContentType.html)..write("""
+  final resp = ResponseBuffered(ContentType.html)..write('''
 <html>
   <head>
     <title>Woomera Tutorial</title>
@@ -42,12 +42,12 @@ Future<Response> _handleTopLevel(Request req) async {
     <h1>Hello ${HEsc.text(name)}!</h1>
   </body>
 </html>
-""");
+''');
   return resp;
 }
 
 Future<Response> _handleTestForm(Request req) async {
-  final resp = new ResponseBuffered(ContentType.html)..write("""
+  final resp = ResponseBuffered(ContentType.html)..write('''
 <html>
   <head>
     <title>Woomera Tutorial</title>
@@ -64,7 +64,7 @@ Future<Response> _handleTestForm(Request req) async {
 
   </body>
 </html>
-""");
+''');
   return resp;
 }
 
@@ -77,16 +77,16 @@ Future<Response> _myExceptionHandler(
     status = (ex.found == NotFoundException.foundNothing)
         ? HttpStatus.methodNotAllowed
         : HttpStatus.notFound;
-    message = "Sorry, the page you were looking for could not be found.";
+    message = 'Sorry, the page you were looking for could not be found.';
   } else {
     status = HttpStatus.internalServerError;
-    message = "Sorry, an internal error occured.";
-    print("Exception: $ex");
+    message = 'Sorry, an internal error occured.';
+    print('Exception: $ex');
   }
 
-  final resp = new ResponseBuffered(ContentType.html)
+  final resp = ResponseBuffered(ContentType.html)
     ..status = status
-    ..write("""
+    ..write('''
 <html>
   <head>
     <title>Error</title>
@@ -96,7 +96,7 @@ Future<Response> _myExceptionHandler(
     <p>$message</p>
   </body>
 </html>
-""");
+''');
 
   return resp;
 }

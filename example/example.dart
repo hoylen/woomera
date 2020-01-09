@@ -51,8 +51,8 @@ const String _pParamToDate = 'toDate';
 
 /// Application logger.
 
-Logger log = new Logger("app");
-Logger simLog = new Logger("simulation");
+Logger log = Logger('app');
+Logger simLog = Logger('simulation');
 
 //================================================================
 // Exceptions
@@ -83,7 +83,7 @@ class DemoException2 implements Exception {
 /// Home page
 
 Future<Response> homePage(Request req) async {
-  assert(req.method == "GET");
+  assert(req.method == 'GET');
 
   // The response can be built up by calling [write] multiple times on the
   // ResponseBuffered object. But for this simple page, the whole page is
@@ -94,7 +94,7 @@ Future<Response> homePage(Request req) async {
   // inclusion in a HTML attribute. The method "ura" is a short way of using
   // `HEsc.attr(req.rewriteUrl(...))`.
 
-  final resp = new ResponseBuffered(ContentType.html)..write("""
+  final resp = ResponseBuffered(ContentType.html)..write('''
 <!doctype html>
 <html>
 <head>
@@ -147,7 +147,7 @@ Future<Response> homePage(Request req) async {
   </footer>
 </body>
 </html>
-""");
+''');
 
   // Note: the default status is HTTP 200 "OK", so it doesn't need to be changed
 
@@ -160,9 +160,9 @@ Future<Response> homePage(Request req) async {
 // This handles the GET request for the form.
 
 Future<Response> dateCalcGetHandler(Request req) async {
-  assert(req.method == "GET");
+  assert(req.method == 'GET');
 
-  final resp = new ResponseBuffered(ContentType.html)..write("""
+  final resp = ResponseBuffered(ContentType.html)..write('''
 <!doctype html>
 <html>
 <head>
@@ -192,7 +192,7 @@ Future<Response> dateCalcGetHandler(Request req) async {
   <footer><p><a href="${req.ura('~/')}">Home</a></p></footer>
 </body>
 </html>
-""");
+''');
 
   return resp;
 }
@@ -203,7 +203,7 @@ Future<Response> dateCalcGetHandler(Request req) async {
 /// This handles the POST request when the form is submitted.
 
 Future<Response> dateCalcPostHandler(Request req) async {
-  assert(req.method == "POST");
+  assert(req.method == 'POST');
 
   // Get the form parameters
 
@@ -238,8 +238,8 @@ Future<Response> dateCalcPostHandler(Request req) async {
     // support the HTML5 date input and the user could have typed in an invalid
     // value.
 
-    final now = new DateTime.now();
-    final today = new DateTime(now.year, now.month, now.day); // midnight
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day); // midnight
 
     final fromDate = (fromStr.isNotEmpty) ? DateTime.parse(fromStr) : today;
 
@@ -255,9 +255,9 @@ Future<Response> dateCalcPostHandler(Request req) async {
       // allow the Web application to always produce a user friendly response,
       // even if the handler didn't catch all the possible exceptions.
       if (title.isEmpty) {
-        throw new DemoException1();
+        throw DemoException1();
       } else {
-        throw new DemoException2(title);
+        throw DemoException2(title);
       }
     }
 
@@ -270,7 +270,7 @@ Future<Response> dateCalcPostHandler(Request req) async {
     // be escaped by calling `HEsc.text`. Text in attributes can be escaped by
     // calling `HEsc.attr` (e.g. "... <a title="${HEsc.attr(value)} href=...").
 
-    final resp = new ResponseBuffered(ContentType.html)..write("""
+    final resp = ResponseBuffered(ContentType.html)..write('''
 <!doctype html>
 <html>
 <head>
@@ -289,15 +289,15 @@ Future<Response> dateCalcPostHandler(Request req) async {
   <p><a href="${req.ura(pathFormGet)}">Back to form</a></p>
 </body>
 </html>
-""");
+''');
 
     return resp;
   } on FormatException {
     // Produce an error response
 
-    return new ResponseBuffered(ContentType.html)
+    return  ResponseBuffered(ContentType.html)
       ..status = HttpStatus.badRequest
-      ..write("""
+      ..write('''
  <!doctype html>
 <html>
 <head>
@@ -314,7 +314,7 @@ Future<Response> dateCalcPostHandler(Request req) async {
   <p><a href="${req.ura(pathFormGet)}">Back to form</a></p>
 </body>
 </html>
-    """);
+    ''');
   }
 }
 
@@ -334,13 +334,13 @@ Future<Response> streamTest(Request req) async {
   final numIterations = 10;
 
   var secs = 0;
-  if (req.queryParams["milliseconds"].isNotEmpty) {
-    secs = int.parse(req.queryParams["milliseconds"]);
+  if (req.queryParams['milliseconds'].isNotEmpty) {
+    secs = int.parse(req.queryParams['milliseconds']);
   }
 
   // Produce the stream response
 
-  final resp = new ResponseStream(ContentType.text)..status = HttpStatus.ok;
+  final resp = ResponseStream(ContentType.text)..status = HttpStatus.ok;
   await resp.addStream(req, _streamSource(req, numIterations, secs));
 
   return resp;
@@ -355,29 +355,29 @@ Future<Response> streamTest(Request req) async {
 // milliseconds before outputting it.
 
 Stream<List<int>> _streamSource(Request req, int iterations, int ms) async* {
-  final delay = new Duration(milliseconds: ms);
+  final delay = Duration(milliseconds: ms);
 
-  yield "Stream of $iterations items (delay: $ms milliseconds)\n".codeUnits;
+  yield 'Stream of $iterations items (delay: $ms milliseconds)\n'.codeUnits;
 
-  yield "Started: ${new DateTime.now()}\n".codeUnits;
+  yield 'Started: ${DateTime.now()}\n'.codeUnits;
 
   for (var x = 1; x <= iterations; x++) {
-    final completer = new Completer<int>();
-    new Timer(delay, () => completer.complete(0));
+    final completer = Completer<int>();
+     Timer(delay, () => completer.complete(0));
     await completer.future;
 
-    yield "Item $x\n".codeUnits;
+    yield 'Item $x\n'.codeUnits;
   }
-  yield "Finished: ${new DateTime.now()}\n".codeUnits;
+  yield 'Finished: ${DateTime.now()}\n'.codeUnits;
 }
 
 //----------------------------------------------------------------
 /// Handler that returns JSON in the response.
 ///
 Future<Response> handleJson(Request req) async {
-  final data = {'name': "John Citizen", 'number': 6};
+  final data = {'name': 'John Citizen', 'number': 6};
 
-  final resp = new ResponseBuffered(ContentType.json)..write(json.encode(data));
+  final resp = ResponseBuffered(ContentType.json)..write(json.encode(data));
   return resp;
 }
 
@@ -401,7 +401,7 @@ Future<Response> pipelineExceptionHandler(
     ..finest('stack trace: $st');
 
   if (exception is DemoException1) {
-    final h = new ResponseBuffered(ContentType.html)
+    final h = ResponseBuffered(ContentType.html)
       ..status = HttpStatus.badRequest;
 
     final message = 'Dates are in the wrong order';
@@ -412,7 +412,7 @@ Future<Response> pipelineExceptionHandler(
     // If this pipeline exception handler raises an exception, the server
     // exception handler will get an [ExceptionHandlerException] containing
     // the original exception and the exception that is raised.
-    throw new StateError('pipeline exception hander raised exception');
+    throw StateError('pipeline exception hander raised exception');
   }
 }
 
@@ -435,7 +435,7 @@ Future<Response> serverExceptionHandler(
 
   // Create a response
 
-  final resp = new ResponseBuffered(ContentType.html);
+  final resp = ResponseBuffered(ContentType.html);
 
   // Set the status depending on the type of exception
 
@@ -470,7 +470,7 @@ void _produceErrorPage(ResponseBuffered resp, Object exception, String message,
     String whichExceptionHandler, String homePageUrl) {
   // Internal information should never be revealed to the client.
 
-  resp.write("""
+  resp.write('''
 <!doctype html>
 <html>
 <head>
@@ -486,7 +486,7 @@ void _produceErrorPage(ResponseBuffered resp, Object exception, String message,
   <a href="${HEsc.attr(homePageUrl)}">Home</a>
 </body>
 </html>
-""");
+''');
 }
 
 //================================================================
@@ -500,14 +500,14 @@ void _produceErrorPage(ResponseBuffered resp, Object exception, String message,
 /// Try running this for coverage testing.
 
 Future simulatedRun(Server server) async {
-  simLog.info("started");
+  simLog.info('started');
 
   {
     // Simulate a GET request to retrieve the home page
 
-    simLog.info("GET home page");
+    simLog.info('GET home page');
 
-    final req = new Request.simulatedGet('~/');
+    final req = Request.simulatedGet('~/');
     final resp = await server.simulate(req);
     simLog.info('home page content-type: ${resp.contentType}');
     assert(resp.status == HttpStatus.ok);
@@ -518,9 +518,9 @@ Future simulatedRun(Server server) async {
   {
     // Simulate a GET request to retrieve the form
 
-    simLog.info("GET form");
+    simLog.info('GET form');
 
-    var req = new Request.simulatedGet(pathFormGet);
+    var req = Request.simulatedGet(pathFormGet);
     var resp = await server.simulate(req);
     assert(resp.status == HttpStatus.ok);
     simLog.finer('form page body:\n${resp.bodyStr}');
@@ -529,14 +529,14 @@ Future simulatedRun(Server server) async {
 
     // Simulate a POST request from submitting the form
 
-    simLog.info("POST form");
+    simLog.info('POST form');
 
-    final postParams = new RequestParamsMutable()
+    final postParams = RequestParamsMutable()
       ..add(_pParamTitle, 'Testing')
       ..add(_pParamFromDate, '2019-01-01')
       ..add(_pParamToDate, '2019-02-28');
 
-    req = new Request.simulatedPost(pathFormPost, postParams);
+    req = Request.simulatedPost(pathFormPost, postParams);
     resp = await server.simulate(req);
     assert(resp.status == HttpStatus.ok);
     simLog.finer('form response body:\n${resp.bodyStr}');
@@ -545,11 +545,11 @@ Future simulatedRun(Server server) async {
     // Simulate a POST request from submitting the form with invalid dates
     // This causes an error that the handler takes care of.
 
-    simLog.info("POST form: exception 0");
+    simLog.info('POST form: exception 0');
 
-    req = new Request.simulatedPost(
+    req = Request.simulatedPost(
         pathFormPost,
-        new RequestParamsMutable()
+         RequestParamsMutable()
           ..add(_pParamTitle, 'Testing')
           ..add(_pParamFromDate, 'yesterday')
           ..add(_pParamToDate, 'tomorrow')); // dates that can't be parsed
@@ -562,11 +562,11 @@ Future simulatedRun(Server server) async {
     // Simulate a POST request from submitting the form with invalid values
     // This raises an exception for the pipeline exception handler.
 
-    simLog.info("POST form: exception 1");
+    simLog.info('POST form: exception 1');
 
-    req = new Request.simulatedPost(
+    req = Request.simulatedPost(
         pathFormPost,
-        new RequestParamsMutable()
+         RequestParamsMutable()
           ..add(_pParamTitle, '') // no title
           ..add(_pParamFromDate, '2019-12-31')
           ..add(_pParamToDate, '1970-01-01')); // to date before from date error
@@ -579,11 +579,11 @@ Future simulatedRun(Server server) async {
     // Simulate a POST request from submitting the form with invalid values
     // This raises an exception for the server exception handler.
 
-    simLog.info("POST form: exception 2");
+    simLog.info('POST form: exception 2');
 
-    req = new Request.simulatedPost(
+    req = Request.simulatedPost(
         pathFormPost,
-        new RequestParamsMutable()
+         RequestParamsMutable()
           ..add(_pParamTitle, 'Testing') // title present
           ..add(_pParamFromDate, '2019-12-31')
           ..add(_pParamToDate, '1970-01-01')); // to date before from date error
@@ -597,9 +597,9 @@ Future simulatedRun(Server server) async {
   {
     // Simulate a GET request for a page that doesn't exist
 
-    simLog.info("GET non-existent page");
+    simLog.info('GET non-existent page');
 
-    final req = new Request.simulatedGet('~/no/such/page', id: 'noSuchUrl');
+    final req = Request.simulatedGet('~/no/such/page', id: 'noSuchUrl');
     final resp = await server.simulate(req);
     assert(resp.status == HttpStatus.notFound); // 404
   }
@@ -607,10 +607,10 @@ Future simulatedRun(Server server) async {
   {
     // Simulate a GET where the response is produced as a stream
 
-    simLog.info("GET stream");
+    simLog.info('GET stream');
 
-    final req = new Request.simulatedGet('~/stream',
-        queryParams: new RequestParamsMutable()..add('milliseconds', '100'));
+    final req = Request.simulatedGet('~/stream',
+        queryParams:  RequestParamsMutable()..add('milliseconds', '100'));
     final resp = await server.simulate(req);
     assert(resp.status == HttpStatus.ok);
     assert(resp.contentType == ContentType.text);
@@ -622,9 +622,9 @@ Future simulatedRun(Server server) async {
   {
     // Simulate a GET where the response is JSON
 
-    simLog.info("GET json");
+    simLog.info('GET json');
 
-    final req = new Request.simulatedGet('~/json');
+    final req = Request.simulatedGet('~/json');
     final resp = await server.simulate(req);
     assert(resp.status == HttpStatus.ok);
     assert(resp.contentType == ContentType.json);
@@ -640,7 +640,7 @@ Future simulatedRun(Server server) async {
     }
   }
 
-  simLog.info("finished");
+  simLog.info('finished');
 }
 
 //================================================================
@@ -660,13 +660,13 @@ Server _serverSetup() {
   // on the IPv4 loopback interface, which is good for deployment behind a
   // reverse Web proxy, but might be restrictive for testing.
 
-  final webServer = new Server()
+  final webServer = Server()
     ..bindAddress = InternetAddress.anyIPv6
     ..v6Only = false // false = listen to any IPv4 and any IPv6 address
     ..bindPort = port
     ..exceptionHandler = serverExceptionHandler;
 
-  log.info("Web server running on port $port");
+  log.info('Web server running on port $port');
 
   //--------
   // Setup the first (and only) pipeline with handlers for the GET and POST
@@ -708,15 +708,15 @@ void _loggingSetup() {
 
   final commonLevel = Level.INFO;
 
-  new Logger("app").level = commonLevel;
-  new Logger("simulation").level = commonLevel;
+  Logger('app').level = commonLevel;
+  Logger('simulation').level = commonLevel;
 
-  new Logger("woomera.server").level = commonLevel;
-  new Logger("woomera.request").level = Level.FINE; // FINE prints each URL
-  new Logger("woomera.request.header").level = commonLevel;
-  new Logger("woomera.request.param").level = commonLevel;
-  new Logger("woomera.response").level = commonLevel;
-  new Logger("woomera.session").level = commonLevel;
+  Logger('woomera.server').level = commonLevel;
+  Logger('woomera.request').level = Level.FINE; // FINE prints each URL
+  Logger('woomera.request.header').level = commonLevel;
+  Logger('woomera.request.param').level = commonLevel;
+  Logger('woomera.response').level = commonLevel;
+  Logger('woomera.session').level = commonLevel;
 }
 
 //----------------------------------------------------------------

@@ -62,7 +62,7 @@ import 'package:woomera/woomera.dart';
 Future main() async {
   // Create and configure server
 
-  var ws = new Server();
+  var ws = Server();
   ws.bindAddress = InternetAddress.anyIPv6;
   ws.bindPort = 1024;
 
@@ -80,7 +80,7 @@ Future<Response> handleTopLevel(Request req) async {
   var name = req.queryParams["name"];
   name = (name.isEmpty) ? "world" : name;
 
-  var resp = new ResponseBuffered(ContentType.HTML);
+  var resp = ResponseBuffered(ContentType.HTML);
   resp.write("""
 <html>
   <head>
@@ -124,7 +124,7 @@ For the Web server, a _Server_ object is created and configured for
 the TCP/IP address and port it will listen for HTTP requests on.
 
 ```dart
-var ws = new Server();
+var ws = Server();
 ws.bindAddress = InternetAddress.ANY_IP_V6;
 ws.bindPort = 1024;
 ```
@@ -210,7 +210,7 @@ Future<Response> handleTopLevel(Request req) async {
   var name = req.queryParams["name"];
   name = (name.isEmpty) ? "world" : name;
 
-  var resp = new ResponseBuffered(ContentType.HTML);
+  var resp = ResponseBuffered(ContentType.HTML);
   resp.write("""
 <html>
   <head><title>Example 1</title></head>
@@ -282,7 +282,7 @@ Future<Response> myExceptionHandler(Request req, Object ex, StackTrace st) async
     print("Exception: $ex");
   }
 
-  var resp = new ResponseBuffered(ContentType.HTML);
+  var resp = ResponseBuffered(ContentType.HTML);
   resp.status = status;
 
   resp.write("""
@@ -374,7 +374,7 @@ the request.
 
 ```dart
 Future<Response> handleParams(Request req) async {
-  var resp = new ResponseBuffered(ContentType.HTML);
+  var resp = ResponseBuffered(ContentType.HTML);
   resp.write("""
 <html>
   <head>
@@ -586,7 +586,7 @@ client.
 ```dart
 Future<Response> myExceptionHandler(Request req
     Object exception, StackTrace st) async {
-  var resp = new ResponseBuffered(ContentType.HTML);
+  var resp = ResponseBuffered(ContentType.HTML);
   resp.write("""
 <html>
   <head><title>Error</title></head>

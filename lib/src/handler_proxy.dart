@@ -6,7 +6,7 @@ part of woomera;
 /// Example:
 ///
 /// ```dart
-/// proxy = new Proxy('~/foobar/*', 'http://example.com');
+/// proxy = Proxy('~/foobar/*', 'http://example.com');
 /// proxy.register(pipeline);
 /// ```
 ///
@@ -25,18 +25,16 @@ class Proxy {
       this.requestBlockHeaders,
       this.responseBlockHeaders}) {
     if (method != 'GET' && method != 'HEAD') {
-      throw new ArgumentError.value(
+      throw ArgumentError.value(
           method, 'method', 'only GET and HEAD supported');
     }
 
     if (!pattern.startsWith('~/')) {
-      throw new ArgumentError.value(
-          pattern, 'pattern', 'does not start with "~/"');
+      throw ArgumentError.value(pattern, 'pattern', 'does not start with "~/"');
     }
 
     if (!pattern.endsWith('/*')) {
-      throw new ArgumentError.value(
-          pattern, 'pattern', 'does not end with "*"');
+      throw ArgumentError.value(pattern, 'pattern', 'does not end with "*"');
     }
 
     _pathPrefix = pattern.substring(2, pattern.length - 2);
@@ -130,7 +128,7 @@ class Proxy {
 
     // Build the target URL
 
-    final buf = new StringBuffer('$_proxyHost/$fullPath');
+    final buf = StringBuffer('$_proxyHost/$fullPath');
 
     if (req.queryParams.isNotEmpty) {
       // Add all the query parameters to the URL
@@ -194,7 +192,7 @@ class Proxy {
           targetResponse.statusCode != HttpStatus.notModified) {
         if (!(targetResponse.statusCode == HttpStatus.notFound &&
             _ignoreNotFound.contains(targetUrl))) {
-          _logProxy.warning("$targetUrl: status ${targetResponse.statusCode}");
+          _logProxy.warning('$targetUrl: status ${targetResponse.statusCode}');
         }
       }
 
@@ -206,7 +204,7 @@ class Proxy {
 
       // Use the response from the target as the response
 
-      final resp = new ResponseBuffered(contentType)
+      final resp = ResponseBuffered(contentType)
         ..status = targetResponse.statusCode;
 
       for (var headerName in targetResponse.headers.keys) {
@@ -220,7 +218,7 @@ class Proxy {
       resp.write(targetResponse.body);
       return resp;
     } catch (e) {
-      final proxyException = new ProxyHandlerException(targetUrl, e);
+      final proxyException = ProxyHandlerException(targetUrl, e);
       _logProxy.fine('[${req.id}] $proxyException');
       throw proxyException;
     }

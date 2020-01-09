@@ -1,5 +1,9 @@
 # Changelog
 
+## 4.3.1
+
+- Code clean up to satisfy pana 0.13.2 health checks.
+
 ## 4.3.0
 
 - Include query parameters in URL of proxy requests.

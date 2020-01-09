@@ -59,12 +59,12 @@ Future<Response> serverExceptionHandler(
     Request req, Object exception, StackTrace st) async {
   if (exception is MyException) {
     if (exception.message == _caseExceptionHandlerToFail) {
-      throw new StateError("exception inside exception handler");
+      throw StateError('exception inside exception handler');
     }
   }
-  final resp = new ResponseBuffered(ContentType.text)
-    ..write("Server caught: $exception\n")
-    ..write("Stack trace:\n$st");
+  final resp = ResponseBuffered(ContentType.text)
+    ..write('Server caught: Instance of "${exception.runtimeType}"\n')
+    ..write('Stack trace:\n$st');
   return resp;
 }
 
@@ -74,12 +74,12 @@ Future<Response> pipelineExceptionHandler(
     Request req, Object exception, StackTrace st) async {
   if (exception is MyException) {
     if (exception.message == _caseExceptionHandlerToFail) {
-      throw new StateError("exception inside exception handler");
+      throw StateError('exception inside exception handler');
     }
   }
-  final resp = new ResponseBuffered(ContentType.text)
-    ..write("Pipeline caught: $exception\n")
-    ..write("Stack trace:\n$st");
+  final resp = ResponseBuffered(ContentType.text)
+    ..write('Pipeline caught: $exception\n')
+    ..write('Stack trace:\n$st');
   return resp;
 }
 
@@ -87,8 +87,8 @@ Future<Response> pipelineExceptionHandler(
 /// Request handler for /
 ///
 Future<Response> handlerRoot(Request req) async {
-  final resp = new ResponseBuffered(ContentType.text)
-    ..write("Error/Exception test\n");
+  final resp = ResponseBuffered(ContentType.text)
+    ..write('Error/Exception test\n');
   return resp;
 }
 
@@ -99,8 +99,8 @@ Future<Response> handlerRoot(Request req) async {
 /// exceptions.
 ///
 Future<Response> handler1(Request req) async {
-  final _ = new ResponseBuffered(ContentType.text)..write("Test 1");
-  throw new MyException("test1");
+  final _ = ResponseBuffered(ContentType.text)..write('Test 1');
+  throw MyException('test1');
 }
 
 //----------------------------------------------------------------
@@ -110,10 +110,10 @@ Future<Response> handler1(Request req) async {
 /// an "onError" callback, to show how the pipeline/server deals with them.
 ///
 Future<Response> handler2(Request req) {
-  final completer = new Completer<Response>();
+  final completer = Completer<Response>();
 
-  new Timer(const Duration(seconds: 1), () {
-    completer.completeError("test2");
+  Timer(const Duration(seconds: 1), () {
+    completer.completeError('test2');
   });
 
   return completer.future;
@@ -126,11 +126,11 @@ Future<Response> handler2(Request req) {
 /// exception and "onError" callback.
 ///
 Future<Response> handler3(Request req) {
-  final completer = new Completer<Response>();
+  final completer = Completer<Response>();
 
-  new Timer(const Duration(seconds: 1), () {
-    completer.completeError("test3a");
-    throw new MyException("test3b");
+  Timer(const Duration(seconds: 1), () {
+    completer.completeError('test3a');
+    throw MyException('test3b');
   });
 
   return completer.future;
@@ -143,7 +143,7 @@ Future<Response> handler3(Request req) {
 /// to raise an exception.
 ///
 Future<Response> handler4(Request req) {
-  throw new MyException(_caseExceptionHandlerToFail);
+  throw MyException(_caseExceptionHandlerToFail);
 }
 
 //----------------------------------------------------------------
@@ -155,7 +155,7 @@ Future<Response> handler4(Request req) {
 Future<Response> handlerStop(Request req) async {
   await webServer.stop(); // async
 
-  final resp = new ResponseBuffered(ContentType.text)..write("stopping");
+  final resp = ResponseBuffered(ContentType.text)..write('stopping');
   return resp;
 }
 
@@ -165,18 +165,18 @@ Future<Response> handlerStop(Request req) async {
 Server _createTestServer() {
   // Create a test Web server that listens on localhost
 
-  webServer = new Server(numberOfPipelines: 1)
+  webServer = Server(numberOfPipelines: 1)
     ..bindPort = portNumber
     ..exceptionHandler = serverExceptionHandler;
 
   webServer.pipelines.first
     ..exceptionHandler = pipelineExceptionHandler
-    ..register("GET", "~/", handlerRoot)
-    ..register("GET", "~/test1", handler1)
-    ..register("GET", "~/test2", handler2)
-    ..register("GET", "~/test3", handler3)
-    ..register("GET", "~/test4", handler4)
-    ..register("GET", "~/stop", handlerStop);
+    ..register('GET', '~/', handlerRoot)
+    ..register('GET', '~/test1', handler1)
+    ..register('GET', '~/test2', handler2)
+    ..register('GET', '~/test3', handler3)
+    ..register('GET', '~/test4', handler4)
+    ..register('GET', '~/stop', handlerStop);
 
   return webServer;
 }
@@ -187,38 +187,38 @@ Server _createTestServer() {
 void runTests(Future<int> numProcessedFuture) {
   //----------------
 
-  test("Handler Exception", () async {
-    final str = await getRequest("/test1");
-    expect(str, startsWith("Pipeline caught: test1\n"));
+  test('Handler Exception', () async {
+    final str = await getRequest('/test1');
+    expect(str, startsWith('Pipeline caught: test1\n'));
   });
 
   //----------------
 
-  test("Handler onError", () async {
-    final str = await getRequest("/test2");
-    expect(str, startsWith("Pipeline caught: test2\n"));
+  test('Handler onError', () async {
+    final str = await getRequest('/test2');
+    expect(str, startsWith('Pipeline caught: test2\n'));
   });
 
   //----------------
 
-  test("Handler Exception and onError", () async {
-    final str = await getRequest("/test3");
-    expect(str, startsWith("Pipeline caught: test3a\n"));
+  test('Handler Exception and onError', () async {
+    final str = await getRequest('/test3');
+    expect(str, startsWith('Pipeline caught: test3a\n'));
   });
 
   //----------------
 
-  test("Exception handler throws an Exception", () async {
-    final str = await getRequest("/test4");
+  test('Exception handler throws an Exception', () async {
+    final str = await getRequest('/test4');
     expect(str,
-        startsWith("Server caught: Instance of 'ExceptionHandlerException'\n"));
+        startsWith('Server caught: Instance of "ExceptionHandlerException"\n'));
   });
 
   //----------------
 
-  test("server still running", () async {
-    final str = await getRequest("/");
-    expect(str, startsWith("Error/Exception test\n"));
+  test('server still running', () async {
+    final str = await getRequest('/');
+    expect(str, startsWith('Error/Exception test\n'));
   });
 
   //----------------
@@ -227,13 +227,13 @@ void runTests(Future<int> numProcessedFuture) {
   // If the server is not stopped, this program will not halt when run as a
   // Dart program, but does halt when run using "pub run test".
 
-  test("stopping server", () async {
-    final str = await getRequest("/stop");
-    expect(str, startsWith("stopping"));
+  test('stopping server', () async {
+    final str = await getRequest('/stop');
+    expect(str, startsWith('stopping'));
 
     // Wait for server to stop
     final num = await numProcessedFuture;
-    new Logger("main").info("server stopped: requests processed: $num");
+    Logger('main').info('server stopped: requests processed: $num');
   });
 }
 
@@ -245,13 +245,13 @@ void runTests(Future<int> numProcessedFuture) {
 Future<String> getRequest(String path) async {
   // Note: must use "localhost" because "127.0.0.1" does not work: strange!
 
-  final request = await new HttpClient().get("localhost", portNumber, path);
+  final request = await HttpClient().get('localhost', portNumber, path);
 
   //request.headers.contentType = ContentType.html;
 
   final response = await request.close();
 
-  final contents = new StringBuffer();
+  final contents = StringBuffer();
   // ignore: prefer_foreach
   await for (var chunk in utf8.decoder.bind(response)) {
     contents.write(chunk);
@@ -275,10 +275,10 @@ void loggingSetup() {
   //Logger.root.level = Level.OFF;
   Logger.root.level = Level.ALL;
 
-  new Logger("main").level = Level.ALL;
-  new Logger("woomera.server").level = Level.ALL;
-  new Logger("woomera.request").level = Level.ALL;
-  new Logger("woomera.response").level = Level.ALL;
+  Logger('main').level = Level.ALL;
+  Logger('woomera.server').level = Level.ALL;
+  Logger('woomera.request').level = Level.ALL;
+  Logger('woomera.response').level = Level.ALL;
 }
 
 //----------------------------------------------------------------

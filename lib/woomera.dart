@@ -84,13 +84,13 @@ part 'src/simulated_response.dart';
 //----------------------------------------------------------------
 // Loggers used in the Woomera package.
 
-Logger _logServer = new Logger("woomera.server");
-Logger _logRequest = new Logger("woomera.request");
-Logger _logRequestHeader = new Logger("woomera.request.header");
-Logger _logRequestParam = new Logger("woomera.request.param");
+Logger _logServer = Logger('woomera.server');
+Logger _logRequest = Logger('woomera.request');
+Logger _logRequestHeader = Logger('woomera.request.header');
+Logger _logRequestParam = Logger('woomera.request.param');
 
-Logger _logResponse = new Logger("woomera.response");
-Logger _logSession = new Logger("woomera.session");
+Logger _logResponse = Logger('woomera.response');
+Logger _logSession = Logger('woomera.session');
 
-Logger _logStaticFiles = new Logger("woomera.static_file");
-Logger _logProxy = new Logger("woomera.proxy");
+Logger _logStaticFiles = Logger('woomera.static_file');
+Logger _logProxy = Logger('woomera.proxy');

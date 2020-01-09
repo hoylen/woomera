@@ -62,7 +62,7 @@ const String nameParam = 'nameOfException';
 
 /// Application logger.
 
-Logger log = new Logger('exception_example');
+Logger log = Logger('exception_example');
 
 //================================================================
 // Exceptions
@@ -126,7 +126,7 @@ Future<Response> exceptionHandlerOnPipe1(
 
   // Produce the response
 
-  final resp = new ResponseBuffered(ContentType.html)
+  final resp = ResponseBuffered(ContentType.html)
     ..status = HttpStatus.internalServerError
     ..write(_htmlShowingException('pipeline1', exception, st));
 
@@ -160,7 +160,7 @@ Future<Response> exceptionHandlerOnPipe2(
 
   // Produce the response
 
-  final resp = new ResponseBuffered(ContentType.html)
+  final resp = ResponseBuffered(ContentType.html)
     ..status = HttpStatus.internalServerError
     ..write(_htmlShowingException('pipeline2', exception, st));
 
@@ -207,7 +207,7 @@ Future<Response> exceptionHandlerOnServer(
 
   // Produce the response
 
-  final resp = new ResponseBuffered(ContentType.html)
+  final resp = ResponseBuffered(ContentType.html)
     ..status = errorPageStatus
     ..write(_htmlShowingException('server', exception, st));
 
@@ -283,11 +283,11 @@ Future<Response> exceptionThrowingPage(Request req) async {
   if (name.isNotEmpty) {
     // Throw an exception
 
-    throw new TestException(name, ignoredByLowLevelExceptionHandler: false);
+    throw TestException(name, ignoredByLowLevelExceptionHandler: false);
   } else {
     // Show a page
 
-    final resp = new ResponseBuffered(ContentType.html)
+    final resp = ResponseBuffered(ContentType.html)
       ..status = HttpStatus.ok
       ..write('''
 <html>
@@ -311,19 +311,19 @@ Future<Response> exceptionThrowingPage(Request req) async {
 Future<ResponseBuffered> oldStyleFuture({bool throwException: false}) {
   const duration = const Duration(seconds: 3);
 
-  final c = new Completer<ResponseBuffered>();
+  final c = Completer<ResponseBuffered>();
 
-  final _ = new Timer(duration, () {
+  final _ = Timer(duration, () {
     if (throwException) {
       // This exception is thrown from a function that is not using the new
       // async/await syntax. This means it won't be caught by the try/catch
       // mechanism. The framework will catch these using zones.
-      throw new StateError(new DateTime.now().toString());
+      throw StateError(DateTime.now().toString());
     }
 
-    final resp = new ResponseBuffered(ContentType.text)
+    final resp = ResponseBuffered(ContentType.text)
       ..status = HttpStatus.notAcceptable
-      ..write("""This worked, but it should not have.""");
+      ..write('This worked, but it should not have.');
     c.complete(resp);
   });
 
@@ -334,7 +334,7 @@ Future<ResponseBuffered> oldStyleFuture({bool throwException: false}) {
 /// Home page
 
 Future<Response> homePage(Request req) async {
-  final resp = new ResponseBuffered(ContentType.html)
+  final resp = ResponseBuffered(ContentType.html)
     ..status = HttpStatus.ok
     ..write('''
 <!doctype html>
@@ -404,12 +404,12 @@ Server _serverSetup({int port = 80}) {
   //--------
   // Create a new Web server that listens on any IPv4 and any IPv6 address
 
-  final webServer = new Server(numberOfPipelines: 2)
+  final webServer = Server(numberOfPipelines: 2)
     ..bindAddress = InternetAddress.anyIPv6
     ..v6Only = false // false = listen to any IPv4 and any IPv6 address
     ..bindPort = port;
 
-  log.info("Web server running on port $port");
+  log.info('Web server running on port $port');
 
   webServer.exceptionHandler =
       exceptionHandlerOnServer; // set exception handler
@@ -455,9 +455,9 @@ Server _serverSetup({int port = 80}) {
 //----------------------------------------------------------------
 
 Future simulatedRun(Server server) async {
-  log.fine("GET /test");
+  log.fine('GET /test');
 
-  final req = new Request.simulated('GET', '~/test', id: 'simulated');
+  final req = Request.simulated('GET', '~/test', id: 'simulated');
 
   final r = await server.simulate(req);
   print(r);
@@ -519,13 +519,13 @@ void _loggingSetup() {
 
   final commonLevel = Level.INFO;
 
-  new Logger("main").level = commonLevel;
-  new Logger("woomera.server").level = commonLevel;
-  new Logger("woomera.request").level = Level.FINE;
-  new Logger("woomera.request.header").level = commonLevel;
-  new Logger("woomera.request.param").level = commonLevel;
-  new Logger("woomera.response").level = commonLevel;
-  new Logger("woomera.session").level = commonLevel;
+  Logger('main').level = commonLevel;
+  Logger('woomera.server').level = commonLevel;
+  Logger('woomera.request').level = Level.FINE;
+  Logger('woomera.request.header').level = commonLevel;
+  Logger('woomera.request.param').level = commonLevel;
+  Logger('woomera.response').level = commonLevel;
+  Logger('woomera.session').level = commonLevel;
 }
 
 //================================================================
@@ -541,7 +541,7 @@ Future<void> main(List<String> args) async {
 
   final server = _serverSetup(port: 1024);
 
-  log.fine("started");
+  log.fine('started');
 
   if (!options.simulateMode) {
     await server.run(); // run Web server
@@ -554,5 +554,5 @@ Future<void> main(List<String> args) async {
   // running "forever", so normally the server's [stop] method never gets
   // invoked.
 
-  log.fine("finished");
+  log.fine('finished');
 }

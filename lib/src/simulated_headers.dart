@@ -74,7 +74,7 @@ class SimulatedHttpHeaders extends HttpHeaders {
   //----------------------------------------------------------------
 
   @override
-  void forEach(void f(String name, List<String> values)) {
+  void forEach(void Function(String name, List<String> values) f) {
     for (var key in _data.keys) {
       f(key.toLowerCase(), _data[key]);
     }

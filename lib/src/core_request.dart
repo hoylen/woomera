@@ -74,12 +74,13 @@ class _CoreRequestReal implements _CoreRequest {
     if (p.startsWith(serverBasePath)) {
       // TODO: this needs more work to account for # and ? parameters
 
-      if (p.length <= serverBasePath.length)
-        p = "~/";
-      else
-        p = "~/${p.substring(serverBasePath.length)}";
+      if (p.length <= serverBasePath.length) {
+        p = '~/';
+      } else {
+        p = '~/${p.substring(serverBasePath.length)}';
+      }
     } else {
-      p = "~/";
+      p = '~/';
     }
 
     return p;
@@ -104,7 +105,7 @@ class _CoreRequestReal implements _CoreRequest {
       // This is usually due to malformed paths, due to malicious attackers
       // For example putting "/certsrv/..%C0%AF../winnt/system32/cmd.exe" and
       // "/scripts/..%C1%1C../winnt/system32/cmd.exe"
-      _logRequest.finest("invalid char encoding in path: request rejected");
+      _logRequest.finest('invalid char encoding in path: request rejected');
       return null;
     }
   }
@@ -143,7 +144,7 @@ class _CoreRequestReal implements _CoreRequest {
       _bodyBytes = <int>[];
       await for (var bytes in _httpRequest) {
         if (maxSize < _bodyBytes.length + bytes.length) {
-          throw new PostTooLongException();
+          throw PostTooLongException();
         }
         _bodyBytes.addAll(bytes);
       }
@@ -191,7 +192,7 @@ class _CoreRequestSimulated implements _CoreRequest {
       List<Cookie> cookies,
       String bodyStr,
       List<int> bodyBytes})
-      : _headers = headers ?? new SimulatedHttpHeaders(),
+      : _headers = headers ?? SimulatedHttpHeaders(),
         _cookies = cookies ?? <Cookie>[],
         assert(!(bodyStr != null && bodyBytes != null), 'set only one body'),
         _bodyStr = bodyStr,
@@ -216,9 +217,9 @@ class _CoreRequestSimulated implements _CoreRequest {
 
   final String _internalPath;
 
-  HttpHeaders _headers;
+  final HttpHeaders _headers;
 
-  List<Cookie> _cookies;
+  final List<Cookie> _cookies;
 
   List<int> _bodyBytes;
 
@@ -310,7 +311,7 @@ class _CoreRequestSimulated implements _CoreRequest {
       if (maxBytes < _bodyStr.length) {
         // Note: this is not exact, since the number of bytes needed to encode
         // in UTF-8 may be larger than the number of code points in the string.
-        throw new PostTooLongException();
+        throw PostTooLongException();
       }
 
       return _bodyStr;
@@ -318,7 +319,7 @@ class _CoreRequestSimulated implements _CoreRequest {
       // Have bytes: need to convert it into a string
 
       if (maxBytes < _bodyBytes.length) {
-        throw new PostTooLongException();
+        throw PostTooLongException();
       }
       _bodyStr = utf8.decode(_bodyBytes); // cache the string value
       assert(_bodyStr.length < maxBytes);
@@ -338,7 +339,7 @@ class _CoreRequestSimulated implements _CoreRequest {
       // Have bytes: return it
 
       if (maxBytes < _bodyBytes.length) {
-        throw new PostTooLongException();
+        throw PostTooLongException();
       }
 
       return _bodyBytes;
@@ -348,14 +349,14 @@ class _CoreRequestSimulated implements _CoreRequest {
       if (maxBytes < _bodyStr.length) {
         // Note: this is not exact, since the number of bytes needed to encode
         // in UTF-8 may be larger than the number of code points in the string.
-        throw new PostTooLongException();
+        throw PostTooLongException();
       }
 
       final _bodyBytes = utf8.encode(_bodyStr); // cache the bytes value
 
       if (maxBytes < _bodyBytes.length) {
         // Now we have the exact bytes, an exact check can be done
-        throw new PostTooLongException();
+        throw PostTooLongException();
       }
 
       return _bodyBytes;

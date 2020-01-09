@@ -58,10 +58,10 @@ class ServerRule {
   //================================================================
   // Defining the pattern syntax
 
-  static const String _pathSeparator = "/";
-  static const String _variablePrefix = ":";
-  static const String _splat = "*";
-  static const String _optionalSuffix = "?";
+  static const String _pathSeparator = '/';
+  static const String _variablePrefix = ':';
+  static const String _splat = '*';
+  static const String _optionalSuffix = '?';
 
   //================================================================
 
@@ -92,7 +92,7 @@ class ServerRule {
   //----------------------------------------------------------------
 
   RequestParams _matches(List<String> components) {
-    final result = new RequestParams._internalConstructor();
+    final result = RequestParams._internalConstructor();
 
     var componentIndex = 0;
     var segmentIndex = 0;
@@ -154,9 +154,9 @@ class ServerRule {
   @override
   String toString() {
     if (_segments.isEmpty) {
-      return "~/";
+      return '~/';
     } else {
-      return "~$_pathSeparator${_segments.join(_pathSeparator)}";
+      return '~$_pathSeparator${_segments.join(_pathSeparator)}';
     }
   }
 }

@@ -11,7 +11,7 @@ part of woomera;
 /// using _curl_).
 
 Future<Response> debugHandler(Request req) async {
-  final buf = new StringBuffer("HTTP method: ${req.method}\n\n");
+  final buf = StringBuffer('HTTP method: ${req.method}\n\n');
 
   var hasParams = false;
   for (var key in req.pathParams.keys) {
@@ -21,7 +21,7 @@ Future<Response> debugHandler(Request req) async {
     }
   }
   if (hasParams) {
-    buf.write("\n");
+    buf.write('\n');
   }
 
   hasParams = false;
@@ -32,7 +32,7 @@ Future<Response> debugHandler(Request req) async {
     }
   }
   if (hasParams) {
-    buf.write("\n");
+    buf.write('\n');
   }
 
   hasParams = false;
@@ -45,11 +45,11 @@ Future<Response> debugHandler(Request req) async {
     }
   }
   if (hasParams) {
-    buf.write("\n");
+    buf.write('\n');
   }
 
-  buf.write("Time: ${new DateTime.now().toString()}");
+  buf.write('Time: ${DateTime.now().toString()}');
 
-  final resp = new ResponseBuffered(ContentType.text)..write(buf.toString());
+  final resp = ResponseBuffered(ContentType.text)..write(buf.toString());
   return resp;
 }

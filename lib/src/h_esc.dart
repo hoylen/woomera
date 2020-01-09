@@ -45,14 +45,14 @@ abstract class HEsc {
 
   static String attr(Object value) {
     if (value != null) {
-      var s = value.toString().replaceAll("&", "&amp;");
-      s = s.replaceAll("<", "&lt;");
-      s = s.replaceAll(">", "&gt;");
-      s = s.replaceAll("'", "&apos;");
-      s = s.replaceAll('"', "&quot;");
+      var s = value.toString().replaceAll('&', '&amp;');
+      s = s.replaceAll('<', '&lt;');
+      s = s.replaceAll('>', '&gt;');
+      s = s.replaceAll("'", '&apos;');
+      s = s.replaceAll('"', '&quot;');
       return s;
     } else {
-      return "";
+      return '';
     }
   }
 
@@ -67,12 +67,12 @@ abstract class HEsc {
 
   static String text(Object value) {
     if (value != null) {
-      var s = value.toString().replaceAll("&", "&amp;");
-      s = s.replaceAll("<", "&lt;");
-      s = s.replaceAll(">", "&gt;");
+      var s = value.toString().replaceAll('&', '&amp;');
+      s = s.replaceAll('<', '&lt;');
+      s = s.replaceAll('>', '&gt;');
       return s;
     } else {
-      return "";
+      return '';
     }
   }
 
@@ -89,12 +89,12 @@ abstract class HEsc {
 
   static String lines(Object value) {
     if (value != null) {
-      final buf = new StringBuffer();
+      final buf = StringBuffer();
       var started = false;
 
-      for (var line in value.toString().split("\n")) {
+      for (var line in value.toString().split('\n')) {
         if (started) {
-          buf.write("<br/>");
+          buf.write('<br/>');
         } else {
           started = true;
         }
@@ -102,7 +102,7 @@ abstract class HEsc {
       }
       return buf.toString();
     } else {
-      return "";
+      return '';
     }
   }
 
@@ -111,8 +111,8 @@ abstract class HEsc {
   // work as expected. It has/had an unusually interpretation of which characters
   // needed to be escaped and which didn't.
 
-  // static HtmlEscape _escape_CDATA = new HtmlEscape(HtmlEscapeMode.ELEMENT);
-  // static HtmlEscape _escape_PCDATA = new HtmlEscape(HtmlEscapeMode.ATTRIBUTE);
+  // static HtmlEscape _escape_CDATA = HtmlEscape(HtmlEscapeMode.ELEMENT);
+  // static HtmlEscape _escape_PCDATA = HtmlEscape(HtmlEscapeMode.ATTRIBUTE);
   //
   // return _escape_PCDATA.convert(obj.toString());
 }

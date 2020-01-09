@@ -95,7 +95,7 @@ class _CoreResponseSimulated extends _CoreResponse {
   int status;
 
   @override
-  final HttpHeaders headers = new SimulatedHttpHeaders();
+  final HttpHeaders headers = SimulatedHttpHeaders();
 
   @override
   List<Cookie> cookies = <Cookie>[];

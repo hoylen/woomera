@@ -20,26 +20,26 @@ class Request {
         assert(id != null),
         assert(server != null),
         _id = id,
-        _coreRequest = new _CoreRequestReal(hReq),
-        _coreResponse = new _CoreResponseReal(hReq.response) {
+        _coreRequest = _CoreRequestReal(hReq),
+        _coreResponse = _CoreResponseReal(hReq.response) {
     _logRequest.fine(
-        "[$id] ${_coreRequest.method} ${_coreRequest.internalPath(server._basePath)}");
+        '[$id] ${_coreRequest.method} ${_coreRequest.internalPath(server._basePath)}');
 
     _serverSet(server);
 
     _logRequestHeader.finer(() {
       // Log request
-      final buf = new StringBuffer("[$id] HTTP headers:");
+      final buf = StringBuffer('[$id] HTTP headers:');
       _coreRequest.headers.forEach((name, values) {
-        buf.write("\n  $name: ");
+        buf.write('\n  $name: ');
         if (values.isEmpty) {
-          buf.write("<noValue>");
+          buf.write('<noValue>');
         } else if (values.length == 1) {
-          buf.write("${values[0]}");
+          buf.write('${values[0]}');
         } else {
           var index = 1;
           for (var v in values) {
-            buf.write("\n  [${index++}] $v");
+            buf.write('\n  [${index++}] $v');
           }
         }
       });
@@ -59,16 +59,16 @@ class Request {
     }
 
     if (server.urlMaxSize < length) {
-      throw new PathTooLongException();
+      throw PathTooLongException();
     }
 
     // Set queryParams from the request
     // Do not use uri.queryParams, because it does not handle repeating keys.
 
-    queryParams = new RequestParams._fromQueryString(hReq.uri.query);
+    queryParams = RequestParams._fromQueryString(hReq.uri.query);
 
     if (queryParams.isNotEmpty) {
-      _logRequestParam.finer(() => "[$id] query: $queryParams");
+      _logRequestParam.finer(() => '[$id] query: $queryParams');
     }
 
     // Determine method used for maintaining (future) sessions
@@ -93,14 +93,14 @@ class Request {
       List<int> bodyBytes,
       this.postParams})
       : _id = id,
-        _coreRequest = new _CoreRequestSimulated(method, internalPath,
+        _coreRequest = _CoreRequestSimulated(method, internalPath,
             sessionId: sessionId,
             queryParams: queryParams,
             headers: headers,
             cookies: cookies,
             bodyStr: bodyStr,
             bodyBytes: bodyBytes),
-        _coreResponse = new _CoreResponseSimulated() {
+        _coreResponse = _CoreResponseSimulated() {
     _simulatedConstructorCommon(queryParams);
   }
 
@@ -116,14 +116,14 @@ class Request {
       String bodyStr,
       List<int> bodyBytes})
       : _id = id,
-        _coreRequest = new _CoreRequestSimulated('GET', internalPath,
+        _coreRequest = _CoreRequestSimulated('GET', internalPath,
             sessionId: sessionId,
             queryParams: queryParams,
             headers: headers,
             cookies: cookies,
             bodyStr: bodyStr,
             bodyBytes: bodyBytes),
-        _coreResponse = new _CoreResponseSimulated() {
+        _coreResponse = _CoreResponseSimulated() {
     _simulatedConstructorCommon(queryParams);
   }
 
@@ -139,14 +139,14 @@ class Request {
       String bodyStr,
       List<int> bodyBytes})
       : _id = id,
-        _coreRequest = new _CoreRequestSimulated('POST', internalPath,
+        _coreRequest = _CoreRequestSimulated('POST', internalPath,
             sessionId: sessionId,
             queryParams: queryParams,
             headers: headers,
             cookies: cookies,
             bodyStr: bodyStr,
             bodyBytes: bodyBytes),
-        _coreResponse = new _CoreResponseSimulated() {
+        _coreResponse = _CoreResponseSimulated() {
     _simulatedConstructorCommon(queryParams);
   }
 
@@ -158,10 +158,9 @@ class Request {
   void _simulatedConstructorCommon(RequestParams queryParams) {
     _id ??= 'SIM:${++_simulatedRequestCount}';
 
-    this.queryParams =
-        (queryParams ?? new RequestParams._internalConstructor());
+    this.queryParams = (queryParams ?? RequestParams._internalConstructor());
     if (this.queryParams.isNotEmpty) {
-      _logRequestParam.finer(() => "[$id] query: $queryParams");
+      _logRequestParam.finer(() => '[$id] query: $queryParams');
     }
 
     // Force the use of cookies to maintain session.
@@ -184,10 +183,10 @@ class Request {
   Future _postParamsInit(int maxPostSize) async {
     // Set post parameters (if any)
 
-    if (_coreRequest.method == "POST" &&
+    if (_coreRequest.method == 'POST' &&
         _coreRequest.headers.contentType != null &&
         _coreRequest.headers.contentType.mimeType ==
-            "application/x-www-form-urlencoded") {
+            'application/x-www-form-urlencoded') {
       // Read in the contents of the request
 
       // Convert the contents into a string
@@ -197,12 +196,12 @@ class Request {
 
       // Parse the string into parameters
 
-      postParams = new RequestParams._fromQueryString(str);
+      postParams = RequestParams._fromQueryString(str);
 
       // Logging
 
       if (postParams.isNotEmpty) {
-        _logRequestParam.finer(() => "[$id] post: $postParams");
+        _logRequestParam.finer(() => '[$id] post: $postParams');
       }
     }
   }
@@ -248,7 +247,7 @@ class Request {
       // ignore: avoid_as
       return (_coreRequest as _CoreRequestReal)._httpRequest;
     } else {
-      throw new UnsupportedError('request not available on simulated Requests');
+      throw UnsupportedError('request not available on simulated Requests');
     }
   }
 
@@ -264,7 +263,7 @@ class Request {
     if (_coreResponse is _CoreResponseSimulated) {
       // ignore: avoid_as
       final simCoreResp = _coreResponse as _CoreResponseSimulated;
-      result = new SimulatedResponse(simCoreResp, server.sessionCookieName);
+      result = SimulatedResponse(simCoreResp, server.sessionCookieName);
     }
     return result;
   }
@@ -277,7 +276,7 @@ class Request {
   ///
   /// This is commonly used in log messages:
   ///
-  ///     mylog.info("[${req.id}] something happened");
+  ///     mylog.info('[${req.id}] something happened');
   ///
   /// Note: the value is a [String], because its value is the [Server.id] from
   /// the server (which is a String) concatenated with the request number.
@@ -311,7 +310,7 @@ class Request {
   //----------------------------------------------------------------
   /// Request HTTP method
   ///
-  /// For example, "GET" or "POST".
+  /// For example, 'GET' or 'POST'.
 
   String get method => _coreRequest.method;
 
@@ -326,9 +325,9 @@ class Request {
   /// the host, port, base path and any query parameters.
   ///
   /// This method returns the request path as a string. This is a value that
-  /// starts with "~/" (e.g. "~/foo/bar/baz/").
+  /// starts with '~/' (e.g. '~/foo/bar/baz/').
   ///
-  /// This is a value that starts with "~/".
+  /// This is a value that starts with '~/'.
 
   String requestPath() => _coreRequest.internalPath(server._basePath);
 
@@ -401,7 +400,7 @@ class Request {
   /// The parameters from the POST request.
   ///
   /// This is not null if the context is a POST request with a MIME type of
-  /// "application/x-www-form-urlencoded". Beware that it will be null for
+  /// 'application/x-www-form-urlencoded'. Beware that it will be null for
   /// other types of POST requests (e.g. JSON).
 
   RequestParams postParams;
@@ -489,11 +488,11 @@ class Request {
   ///
   /// Note: it is an error for multiple session parameters with different values
   /// to be defined. If that happens, a severe error is logged to the
-  /// "woomera.session" logger and they are all ignored (i.e. no session is
+  /// 'woomera.session' logger and they are all ignored (i.e. no session is
   /// restored). However, multiple session parameters with the same value is
   /// permitted (this could happen if the program uses
   /// [sessionHiddenInputElement] and did not set includeSession to false when
-  /// rewriting the URL for the "action" attribute of the form element).
+  /// rewriting the URL for the 'action' attribute of the form element).
 
   Future _sessionRestore() async {
     // Attempt to retrieve a session ID from the request.
@@ -569,7 +568,7 @@ class Request {
 
         if (candidate != null) {
           if (await candidate.resume(this)) {
-            _logSession.finest("[$id] [session:$sessionId] resumed");
+            _logSession.finest('[$id] [session:$sessionId] resumed');
             candidate._refresh(); // restart timeout timer
             session = candidate;
           } else {
@@ -581,17 +580,17 @@ class Request {
           return; // found session (but might not have been restored)
 
         } else {
-          _logSession.finest("[$id] [session:$sessionId] not found");
+          _logSession.finest('[$id] [session:$sessionId] not found');
           // fall through to treat as no session found
         }
       } else {
         // Multiple session IDs of different values found: this should not happen
         _logSession.shout(
-            "[$id] multiple different session IDs in request: not restoring any of them");
+            '[$id] multiple different session IDs in request: not restoring any of them');
         // fall through to treat as no session found
       }
     } else {
-      _logSession.finest("[$id] no session ID in request");
+      _logSession.finest('[$id] no session ID in request');
       // fall through to treat as no session found
     }
 
@@ -685,7 +684,7 @@ class Request {
       final value = HEsc.attr(session.id);
       return '<input type="hidden" name="$name" value="$value"/>';
     } else {
-      return ""; // hidden POST form parameter not required
+      return ''; // hidden POST form parameter not required
     }
   }
 
@@ -792,18 +791,18 @@ class Request {
   /// context.
 
   String rewriteUrl(String iUrl, {bool includeSession}) {
-    if (!iUrl.startsWith("~/")) {
-      throw new ArgumentError.value(
-          iUrl, "rUrl", "rewriteUrl: does not start with '~/'");
+    if (!iUrl.startsWith('~/')) {
+      throw ArgumentError.value(
+          iUrl, 'rUrl', 'rewriteUrl: does not start with "~/"');
     }
 
-    final buf = new StringBuffer(server._basePath);
-    if (!server._basePath.endsWith("/")) {
-      buf.write("/");
+    final buf = StringBuffer(server._basePath);
+    if (!server._basePath.endsWith('/')) {
+      buf.write('/');
     }
 
-    if (iUrl != "~/") {
-      buf.write(iUrl.substring(2)); // append rUrl without leading "~/"
+    if (iUrl != '~/') {
+      buf.write(iUrl.substring(2)); // append rUrl without leading '~/'
     }
 
     if (session == null ||
@@ -818,8 +817,8 @@ class Request {
     } else {
       // Append extra query parameter to preserve session
       final result = buf.toString();
-      final separator = (result.contains("?")) ? "&" : "?";
-      return "$result$separator${server.sessionParamName}=${session.id}";
+      final separator = (result.contains('?')) ? '&' : '?';
+      return '$result$separator${server.sessionParamName}=${session.id}';
     }
   }
 

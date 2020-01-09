@@ -39,12 +39,12 @@ const Duration defaultSessionTimeout = const Duration(minutes: 1);
 /// The Web server
 Server webServer;
 
-Logger _log = new Logger("main");
+Logger _log = Logger('main');
 
 //================================================================
 // Test server
 
-const _htmlHeader = """
+const _htmlHeader = '''
 <html>
 <head>
   <title>Woomera: session test</title>
@@ -57,16 +57,16 @@ const _htmlHeader = """
 </head>
 <body>
 <h1>Session test</h1>
-""";
+''';
 
-const _pathHome = "~/session";
-const _pathLogin = "~/session/login";
-const _pathLogout = "~/session/logout";
+const _pathHome = '~/session';
+const _pathLogin = '~/session/login';
+const _pathLogout = '~/session/logout';
 
 //----------------------------------------------------------------
 
 Server _createTestServer() {
-  webServer = new Server()..bindPort = portNumber;
+  webServer = Server()..bindPort = portNumber;
 
   // Configure the pipeline
 
@@ -74,7 +74,7 @@ Server _createTestServer() {
     ..get(_pathHome, _sessionStatus)
     ..post(_pathLogin, _sessionStart)
     ..post(_pathLogout, _sessionStop)
-    ..register("GET", "~/system/stop", handleStop);
+    ..register('GET', '~/system/stop', handleStop);
 
   return webServer;
 }
@@ -83,23 +83,23 @@ Server _createTestServer() {
 /// Handler for home page
 ///
 Future<Response> _sessionStatus(Request req) async {
-  final resp = new ResponseBuffered(ContentType.html)..write(_htmlHeader);
+  final resp = ResponseBuffered(ContentType.html)..write(_htmlHeader);
   final session = req.session;
 
   if (session == null) {
-    resp.write("""<p>No session</p>
+    resp.write('''<p>No session</p>
     <form method="POST" action="${req.ura(_pathLogin)}">
       <input type='submit' value='Login'>
-    </form>""");
+    </form>''');
   } else {
-    resp.write("""<p>Session: ${session.id}</p>
-    <p>Session will timeout at: ${new DateTime.now().add(session.timeout)}</p>
+    resp.write('''<p>Session: ${session.id}</p>
+    <p>Session will timeout at: ${DateTime.now().add(session.timeout)}</p>
     <form method="POST" action="${req.ura(_pathLogout)}">
       <input type='submit' value='Logout'>
-    </form>""");
+    </form>''');
   }
 
-  resp.write("\n</body>\n</html>\n");
+  resp.write('\n</body>\n</html>\n');
 
   return resp;
 }
@@ -108,7 +108,7 @@ Future<Response> _sessionStatus(Request req) async {
 /// Handler for starting a session
 
 Future<Response> _sessionStart(Request req) async {
-  final resp = new ResponseBuffered(ContentType.html)..write(_htmlHeader);
+  final resp = ResponseBuffered(ContentType.html)..write(_htmlHeader);
 
   if (req.session == null) {
     // Create a new sesson object and associate it with the user's browser.
@@ -116,19 +116,19 @@ Future<Response> _sessionStart(Request req) async {
     // even though the actual mechanism of maintaining the session is done
     // by the HTTP response (either with cookies or URL rewriting of links
     // in its HTML content).
-    req.session = new Session(req.server, defaultSessionTimeout);
-    resp.write("<p>OK</p>");
+    req.session = Session(req.server, defaultSessionTimeout);
+    resp.write('<p>OK</p>');
   } else {
     resp
       ..status = HttpStatus.badRequest // 400
-      ..write("<p>Error: already logged in.</p>");
+      ..write('<p>Error: already logged in.</p>');
   }
 
   // Note: is is important to create the HREF URL by calling `req.ura`
   // or `req.rewriteURL` so that sessions are preserved by URL rewriting if
   // cookies cannot be used.
 
-  resp.write("<a href='${req.ura(_pathHome)}'>Home</a>\n</body>\n</html>\n");
+  resp.write('<a href="${req.ura(_pathHome)}">Home</a>\n</body>\n</html>\n');
 
   return resp;
 }
@@ -137,24 +137,24 @@ Future<Response> _sessionStart(Request req) async {
 /// Handler for stopping a session
 
 Future<Response> _sessionStop(Request req) async {
-  final resp = new ResponseBuffered(ContentType.html)..write(_htmlHeader);
+  final resp = ResponseBuffered(ContentType.html)..write(_htmlHeader);
 
   if (req.session != null) {
     // Terminate the session
     await req.session.terminate();
     req.session = null;
-    resp.write("<p>Done</p>");
+    resp.write('<p>Done</p>');
   } else {
     resp
       ..status = HttpStatus.badRequest // 400
-      ..write("<p>Error: not logged in.</p>");
+      ..write('<p>Error: not logged in.</p>');
   }
 
   // Note: rewriting the URL does nothing in this situation, since we are
   // terminating the session. But for consistency, we call `req.ura` on all
   // URLs without worrying about which ones are needed or not.
 
-  resp.write("<a href='${req.ura(_pathHome)}'>Home</a>\n</body>\n</html>\n");
+  resp.write('<a href="${req.ura(_pathHome)}">Home</a>\n</body>\n</html>\n');
 
   return resp;
 }
@@ -168,7 +168,7 @@ Future<Response> _sessionStop(Request req) async {
 Future<Response> handleStop(Request req) async {
   await webServer.stop(); // async
 
-  final resp = new ResponseBuffered(ContentType.text)..write("stopping");
+  final resp = ResponseBuffered(ContentType.text)..write('stopping');
   return resp;
 }
 
@@ -194,19 +194,19 @@ class TestResponse {
 Future<TestResponse> getRequest(String path) async {
   // Note: must use "localhost" because "127.0.0.1" does not work: strange!
 
-  final request = await new HttpClient().get("localhost", portNumber, path);
+  final request = await HttpClient().get('localhost', portNumber, path);
 
   //request.headers.contentType = ContentType.html;
 
   final response = await request.close();
 
-  final contents = new StringBuffer();
+  final contents = StringBuffer();
   // ignore: prefer_foreach
   await for (var chunk in utf8.decoder.bind(response)) {
     contents.write(chunk);
   }
 
-  return new TestResponse(response.statusCode, contents.toString());
+  return TestResponse(response.statusCode, contents.toString());
 }
 
 //----------------------------------------------------------------
@@ -215,21 +215,21 @@ Future<TestResponse> getRequest(String path) async {
 Future<TestResponse> postRequest(String path, String data) async {
   // Note: must use "localhost" becaues "127.0.0.1" does not work: strange!
 
-  final request = await new HttpClient().post("localhost", portNumber, path);
+  final request = await HttpClient().post('localhost', portNumber, path);
 
   request.headers.contentType =
-      new ContentType("application", "x-www-form-urlencoded", charset: "utf-8");
+      ContentType('application', 'x-www-form-urlencoded', charset: 'utf-8');
   request.write(data);
 
   final response = await request.close();
 
-  final contents = new StringBuffer();
+  final contents = StringBuffer();
   // ignore: prefer_foreach
   await for (var chunk in utf8.decoder.bind(response)) {
     contents.write(chunk);
   }
 
-  return new TestResponse(response.statusCode, contents.toString());
+  return TestResponse(response.statusCode, contents.toString());
 }
 
 //================================================================
@@ -239,35 +239,35 @@ void _runTests(Future<int> numProcessedFuture) {
   //----------------------------------------------------------------
   // Check expected branches are present in the LDAP directory
 
-  group("Login and logout", () {
+  group('Login and logout', () {
     //----------------
 
-    test("URL rewriting", () async {
+    test('URL rewriting', () async {
       // Status page OK
-      var r = await getRequest("/session");
+      var r = await getRequest('/session');
       expect(r.status, equals(HttpStatus.ok));
 
       // Logout without a session should fail
-      r = await postRequest("/session/logout", "");
+      r = await postRequest('/session/logout', '');
       expect(r.status, equals(HttpStatus.badRequest));
 
       // Login
-      r = await postRequest("/session/login", "");
+      r = await postRequest('/session/login', '');
       expect(r.status, equals(HttpStatus.ok));
 
       // Extract the URL rewritten home link
-      const homePrefix = "<a href='";
-      const homeSuffix = "'>Home</a>";
+      const homePrefix = '<a href="';
+      const homeSuffix = '">Home</a>';
       final h1 = r.contents.substring(
           r.contents.indexOf(homePrefix) + homePrefix.length,
           r.contents.indexOf(homeSuffix));
-      _log.info("Home URL after login: $h1");
-      expect(h1, startsWith("/session?wSession="));
+      _log.info('Home URL after login: $h1');
+      expect(h1, startsWith('/session?wSession='));
 
       // Get the status page
       r = await getRequest(h1);
       expect(r.status, equals(HttpStatus.ok));
-      expect(r.contents.contains("<p>Session: "), isTrue);
+      expect(r.contents.contains('<p>Session: '), isTrue);
 
       // Extract the URL rewritten logout link
       const logoutPrefix = 'action="';
@@ -275,18 +275,18 @@ void _runTests(Future<int> numProcessedFuture) {
       final a = r.contents
           .substring(r.contents.indexOf(logoutPrefix) + logoutPrefix.length);
       final b = a.substring(0, a.indexOf(logoutSuffix));
-      _log.info("Logout URL: $b");
+      _log.info('Logout URL: $b');
 
       // Logout
-      r = await postRequest(b, "");
+      r = await postRequest(b, '');
       expect(r.status, equals(HttpStatus.ok));
 
       // Extract the URL rewritten home link (after logout)
       final h2 = r.contents.substring(
           r.contents.indexOf(homePrefix) + homePrefix.length,
           r.contents.indexOf(homeSuffix));
-      _log.info("Home URL after logout: $h2");
-      expect(h2, equals("/session"));
+      _log.info('Home URL after logout: $h2');
+      expect(h2, equals('/session'));
     });
   });
 
@@ -296,16 +296,16 @@ void _runTests(Future<int> numProcessedFuture) {
   // If the server is not stopped, this program will not halt when run as a
   // Dart program, but does halt when run using "pub run test".
 
-  group("End of tests", () {
+  group('End of tests', () {
     //----------------
 
-    test("stopping server", () async {
-      final r = await getRequest("/system/stop");
+    test('stopping server', () async {
+      final r = await getRequest('/system/stop');
       expect(r.status, equals(HttpStatus.ok));
 
       // Wait for server to stop
       final num = await numProcessedFuture;
-      _log.info("server stopped: requests processed: $num");
+      _log.info('server stopped: requests processed: $num');
     });
   });
 }
@@ -322,11 +322,11 @@ void loggingSetup() {
   //Logger.root.level = Level.OFF;
   Logger.root.level = Level.ALL;
 
-  new Logger("main").level = Level.ALL;
-  new Logger("woomera").level = Level.INFO;
-  //new Logger("woomera.server").level = Level.ALL;
-  //new Logger("woomera.request").level = Level.ALL;
-  //new Logger("woomera.response").level = Level.ALL;
+  Logger('main').level = Level.ALL;
+  Logger('woomera').level = Level.INFO;
+  //Logger('woomera.server').level = Level.ALL;
+  //Logger('woomera.request').level = Level.ALL;
+  //Logger('woomera.response').level = Level.ALL;
 }
 
 //----------------------------------------------------------------
@@ -341,6 +341,6 @@ Future main() async {
   if (!interactiveMode) {
     _runTests(numProcessedFuture);
   } else {
-    print("Service running at http://localhost:$portNumber/session");
+    print('Service running at http://localhost:$portNumber/session');
   }
 }

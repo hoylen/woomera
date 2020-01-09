@@ -122,7 +122,7 @@ class SimulatedResponse extends Response {
 
   @override
   String toString() {
-    final buf = new StringBuffer('HTTP $status\n');
+    final buf = StringBuffer('HTTP $status\n');
 
     if (sessionId != null) {
       buf.write('SESSION ID: $sessionId\n');

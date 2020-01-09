@@ -17,7 +17,7 @@ Server ws;
 /// Timeout to use.
 const int defaultTimeout = 60; // seconds
 
-final _log = new Logger("session_test");
+final _log = Logger('session_test');
 
 //================================================================
 
@@ -28,7 +28,7 @@ Future main() async {
 
   // Create and configure server
 
-  ws = new Server()
+  ws = Server()
     ..bindAddress = InternetAddress.anyIPv6
     ..bindPort = 1024
     ..sessionExpiry = const Duration(seconds: defaultTimeout);
@@ -36,9 +36,9 @@ Future main() async {
   // Register rules
 
   ws.pipelines.first
-    ..get("~/", _handleTopLevel)
-    ..post("~/new", _handleNewSession)
-    ..post("~/stop", _handleStop);
+    ..get('~/', _handleTopLevel)
+    ..post('~/new', _handleNewSession)
+    ..post('~/stop', _handleStop);
 
   // Run the server
 
@@ -51,9 +51,9 @@ Future main() async {
 //----------------------------------------------------------------
 
 Future<Response> _handleTopLevel(Request req) async {
-  final newId = req.queryParams["new"];
+  final newId = req.queryParams['new'];
 
-  final resp = new ResponseBuffered(ContentType.html)..write("""
+  final resp = ResponseBuffered(ContentType.html)..write('''
 <html>
   <head>
     <title>Woomera: session demo</title>
@@ -67,44 +67,44 @@ Future<Response> _handleTopLevel(Request req) async {
   <body>
     <h1>Session Demo</h1>
     
-    <form method='POST' action='${req.rewriteUrl("~/new")}'>
+    <form method='POST' action='${req.rewriteUrl('~/new')}'>
       <label for='timeout'>Timeout (seconds)</label>
       <input name='timeout' placeholder='$defaultTimeout' id='timeout'/>
       <input type='submit' value='Create session'/>
     </form>
 
     <p><a id='refresh' href='${req.rewriteUrl(req.requestPath())}'>Refresh</a></p>
-""");
+''');
 
   if (0 < ws.numSessions) {
     resp.write(
-        "<table><tr><th>Session ID</th><th>Created</th><th>Timeout</th><th>Expires</th></tr>\n");
+        '<table><tr><th>Session ID</th><th>Created</th><th>Timeout</th><th>Expires</th></tr>\n');
     for (var s in ws.sessions) {
       final current =
-          (req.session != null && req.session.id == s.id) ? "*" : "";
-      final highlight = (s.id == newId) ? "style='color: green;'" : "";
-      resp.write("""
+          (req.session != null && req.session.id == s.id) ? '*' : '';
+      final highlight = (s.id == newId) ? 'style="color: green;"' : '';
+      resp.write('''
       <tr $highlight>
         <td>${s.id}$current</td>
         <td>${s.created}</td>
         <td>${s.timeout}</td>
         <td>${s.expires}</td>
       </tr>
-      """);
+      ''');
     }
     resp.write(
-        "<tr><td colspan='3' id='currentTime'>Current time:</td><td>${new DateTime.now()}</td></tr></table>\n");
+        '<tr><td colspan="3" id="currentTime">Current time:</td><td>${DateTime.now()}</td></tr></table>\n');
   } else {
-    resp.write("<p>No sessions.</p>\n");
+    resp.write('<p>No sessions.</p>\n');
   }
-  resp.write("""   
-    <form method='POST' action='${req.rewriteUrl("~/stop")}'>
+  resp.write('''
+    <form method='POST' action='${req.rewriteUrl('~/stop')}'>
       <input id='stop' type='submit' value='Stop server'/>
     </form>
     
   </body>
 </html>
-  """);
+  ''');
 
   return resp;
 }
@@ -113,22 +113,22 @@ Future<Response> _handleTopLevel(Request req) async {
 
 Future<Response> _handleNewSession(Request req) async {
   // Determine the timeout for the new session
-  final tStr = req.postParams["timeout"];
+  final tStr = req.postParams['timeout'];
   final secs = (tStr.isNotEmpty) ? int.parse(tStr) : defaultTimeout;
 
   // Create the session
-  final session = new Session(ws, new Duration(seconds: secs));
-  _log.fine("session created");
+  final session = Session(ws, Duration(seconds: secs));
+  _log.fine('session created');
 
   req.session = session;
 
-  return new ResponseRedirect("~/?new=${session.id}");
+  return ResponseRedirect('~/?new=${session.id}');
 }
 
 //----------------------------------------------------------------
 
 Future<Response> _handleStop(Request req) async {
-  final resp = new ResponseBuffered(ContentType.html)..write("""
+  final resp = ResponseBuffered(ContentType.html)..write('''
 <html>
   <head>
     <title>Woomera: server stopped</title>
@@ -136,17 +136,17 @@ Future<Response> _handleStop(Request req) async {
   <body>
     <h1>Server stopped</h1>
     
-    <p><a href='${req.rewriteUrl("~/")}'>Home</a> (only works if server has been
+    <p><a href='${req.rewriteUrl('~/')}'>Home</a> (only works if server has been
     restarted)</p>
   </body>
 </html>
-""");
+''');
 
-  new Timer(const Duration(seconds: 3), () async {
+  Timer(const Duration(seconds: 3), () async {
     //await LoginSession.abortAll(_server);
-    _log.fine("stopping server");
+    _log.fine('stopping server');
     await ws.stop();
-    _log.fine("server stopped");
+    _log.fine('server stopped');
   });
 
   return resp;
@@ -173,12 +173,12 @@ void loggingSetup(
     } else if (loggerNameWidth == 0) {
       name = ': $name'; // natural width
     } else if (loggerNameWidth < name.length) {
-      name = ": ${name.substring((name.length - loggerNameWidth))}"; // truncate
+      name = ': ${name.substring((name.length - loggerNameWidth))}'; // truncate
     } else {
-      name = ": ${name.padRight(loggerNameWidth)}"; // pad
+      name = ': ${name.padRight(loggerNameWidth)}'; // pad
     }
 
-    print("$timeStr$name: ${r.message}");
+    print('$timeStr$name: ${r.message}');
   });
 
   // Set up logging levels
@@ -186,6 +186,6 @@ void loggingSetup(
   Logger.root.level = level;
 
   if (levels != null) {
-    levels.forEach((name, lvl) => new Logger(name).level = lvl);
+    levels.forEach((name, lvl) => Logger(name).level = lvl);
   }
 }

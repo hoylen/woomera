@@ -25,7 +25,7 @@ part of woomera;
 /// Future<Response> handleSuccessfulLogin(Request req) async {
 ///   var uid = ...;
 ///   ...
-///   var s = new Session(req.server, new Duration(minutes: 10));
+///   var s = Session(req.server, new Duration(minutes: 10));
 ///   s["user"] = uid;
 ///   req.session = s; // important: gets the response to preserve the session
 ///   ...
@@ -71,10 +71,10 @@ part of woomera;
 /// const String testCookieName = "browser-test";
 ///
 /// Future<Response> handleShowLoginPage(Request req) async {
-///   var resp = new ResponseBuffered(ContentType.HTML);
+///   var resp = ResponseBuffered(ContentType.HTML);
 ///
 ///   // Add a test cookie to determine if cookies are supported
-///   var testCookie = new Cookie(testCookieName, "cookies_work!");
+///   var testCookie = Cookie(testCookieName, "cookies_work!");
 ///   testCookie.path = req.server.basePath;
 ///   testCookie.httpOnly = true;
 ///   resp.cookieAdd(testCookie);
@@ -89,11 +89,11 @@ part of woomera;
 ///
 ///   var uid = ...;
 ///   ...
-///   var s = new Session(req.server, new Duration(minutes: 10));
+///   var s = Session(req.server, new Duration(minutes: 10));
 ///   s["user"] = uid;
 ///   req.session = s; // important!
 ///   ...
-///   var resp = new ResponseBuffered(ContentType.HTML);
+///   var resp = ResponseBuffered(ContentType.HTML);
 ///
 ///   // Remove the test cookie (if any) since it has done its job
 ///   resp.cookieDelete(testCookieName, req.server.basePath);
@@ -165,12 +165,12 @@ class Session {
 
   Session(Server server, Duration timeout)
       : _server = server,
-        _created = new DateTime.now() {
+        _created = DateTime.now() {
     if (server == null) {
-      throw new ArgumentError.notNull("server");
+      throw ArgumentError.notNull('server');
     }
     if (timeout == null) {
-      throw new ArgumentError.notNull("timeout");
+      throw ArgumentError.notNull('timeout');
     }
 
     _timeout = timeout;
@@ -185,7 +185,7 @@ class Session {
     assert(!_server._allSessions.containsKey(id));
     server._sessionRegister(this);
 
-    _logSession.fine("[session:$id]: created");
+    _logSession.fine('[session:$id]: created');
   }
 
   //================================================================
@@ -193,7 +193,7 @@ class Session {
 
   /// UUID source used for the session identifiers.
 
-  static final Uuid _sessionIdUuid = new Uuid();
+  static final Uuid _sessionIdUuid = Uuid();
 
   /// Generates a new identifier for the session.
   ///
@@ -204,7 +204,7 @@ class Session {
     if (s is String) {
       return s.replaceAll('-', '');
     } else {
-      throw new TypeError(); // this should never happen
+      throw TypeError(); // this should never happen
       // Above "is String" is only to deal with uuid v1.0.3 which returns a
       // dynamic instead of a String. But uuid v2.0.1 returns a String, so
       // casting it would produce an "unnecessary cast" warning.
@@ -277,7 +277,7 @@ class Session {
 
   set timeout(Duration newTimeout) {
     if (newTimeout == null) {
-      throw new ArgumentError.notNull("timeout");
+      throw ArgumentError.notNull('timeout');
     }
     _timeout = newTimeout;
     _refresh();
@@ -322,8 +322,8 @@ class Session {
 
     if (_timeout != null) {
       _expiryTimer =
-          new Timer(_timeout, () => _terminate(SessionTermination.timeout));
-      _expires = new DateTime.now().add(_timeout);
+          Timer(_timeout, () => _terminate(SessionTermination.timeout));
+      _expires = DateTime.now().add(_timeout);
     }
   }
 
@@ -332,23 +332,23 @@ class Session {
   // that terminates a session (i.e. terminate and the refresh timeout).
 
   Future _terminate(SessionTermination endReason) async {
-    final duration = new DateTime.now().difference(_created);
+    final duration = DateTime.now().difference(_created);
     String r;
     switch (endReason) {
       case SessionTermination.terminated:
-        r = "terminated";
+        r = 'terminated';
         break;
       case SessionTermination.timeout:
-        r = "timeout";
+        r = 'timeout';
         break;
       case SessionTermination.resumeFailed:
-        r = "failed to resume";
+        r = 'failed to resume';
         break;
       default:
-        r = "?";
+        r = '?';
         break;
     }
-    _logSession.fine("[session:$id]: $r after ${duration.inSeconds}s");
+    _logSession.fine('[session:$id]: $r after ${duration.inSeconds}s');
 
     _server._sessionUnregister(this);
     await finish(endReason);

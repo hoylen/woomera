@@ -41,22 +41,22 @@ class ServerPipeline {
   /// values for the HTTP method.
 
   void register(String method, String path, RequestHandler handler) {
-    _logServer.config("register: $method $path");
+    _logServer.config('register: $method $path');
 
     if (method == null) {
-      throw new ArgumentError.notNull("method");
+      throw ArgumentError.notNull('method');
     }
     if (method.isEmpty) {
-      throw new ArgumentError.value(method, "method", "Empty string");
+      throw ArgumentError.value(method, 'method', 'Empty string');
     }
     if (path == null) {
-      throw new ArgumentError.notNull('path');
+      throw ArgumentError.notNull('path');
     }
     if (!path.startsWith('~/')) {
-      throw new ArgumentError.value(path, 'path', 'does not start with "~/"');
+      throw ArgumentError.value(path, 'path', 'does not start with "~/"');
     }
     if (handler == null) {
-      throw new ArgumentError.notNull("handler");
+      throw ArgumentError.notNull('handler');
     }
 
     // Get the list of rules for the method
@@ -69,7 +69,7 @@ class ServerPipeline {
 
     // Append a new pattern to the list of rules
 
-    methodRules.add(new ServerRule(path, handler));
+    methodRules.add(ServerRule(path, handler));
   }
 
   //----------------------------------------------------------------
@@ -78,7 +78,7 @@ class ServerPipeline {
   /// Shorthand for calling [register] with the method set to "GET".
   ///
   void get(String path, RequestHandler handler) {
-    register("GET", path, handler);
+    register('GET', path, handler);
   }
 
   //----------------------------------------------------------------
@@ -87,7 +87,7 @@ class ServerPipeline {
   /// Shorthand for calling [register] with the method set to "POST".
   ///
   void post(String path, RequestHandler handler) {
-    register("POST", path, handler);
+    register('POST', path, handler);
   }
 
   //----------------------------------------------------------------
@@ -96,7 +96,7 @@ class ServerPipeline {
   /// Shorthand for calling [register] with the method set to "PUT".
   ///
   void put(String path, RequestHandler handler) {
-    register("PUT", path, handler);
+    register('PUT', path, handler);
   }
 
   //----------------------------------------------------------------
@@ -105,7 +105,7 @@ class ServerPipeline {
   /// Shorthand for calling [register] with the method set to "PATCH".
   ///
   void patch(String path, RequestHandler handler) {
-    register("PATCH", path, handler);
+    register('PATCH', path, handler);
   }
 
   //----------------------------------------------------------------
@@ -114,7 +114,7 @@ class ServerPipeline {
   /// Shorthand for calling [register] with the method set to "DELETE".
   ///
   void delete(String path, RequestHandler handler) {
-    register("DELETE", path, handler);
+    register('DELETE', path, handler);
   }
 
   //----------------------------------------------------------------
@@ -123,7 +123,7 @@ class ServerPipeline {
   /// Shorthand for calling [register] with the method set to "HEAD".
   ///
   void head(String path, RequestHandler handler) {
-    register("HEAD", path, handler);
+    register('HEAD', path, handler);
   }
 
   //================================================================

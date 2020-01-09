@@ -19,7 +19,7 @@ part of woomera;
 ///
 /// Note: despite the name, this has nothing to do with the Dart factory keyword.
 
-typedef FutureOr<Request> RequestCreator(
+typedef RequestCreator = FutureOr<Request> Function(
     HttpRequest request, String id, Server server);
 
 /// Use [RequestCreator] typedef instead.
@@ -27,7 +27,7 @@ typedef FutureOr<Request> RequestCreator(
 /// This name can be confused with the `factory` feature in Dart.
 
 @deprecated
-typedef FutureOr<Request> RequestFactory(
+typedef RequestFactory = FutureOr<Request> Function(
     HttpRequest request, String id, Server server);
 
 //----------------------------------------------------------------
@@ -94,7 +94,7 @@ class Server {
 
   Server({int numberOfPipelines = 1}) {
     for (var x = 0; x < numberOfPipelines; x++) {
-      pipelines.add(new ServerPipeline());
+      pipelines.add(ServerPipeline());
     }
   }
 
@@ -129,7 +129,7 @@ class Server {
   /// if multiple servers are running, give them each a unique [id] so the
   /// requests can be uniquely identified.
 
-  String id = "";
+  String id = '';
 
   //----------------------------------------------------------------
 
@@ -199,12 +199,12 @@ class Server {
   /// Normal [List] operations can be used on it. For example, to obtain the
   /// first pipeline (that the [Server] constructor creates by default):
   ///
-  ///     var s = new Server();
+  ///     var s = Server();
   ///     var firstPipeline = s.pipelines.first;
   ///
   /// Or to add additional pipelines:
   ///
-  ///     var p2 = new Pipeline();
+  ///     var p2 = Pipeline();
   ///     s.pipelines.add(p2);
 
   final List<ServerPipeline> pipelines = <ServerPipeline>[];
@@ -336,7 +336,7 @@ class Server {
       String certificateName,
       String certChainFilename}) async {
     if (_svr != null) {
-      throw new StateError("server already running");
+      throw StateError('server already running');
     }
 
     // Start the server
@@ -351,7 +351,7 @@ class Server {
       // Note: this uses the TLS libraries in Dart 1.13 or later.
       // https://dart-lang.github.io/server/tls-ssl.html
       _isSecure = true;
-      final securityContext = new SecurityContext()
+      final securityContext = SecurityContext()
         ..useCertificateChain(certChainFilename)
         ..usePrivateKey(privateKeyFilename);
       _svr = await HttpServer.bindSecure(
@@ -361,22 +361,22 @@ class Server {
 
     // Log that it started
 
-    final buf = new StringBuffer()
-      ..write((_isSecure) ? "https://" : "http://")
-      ..write((_svr.address.isLoopback) ? "localhost" : _svr.address.host);
+    final buf = StringBuffer()
+      ..write((_isSecure) ? 'https://' : 'http://')
+      ..write((_svr.address.isLoopback) ? 'localhost' : _svr.address.host);
     if (_svr.port != null) {
-      buf.write(":${_svr.port}");
+      buf.write(':${_svr.port}');
     }
     final url = buf.toString();
 
     _logServer.fine(
-        "${(_isSecure) ? "HTTPS" : "HTTP"} server started: ${_svr.address} port ${_svr.port} <$url>");
+        '${(_isSecure) ? 'HTTPS' : 'HTTP'} server started: ${_svr.address} port ${_svr.port} <$url>');
 
     // Listen for and process HTTP requests
 
     var requestNo = 0;
 
-    final requestLoopCompleter = new Completer<int>();
+    final requestLoopCompleter = Completer<int>();
 
     // ignore: UNUSED_LOCAL_VARIABLE
     final doNotWaitOnThis = runZoned(() async {
@@ -390,14 +390,14 @@ class Server {
 
           //_logServer.info("HTTP Request: [$id${requestNo + 1}] starting handler");
 
-          final doNotWait = _handleRawRequest(request, "$id${++requestNo}");
+          final doNotWait = _handleRawRequest(request, '$id${++requestNo}');
           assert(doNotWait != null);
 
           //_logServer.info("HTTP Request: [$id$requestNo] handler started");
 
         } catch (e, s) {
           _logServer.shout(
-              "uncaught try/catch exception (${e.runtimeType}): $e", e, s);
+              'uncaught try/catch exception (${e.runtimeType}): $e', e, s);
         }
       }
 
@@ -405,7 +405,7 @@ class Server {
     }, onError: (Object e, StackTrace s) {
       // The event processing code uses async try/catch, so something very wrong
       // must have happened for an exception to have been thrown outside that.
-      _logServer.shout("uncaught onError (${e.runtimeType}): $e", e, s);
+      _logServer.shout('uncaught onError (${e.runtimeType}): $e', e, s);
 
       // Note: this can happen in situations where a handler uses both
       // completeError() to set an error and also throws an exception.
@@ -422,7 +422,7 @@ class Server {
     // Finished: it only gets to here if the server stops running (see [stop] method)
 
     _logServer.fine(
-        "${(_isSecure) ? "HTTPS" : "HTTP"} server stopped: $requestNo requests");
+        '${(_isSecure) ? 'HTTPS' : 'HTTP'} server stopped: $requestNo requests');
     _svr = null;
     _isSecure = null;
 
@@ -444,7 +444,7 @@ class Server {
   /// If [force] is true, active connections will be closed immediately.
 
   Future stop({bool force = false}) async {
-    _logServer.finer("stop: ${_allSessions.length} sessions, force=$force");
+    _logServer.finer('stop: ${_allSessions.length} sessions, force=$force');
 
     if (_allSessions.isNotEmpty) {
       // Terminate all sessions
@@ -461,7 +461,7 @@ class Server {
       await _svr.close(force: force);
     }
 
-    _logServer.finer("stop: closed");
+    _logServer.finer('stop: closed');
   }
 
   //----------------------------------------------------------------
@@ -477,15 +477,15 @@ class Server {
 
       if (requestCreator != null) {
         // Application uses a custom request: invoke it for the request object
-        _logRequest.finest("_handleRequest: creating custom request object");
+        _logRequest.finest('_handleRequest: creating custom request object');
 
         final x = requestCreator(httpRequest, requestId, this);
         req = (x is Request) ? x : await x; // await if it is a Future
       } else {
         // No custom request: create a [Request] object
-        _logRequest.finest("_handleRequest: creating standard request object");
+        _logRequest.finest('_handleRequest: creating standard request object');
 
-        req = new Request(httpRequest, requestId, this);
+        req = Request(httpRequest, requestId, this);
       }
       assert(req != null);
 
@@ -505,10 +505,10 @@ class Server {
       // Exception occurred.
 
       _logRequest
-        ..finer("[$requestId] exception raised outside context: $e")
-        ..finest("[$requestId] exception stack trace:\n$s");
+        ..finer('[$requestId] exception raised outside context: $e')
+        ..finest('[$requestId] exception stack trace:\n$s');
 
-      if (e is StateError && e.message == "Header already sent") {
+      if (e is StateError && e.message == 'Header already sent') {
         // Cannot generate an error page, since a page has already started
 
         _logRequest.fine('_handleRequest: error (${e.runtimeType}): $e\n$s');
@@ -534,7 +534,7 @@ class Server {
       }
     }
 
-    _logRequest.finest("_handleRequest: done");
+    _logRequest.finest('_handleRequest: done');
   }
 
   //--------
@@ -595,14 +595,14 @@ class Server {
 
             handlerFound = true;
 
-            _logRequest.finer("[${req.id}] matched rule: $rule");
+            _logRequest.finer('[${req.id}] matched rule: $rule');
 
             req.pathParams = params; // set matched path parameters
 
             if (params.isNotEmpty && _logRequestParam.level <= Level.FINER) {
               // Log path parameters
               final str =
-                  "[${req.id}] path: ${params.length} key(s): ${params.toString()}";
+                  '[${req.id}] path: ${params.length} key(s): ${params.toString()}';
               _logRequestParam.finer(str);
             }
 
@@ -628,7 +628,7 @@ class Server {
                       pipe.exceptionHandler, req, e, st);
                 } catch (pipeEx, pipeSt) {
                   // The pipe exception handler threw an exception
-                  e = new ExceptionHandlerException(e, pipeEx);
+                  e = ExceptionHandlerException(e, pipeEx);
                   st = pipeSt;
                 }
               }
@@ -647,7 +647,7 @@ class Server {
                     response = await _invokeExceptionHandler(
                         exceptionHandler, req, e, st);
                   } catch (es) {
-                    e = new ExceptionHandlerException(e, es);
+                    e = ExceptionHandlerException(e, es);
                   }
                 }
               }
@@ -676,7 +676,7 @@ class Server {
               break; // stop looking for further matches in this pipe
             } else {
               _logRequest.fine(
-                  "[${req.id}] handler returned no response, continue matching");
+                  '[${req.id}] handler returned no response, continue matching');
               // handler indicated that processing is to continue processing with
               // the next match in the rule/pipeline.
             }
@@ -701,24 +701,24 @@ class Server {
           assert(methodFound);
           found = NotFoundException.foundHandler;
           _logRequest
-              .fine("[${req.id}] not found: all handler(s) returned null");
+              .fine('[${req.id}] not found: all handler(s) returned null');
         } else if (methodFound) {
           found = NotFoundException.foundMethod;
-          _logRequest.fine("[${req.id}] not found: found method but no rule");
+          _logRequest.fine('[${req.id}] not found: found method but no rule');
         } else {
           found = NotFoundException.foundNothing;
-          _logRequest.fine("[${req.id}] not found: method not supported");
+          _logRequest.fine('[${req.id}] not found: method not supported');
         }
 
-        Exception e = new NotFoundException(found);
+        Exception e = NotFoundException(found);
 
         // Try reporting this through the server's exception handler
 
         if (exceptionHandler != null) {
           try {
-            response = await this.exceptionHandler(req, e, null);
+            response = await exceptionHandler(req, e, null);
           } catch (es) {
-            e = new ExceptionHandlerException(e, es);
+            e = ExceptionHandlerException(e, es);
           }
         }
 
@@ -731,8 +731,8 @@ class Server {
       }
     } else {
       // Path segments raised FormatException: malformed request
-      response = await _defaultExceptionHandler(
-          req, new MalformedPathException(), null);
+      response =
+          await _defaultExceptionHandler(req, MalformedPathException(), null);
     }
 
     assert(response != null);
@@ -775,24 +775,24 @@ class Server {
       // Report these as "not found" to the requester.
 
       _logRequest
-          .severe("[${req.id}] not found: ${req.method} ${req.requestPath()}");
+          .severe('[${req.id}] not found: ${req.method} ${req.requestPath()}');
       assert(st == null);
 
       status = (thrownObject.found == NotFoundException.foundNothing)
           ? HttpStatus.methodNotAllowed
           : HttpStatus.notFound;
-      title = "Error: Not found";
-      message = "The page you were looking for was not found.";
+      title = 'Error: Not found';
+      message = 'The page you were looking for was not found.';
     } else if (thrownObject is MalformedPathException) {
       // Report as bad request
 
       _logRequest.finest(
-          "[${req.id}] bad request: ${req.method} ${req.requestPath()}");
+          '[${req.id}] bad request: ${req.method} ${req.requestPath()}');
       assert(st == null);
 
       status = HttpStatus.badRequest;
-      title = "Error: bad request";
-      message = "Your request was invalid.";
+      title = 'Error: bad request';
+      message = 'Your request was invalid.';
     } else {
       // Everything else is reported to the requester as an internal error
       // since the problem can only be fixed by the developer and we don't
@@ -801,23 +801,23 @@ class Server {
       if (thrownObject is ExceptionHandlerException) {
         final ex = thrownObject.exception;
         _logResponse.severe(
-            "[${req.id}] exception handler threw (${ex.runtimeType}): $ex");
+            '[${req.id}] exception handler threw (${ex.runtimeType}): $ex');
       } else {
         _logResponse.severe(
-            "[${req.id}] exception thrown (${thrownObject.runtimeType}): $thrownObject");
+            '[${req.id}] exception thrown (${thrownObject.runtimeType}): $thrownObject');
       }
       if (st != null) {
-        _logResponse.finest("[${req.id}] stack trace:\n$st");
+        _logResponse.finest('[${req.id}] stack trace:\n$st');
       }
 
       status = HttpStatus.internalServerError;
-      title = "Error";
-      message = "An error occured while processing the request.";
+      title = 'Error';
+      message = 'An error occured while processing the request.';
     }
 
-    final resp = new ResponseBuffered(ContentType.html)
+    final resp = ResponseBuffered(ContentType.html)
       ..status = status
-      ..write("""
+      ..write('''
 <!doctype html>
 <html>
   <head>
@@ -829,7 +829,7 @@ class Server {
     <p>$message</p>
   </body>
 </html>
-""");
+''');
     return resp;
   }
 
@@ -881,7 +881,7 @@ class Server {
 
     // Get the server to process the request
 
-    _logRequest.fine("[${req.id}] ${req.method} ${req.requestPath()}");
+    _logRequest.fine('[${req.id}] ${req.method} ${req.requestPath()}');
 
     await _processRequest(req);
 
@@ -920,7 +920,7 @@ class Server {
 
   String get basePath => _basePath;
 
-  String _basePath = "/";
+  String _basePath = '/';
 
   /// Sets the base path.
   ///
@@ -929,17 +929,17 @@ class Server {
 
   set basePath(String value) {
     if (value == null || value.isEmpty) {
-      _basePath = "/";
-    } else if (value.startsWith("/")) {
+      _basePath = '/';
+    } else if (value.startsWith('/')) {
       if (value == '/' || !value.endsWith('/')) {
         _basePath = value;
       } else {
-        throw new ArgumentError.value(value, "value",
+        throw ArgumentError.value(value, 'value',
             'basePath: cannot end with "/" (unless it is just "/")');
       }
     } else {
-      throw new ArgumentError.value(value, "value",
-          "basePath: does not start with a '/' and is not null/blank");
+      throw ArgumentError.value(value, 'value',
+          'basePath: does not start with a "/" and is not null/blank');
     }
   }
 
@@ -962,8 +962,8 @@ class Server {
 
       return '~/${noQueryParams.substring(_basePath.length)}';
     } else {
-      throw new ArgumentError.value(
-          externalPath, "externalPath", 'does not start with "$_basePath"');
+      throw ArgumentError.value(
+          externalPath, 'externalPath', 'does not start with "$_basePath"');
     }
   }
 
@@ -986,7 +986,7 @@ class Server {
   /// It only needs changing if it clashes with a cookie used by the
   /// application.
 
-  String sessionCookieName = "wSession";
+  String sessionCookieName = 'wSession';
 
   /// Force the use of secure cookies for the session cookie.
   ///
@@ -1015,7 +1015,7 @@ class Server {
   /// This is used for both URL rewriting (i.e. as the name of a query parameter
   /// as well as a hidden form parameter.
 
-  String sessionParamName = "wSession";
+  String sessionParamName = 'wSession';
 
   /// All active sessions
   ///

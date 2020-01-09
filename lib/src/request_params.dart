@@ -66,13 +66,13 @@ class RequestParams {
   void _populateFromQueryString(String queryStr, {Encoding encoding = utf8}) {
     assert(!queryStr.contains('?'));
 
-    for (var pair in queryStr.split("&")) {
+    for (var pair in queryStr.split('&')) {
       if (pair.isNotEmpty) {
-        final index = pair.indexOf("=");
+        final index = pair.indexOf('=');
         if (index == -1) {
           // no "=": use whole string as key and the value is empty string
           final key = Uri.decodeQueryComponent(pair, encoding: encoding);
-          _add(key, ""); // no "=" found, treat value as empty string
+          _add(key, ''); // no "=" found, treat value as empty string
         } else if (index != 0) {
           final key = pair.substring(0, index);
           final value = pair.substring(index + 1);
@@ -80,7 +80,7 @@ class RequestParams {
               Uri.decodeQueryComponent(value, encoding: encoding));
         } else {
           // Has "=", but is first character: key is empty string
-          _add("",
+          _add('',
               Uri.decodeQueryComponent(pair.substring(1), encoding: encoding));
         }
       }
@@ -182,12 +182,12 @@ class RequestParams {
   String operator [](String key) {
     final values = _data[key];
     if (values == null) {
-      return ""; // no value for key
+      return ''; // no value for key
     } else if (values.length == 1) {
       return _sanitize(values[0] ?? ''); // returns sanitized single value
     } else {
       assert(values.length == 1, 'multi-valued: do not use [] with "$key"');
-      return ""; // error value
+      return ''; // error value
     }
   }
 
@@ -214,44 +214,44 @@ class RequestParams {
     } else {
       // Return list of trimmed values
       final x = values.map(_sanitize);
-      return new List<String>.from(x);
+      return List<String>.from(x);
     }
   }
 
   //================================================================
   // Sanitize section
 
-  static final _whitespacesRegex = new RegExp(r"\s+");
+  static final _whitespacesRegex = RegExp(r'\s+');
 
   static String _sanitize(String str) {
     assert(str != null);
 
     final s = str.trim();
-    return s.replaceAll(_whitespacesRegex, " ");
+    return s.replaceAll(_whitespacesRegex, ' ');
   }
 
   //================================================================
 
   @override
   String toString() {
-    final buf = new StringBuffer();
+    final buf = StringBuffer();
 
     for (var key in _data.keys) {
       if (buf.isNotEmpty) {
-        buf.write(", ");
+        buf.write(', ');
       }
-      buf.write("$key=[");
+      buf.write('$key=[');
 
       var first = true;
       for (var value in _data[key]) {
         if (first) {
           first = false;
         } else {
-          buf.write(", ");
+          buf.write(', ');
         }
         buf.write('"$value"');
       }
-      buf.write("]");
+      buf.write(']');
     }
 
     return buf.toString();
