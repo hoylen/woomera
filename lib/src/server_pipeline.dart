@@ -21,6 +21,83 @@ part of woomera;
 /// stops with the first handler that doesn't return null.
 
 class ServerPipeline {
+  //================================================================
+  // Constructors
+
+  //----------------------------------------------------------------
+  /// Pipeline constructor.
+  ///
+  /// Creates a new pipeline that doesn't contain any rules. This method does
+  /// not populate rules from annotations. Use [ServerPipeline.fromAnnotations]
+  /// instead.
+  ///
+  /// This method might be deprecated in a future release.
+
+  ServerPipeline() : name = null;
+
+  //----------------------------------------------------------------
+  /// Creates pipeline and populates it with rules from annotations.
+  ///
+  /// Create a pipeline and automatically populates it with rules based from
+  /// [Handles] annotations that are found on request handler functions.
+  /// The _Handles_ annotations must have the same [pipelineName] for it to
+  /// be used.
+  ///
+  /// **Important:** provide the correct values in _libraries_, otherwise the
+  /// annotations might not be found.
+  ///
+  /// When scanning the program for annotations, it only looks in libraries
+  /// explicitly listed in [libraries]. Unless [scanAllFileLibraries] is true
+  /// (which is the default), in which case all libraries with a "file" scheme
+  /// are scanned, even if they don't appear in the list of _libraries_.
+  ///
+  /// Every part of a Dart problem belongs to a library which is identified by
+  /// a URI. Libraries with a URI scheme of "dart" are never scanned (even
+  /// if they are listed in _libraries_). For example, "dart:io" is a library
+  /// that is never scanned. Libraries with a URI scheme of "package" are
+  /// also common, and the libraries that you want scanned must be listed.
+  /// If you find an annotated request handler is not getting invoked, check
+  /// if its library has been included in the list.
+  ///
+  /// Libraries must be listed for them to be scanned. Firstly, because it is
+  /// inefficient to scan all the libraries of the program: third party packages
+  /// won't have any _Handles_ annotations. Secondly, for security, since you
+  /// don't want a third-party package from adding request handlers that you
+  /// don't know about.
+
+  ServerPipeline.fromAnnotations(
+      String pipelineName, Iterable<String> libraries,
+      {bool scanAllFileLibraries = true})
+      : name = pipelineName ?? defaultName {
+    for (final arh in _AnnotatedRequestHandler.list(name, libraries ?? [],
+        scanAllFileLibraries: scanAllFileLibraries)) {
+      _register(arh.httpMethod, arh.pattern, arh.handler,
+          manualRegistration: false);
+    }
+  }
+
+  //================================================================
+  // Constants
+
+  /// Default pipeline name.
+  ///
+  /// This value is the default name used in [Handles] objects, where no
+  /// explicit name is provided. And it is matched by the default pipeline
+  /// that is created by [Server] when no explicit pipelines is
+  /// requested.
+
+  static const defaultName = '';
+
+  //================================================================
+  // Members
+
+  /// Name of the pipeline.
+  ///
+  /// This is null if the pipeline was not initialized with a name. That is,
+  /// if it was created without using automatic registration for its rules.
+
+  final String name;
+
   /// Pipeline level exception/error handler.
   ///
   /// Exception/error handler for the pipeline. If not set, exceptions/errors
@@ -28,48 +105,42 @@ class ServerPipeline {
 
   ExceptionHandler exceptionHandler;
 
+  // The rules that have been registered with the pipeline
+
   final Map<String, List<ServerRule>> _rulesByMethod = {};
 
   //================================================================
+  // Methods
 
+  //----------------------------------------------------------------
   /// Generic registration of a request handler for any HTTP method.
   ///
-  /// Register a request [handler] when a [method] request asks for [path].
+  /// Register a request [handler] to match a HTTP [httpMethod] and [pattern].
   ///
   /// Convenience methods for common methods exist: [get], [post], [put],
   /// [patch], [delete]. They simply invoke this method with corresponding
   /// values for the HTTP method.
+  ///
+  /// Throws an [ArgumentError] if the values are invalid (in particular, if
+  /// the pattern is not a valid pattern).
 
-  void register(String method, String path, RequestHandler handler) {
-    _logServer.config('register: $method $path');
-
-    if (method == null) {
+  void register(String httpMethod, String pattern, RequestHandler handler) {
+    if (httpMethod == null) {
       throw ArgumentError.notNull('method');
     }
-    if (method.isEmpty) {
-      throw ArgumentError.value(method, 'method', 'Empty string');
+    if (httpMethod.isEmpty) {
+      throw ArgumentError.value(httpMethod, 'method', 'Empty string');
     }
-    if (path == null) {
-      throw ArgumentError.notNull('path');
-    }
-    if (!path.startsWith('~/')) {
-      throw ArgumentError.value(path, 'path', 'does not start with "~/"');
+    if (pattern == null) {
+      throw ArgumentError.notNull('pattern');
     }
     if (handler == null) {
       throw ArgumentError.notNull('handler');
     }
 
-    // Get the list of rules for the method
+    // Note: the Pattern constructor below can also throw an ArgumentError
 
-    var methodRules = _rulesByMethod[method];
-    if (methodRules == null) {
-      methodRules = []; // new List<ServerRule>();
-      _rulesByMethod[method] = methodRules;
-    }
-
-    // Append a new pattern to the list of rules
-
-    methodRules.add(ServerRule(path, handler));
+    _register(httpMethod, Pattern(pattern), handler, manualRegistration: true);
   }
 
   //----------------------------------------------------------------
@@ -77,8 +148,8 @@ class ServerPipeline {
   ///
   /// Shorthand for calling [register] with the method set to "GET".
   ///
-  void get(String path, RequestHandler handler) {
-    register('GET', path, handler);
+  void get(String pattern, RequestHandler handler) {
+    register('GET', pattern, handler);
   }
 
   //----------------------------------------------------------------
@@ -86,8 +157,8 @@ class ServerPipeline {
   ///
   /// Shorthand for calling [register] with the method set to "POST".
   ///
-  void post(String path, RequestHandler handler) {
-    register('POST', path, handler);
+  void post(String pattern, RequestHandler handler) {
+    register('POST', pattern, handler);
   }
 
   //----------------------------------------------------------------
@@ -95,8 +166,8 @@ class ServerPipeline {
   ///
   /// Shorthand for calling [register] with the method set to "PUT".
   ///
-  void put(String path, RequestHandler handler) {
-    register('PUT', path, handler);
+  void put(String pattern, RequestHandler handler) {
+    register('PUT', pattern, handler);
   }
 
   //----------------------------------------------------------------
@@ -104,8 +175,8 @@ class ServerPipeline {
   ///
   /// Shorthand for calling [register] with the method set to "PATCH".
   ///
-  void patch(String path, RequestHandler handler) {
-    register('PATCH', path, handler);
+  void patch(String pattern, RequestHandler handler) {
+    register('PATCH', pattern, handler);
   }
 
   //----------------------------------------------------------------
@@ -113,8 +184,8 @@ class ServerPipeline {
   ///
   /// Shorthand for calling [register] with the method set to "DELETE".
   ///
-  void delete(String path, RequestHandler handler) {
-    register('DELETE', path, handler);
+  void delete(String pattern, RequestHandler handler) {
+    register('DELETE', pattern, handler);
   }
 
   //----------------------------------------------------------------
@@ -122,8 +193,45 @@ class ServerPipeline {
   ///
   /// Shorthand for calling [register] with the method set to "HEAD".
   ///
-  void head(String path, RequestHandler handler) {
-    register('HEAD', path, handler);
+  void head(String pattern, RequestHandler handler) {
+    register('HEAD', pattern, handler);
+  }
+
+  //----------------------------------------------------------------
+  /// Internal registration method for adding a rule.
+  ///
+  /// Used by both [register] and [ServerPipeline.fromAnnotations].
+
+  void _register(String method, Pattern pattern, RequestHandler handler,
+      {bool manualRegistration}) {
+    _logServer.config('register: $method $pattern');
+
+    // Get the list of rules for the HTTP method
+
+    var methodRules = _rulesByMethod[method];
+    if (methodRules == null) {
+      methodRules = []; // new List<ServerRule>();
+      _rulesByMethod[method] = methodRules;
+    }
+
+    // Check another rule does not already exist with the same path
+
+    final newRule = ServerRule(pattern.toString(), handler);
+    final existingRule = methodRules
+        .firstWhere((sr) => sr.pattern == newRule.pattern, orElse: () => null);
+
+    // TODO: fix the above check for an existing rule with the "same" pattern
+    // The above check treats variable names as significant, but for the
+    // purposes of detecting "duplicate rules", rules which only differ by their
+    // variable names should be considered a duplicate. What about wildcards?
+
+    if (existingRule != null) {
+      throw AlreadyRegistered(method, pattern, handler, existingRule.handler);
+    }
+
+    // Record the rule
+
+    methodRules.add(newRule);
   }
 
   //================================================================

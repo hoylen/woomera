@@ -1,5 +1,9 @@
 # Changelog
 
+## 4.4.0
+
+- Added the use of annotations to create rules on pipelines.
+
 ## 4.3.1
 
 - Code clean up to satisfy pana 0.13.2 health checks.

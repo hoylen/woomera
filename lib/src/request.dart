@@ -181,15 +181,16 @@ class Request {
   // Internal method used to populate the [postParams] value.
 
   Future _postParamsInit(int maxPostSize) async {
-    // Set post parameters (if any)
+    // Typically, this is for POST requests, but it actually handles any HTTP
+    // request where the MIME type is "application/x-www-form-urlencoded".
+    // For example, it could be a PUT request.
 
-    if (_coreRequest.method == 'POST' &&
-        _coreRequest.headers.contentType != null &&
+    if (_coreRequest.headers.contentType != null &&
         _coreRequest.headers.contentType.mimeType ==
             'application/x-www-form-urlencoded') {
       // Read in the contents of the request
 
-      // Convert the contents into a string
+      // Convert the request body into a string
       // TODO: check specification whether this can use AsciiDecoder instead of UTF-8
 
       final str = await _coreRequest.bodyStr(maxPostSize);
@@ -201,7 +202,8 @@ class Request {
       // Logging
 
       if (postParams.isNotEmpty) {
-        _logRequestParam.finer(() => '[$id] post: $postParams');
+        _logRequestParam
+            .finer(() => '[$id] ${_coreRequest.method}: $postParams');
       }
     }
   }
@@ -750,60 +752,74 @@ class Request {
   //================================================================
   // Response content helper methods
 
-  /// Convert an internal URL to a URL that can be used by a browser.
+  /// Convert an internal path to an external path.
   ///
-  /// An internal URL is one that starts with "~/". This method converts that
-  /// to a URL that can be presented (e.g. written in a HTML HREF attribute).
+  /// An internal path is one that starts with "~/". This method converts that
+  /// to a path that can be used outside of the application (e.g. written in a
+  /// HTML HREF attribute).
   /// If there is a session and session cookies are not being used, URL
   /// rewriting is performed (i.e. the session identifier is added as a query
   /// parameter).
   ///
-  /// For sessions to be preserved when cookies are not being used, *all*
-  /// URLs referencing the application's pages must be processed by this method.
+  /// For sessions to be preserved when cookies are not being used, *all* paths
+  /// referencing the application's pages must be processed by this method.
   /// If a link is not processed, then the URL rewriting does not occur and
   /// the session will not be preserved.
   ///
-  /// The concept of an internal URL serves two purposes. The main purpose is
-  /// to try to force all URLs through this method; making it more difficult to
+  /// The concept of an internal path serves two purposes. The main purpose is
+  /// to try to force all paths through this method; making it more difficult to
   /// forget to rewrite the URL. The second purpose is to make it easy to change
   /// the path to the entire application by changing the [Server.basePath] of
   /// the server.
   ///
-  /// A good way to check if all URLs are internal URLs that have been properly
+  /// A good way to check if all paths are internal URLs that have been properly
   /// processed is to change the [Server.basePath] and test if the application
   /// still functions properly. If there are broken links, then those links
-  /// were not defined as internal URLs processed through this method.
+  /// were not defined as internal paths processed through this method.
   ///
   /// The [includeSession] parameter indicates if the session is added as
   /// a query parameter. The default value of "null" causes it to be only
   /// added if there is a session and cookies are not being used. If it is
   /// false, it is never added. There is no good reason to ever use it with true.
   ///
-  /// The [includeSession[ should be left as null in all situations, except
+  /// The [includeSession] should be left as null in all situations, except
   /// when used for the "method" attribute of a HTML form element. In that
   /// situation, set it to false and use [Request.sessionHiddenInputElement]
   /// to preserve the session. See [RequestImpl,sessionHiddenInputElement] for
   /// details.
   ///
+  /// If the [internalPath] has any query parameters, they will be included in
+  /// the result. So it is not just a pure path, but a path with optional
+  /// query parameters.
+  ///
   /// Note: this method is on the request object, even though it ultimately
   /// affects the HTTP response. This is because the request object carries the
   /// context for the request and the response. The session is a part of that
   /// context.
+  ///
+  /// See also [ura].
 
-  String rewriteUrl(String iUrl, {bool includeSession}) {
-    if (!iUrl.startsWith('~/')) {
+  String rewriteUrl(String internalPath, {bool includeSession}) {
+    if (!internalPath.startsWith('~/')) {
       throw ArgumentError.value(
-          iUrl, 'rUrl', 'rewriteUrl: does not start with "~/"');
+          internalPath, 'internalPath', 'rewriteUrl: does not start with "~/"');
     }
 
     final buf = StringBuffer(server._basePath);
+
+    // Start with the base path
+
     if (!server._basePath.endsWith('/')) {
       buf.write('/');
     }
 
-    if (iUrl != '~/') {
-      buf.write(iUrl.substring(2)); // append rUrl without leading '~/'
+    // Add the path segments
+
+    if (internalPath != '~/') {
+      buf.write(internalPath.substring(2)); // without leading '~/'
     }
+
+    // Add state preserving query parameter (if needed)
 
     if (session == null ||
         (_sessionUsingCookies && includeSession != true) ||
@@ -823,7 +839,7 @@ class Request {
   }
 
   //----------------------------------------------------------------
-  /// URL Rewritten for an Attribute.
+  /// Rewrite an internal path and encode for an attribute.
   ///
   /// It is very common to rewrite an internal URL and then put its value
   /// into an attribute. For example,
@@ -845,6 +861,6 @@ class Request {
   /// [Request.sessionHiddenInputElement] method inside the form element.
   /// See [Request.sessionHiddenInputElement] for more details.
 
-  String ura(String iUrl, {bool includeSession}) =>
-      HEsc.attr(rewriteUrl(iUrl, includeSession: includeSession));
+  String ura(String internalPath, {bool includeSession}) =>
+      HEsc.attr(rewriteUrl(internalPath, includeSession: includeSession));
 }

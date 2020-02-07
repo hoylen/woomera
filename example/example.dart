@@ -82,6 +82,7 @@ class DemoException2 implements Exception {
 //----------------------------------------------------------------
 /// Home page
 
+@Handles.get('~/')
 Future<Response> homePage(Request req) async {
   assert(req.method == 'GET');
 
@@ -159,6 +160,7 @@ Future<Response> homePage(Request req) async {
 //
 // This handles the GET request for the form.
 
+@Handles.get(pathFormGet)
 Future<Response> dateCalcGetHandler(Request req) async {
   assert(req.method == 'GET');
 
@@ -198,10 +200,11 @@ Future<Response> dateCalcGetHandler(Request req) async {
 }
 
 //----------------------------------------------------------------
-/// Date calcualtor results page.
+/// Date calculator results page.
 ///
 /// This handles the POST request when the form is submitted.
 
+@Handles.post(pathFormPost)
 Future<Response> dateCalcPostHandler(Request req) async {
   assert(req.method == 'POST');
 
@@ -295,7 +298,7 @@ Future<Response> dateCalcPostHandler(Request req) async {
   } on FormatException {
     // Produce an error response
 
-    return  ResponseBuffered(ContentType.html)
+    return ResponseBuffered(ContentType.html)
       ..status = HttpStatus.badRequest
       ..write('''
  <!doctype html>
@@ -328,6 +331,7 @@ String _formatDate(DateTime dt) => dt.toIso8601String().substring(0, 10);
 /// used to create a [Response] is [ResponseRedirect] when the response is
 /// a HTTP redirection.
 
+@Handles.get('~/stream')
 Future<Response> streamTest(Request req) async {
   // Get parameters
 
@@ -363,7 +367,7 @@ Stream<List<int>> _streamSource(Request req, int iterations, int ms) async* {
 
   for (var x = 1; x <= iterations; x++) {
     final completer = Completer<int>();
-     Timer(delay, () => completer.complete(0));
+    Timer(delay, () => completer.complete(0));
     await completer.future;
 
     yield 'Item $x\n'.codeUnits;
@@ -373,13 +377,17 @@ Stream<List<int>> _streamSource(Request req, int iterations, int ms) async* {
 
 //----------------------------------------------------------------
 /// Handler that returns JSON in the response.
-///
+
+@Handles.get('~/json')
 Future<Response> handleJson(Request req) async {
   final data = {'name': 'John Citizen', 'number': 6};
 
   final resp = ResponseBuffered(ContentType.json)..write(json.encode(data));
   return resp;
 }
+
+@Handles.get('~/example/:foo/:bar/baz')
+Future<Response> myDebugHandler(Request req) async => debugHandler(req);
 
 //================================================================
 // Exception handlers
@@ -549,7 +557,7 @@ Future simulatedRun(Server server) async {
 
     req = Request.simulatedPost(
         pathFormPost,
-         RequestParamsMutable()
+        RequestParamsMutable()
           ..add(_pParamTitle, 'Testing')
           ..add(_pParamFromDate, 'yesterday')
           ..add(_pParamToDate, 'tomorrow')); // dates that can't be parsed
@@ -566,7 +574,7 @@ Future simulatedRun(Server server) async {
 
     req = Request.simulatedPost(
         pathFormPost,
-         RequestParamsMutable()
+        RequestParamsMutable()
           ..add(_pParamTitle, '') // no title
           ..add(_pParamFromDate, '2019-12-31')
           ..add(_pParamToDate, '1970-01-01')); // to date before from date error
@@ -583,7 +591,7 @@ Future simulatedRun(Server server) async {
 
     req = Request.simulatedPost(
         pathFormPost,
-         RequestParamsMutable()
+        RequestParamsMutable()
           ..add(_pParamTitle, 'Testing') // title present
           ..add(_pParamFromDate, '2019-12-31')
           ..add(_pParamToDate, '1970-01-01')); // to date before from date error
@@ -610,7 +618,7 @@ Future simulatedRun(Server server) async {
     simLog.info('GET stream');
 
     final req = Request.simulatedGet('~/stream',
-        queryParams:  RequestParamsMutable()..add('milliseconds', '100'));
+        queryParams: RequestParamsMutable()..add('milliseconds', '100'));
     final resp = await server.simulate(req);
     assert(resp.status == HttpStatus.ok);
     assert(resp.contentType == ContentType.text);
@@ -659,8 +667,13 @@ Server _serverSetup() {
   // address (IPv4 or IPv6). If this is not done, by default it only listens
   // on the IPv4 loopback interface, which is good for deployment behind a
   // reverse Web proxy, but might be restrictive for testing.
+  //
+  // Since the Server constructor is not passed any pipeline names, by default
+  // it creates one pipeline with the default name and it automatically
+  // registers request handlers that have been annotated with Registration
+  // objects.
 
-  final webServer = Server()
+  final webServer = Server.fromAnnotations()
     ..bindAddress = InternetAddress.anyIPv6
     ..v6Only = false // false = listen to any IPv4 and any IPv6 address
     ..bindPort = port
@@ -669,23 +682,10 @@ Server _serverSetup() {
   log.info('Web server running on port $port');
 
   //--------
-  // Setup the first (and only) pipeline with handlers for the GET and POST
-  // requests, as well as an exception handler (to handle exceptions raised
-  // by those handlers). Servers initially have one pipeline, but more can be
-  // added if required.
-  //
-  // The first parameter to get/post is an internal URL, which is the path
-  // starting with "~/". Path parameters are denoted using components that
-  // start with a colon followed by the parameter name (e.g ":foo").s
+  // Setup the exception handler for the default pipeline.
 
-  webServer.pipelines.first
-    ..exceptionHandler = pipelineExceptionHandler
-    ..get('~/', homePage)
-    ..get(pathFormGet, dateCalcGetHandler)
-    ..post(pathFormPost, dateCalcPostHandler)
-    ..get('~/example/:foo/:bar/baz', debugHandler)
-    ..get('~/stream', streamTest)
-    ..get('~/json', handleJson);
+  webServer.pipeline(ServerPipeline.defaultName).exceptionHandler =
+      pipelineExceptionHandler;
 
   // The debugHandler is a handler that is provided by Woomera. It prints
   // out all the parameters it receives, and can be used for debugging.
@@ -717,6 +717,11 @@ void _loggingSetup() {
   Logger('woomera.request.param').level = commonLevel;
   Logger('woomera.response').level = commonLevel;
   Logger('woomera.session').level = commonLevel;
+
+  // To see the Registration annotations that have been found, set this to
+  // FINE. Set it to FINER for more details. Set it to FINEST to see what
+  // files and/or libraries were scanned for Registration annotations.
+  Logger('woomera.registration').level = commonLevel;
 }
 
 //----------------------------------------------------------------

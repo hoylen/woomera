@@ -547,7 +547,7 @@ Future<Response> handleThrow(Request req) async {
       return await oldStyleFuture(throwException: true);
 
     default:
-      throw  ArgumentError('Unknown name: $type');
+      throw ArgumentError('Unknown name: $type');
   }
 
   final resp = ResponseBuffered(ContentType.html)
@@ -593,7 +593,7 @@ Future<ResponseBuffered> oldStyleFuture({bool throwException: false}) {
       // This exception is thrown from a function that is not using the new
       // async/await syntax. This means it won't be caught by the try/catch
       // mechanism. The framework will catch these using zones.
-      throw StateError( DateTime.now().toString());
+      throw StateError(DateTime.now().toString());
     }
 
     final resp = ResponseBuffered(ContentType.text)
@@ -639,11 +639,11 @@ Stream<List<int>> _streamSource(Request req, int iterations, int secs) async* {
 
   yield 'Stream of $iterations items (delay: $secs seconds)\n'.codeUnits;
 
-  yield 'Started: ${ DateTime.now()}\n'.codeUnits;
+  yield 'Started: ${DateTime.now()}\n'.codeUnits;
 
   for (var x = 1; x <= iterations; x++) {
     final completer = Completer<int>();
-     Timer(delay, () => completer.complete(0));
+    Timer(delay, () => completer.complete(0));
     await completer.future;
 
     yield 'Item $x\n'.codeUnits;
@@ -805,7 +805,7 @@ they have been disabled, or if the login page is visited directly
 Future<Response> _handleLogin(Request req) async {
   const keepAlive = const Duration(minutes: 1);
 
-  req.session = LoginSession(webServer, keepAlive,  DateTime.now());
+  req.session = LoginSession(webServer, keepAlive, DateTime.now());
 
   final resp = ResponseBuffered(ContentType.html)
     ..cookieDelete(_testCookieName, req.server.basePath)
@@ -1078,6 +1078,12 @@ Server _serverSetup() {
     // Set up the rules for the second pipeline. A rule consists of the HTTP
     // request method (e.g. GET or POST), a pattern to match against the request
     // path and the handler method.
+
+    // This example was written before automatic annotations was available,
+    // So it explicitly registers the request handlers by invoking the get/post
+    // methods on the pipeline. A new program would probably use automatic
+    // registration by annotating the request handlers with a Registration
+    // object.
 
     ..get('~/', homePage)
     ..get('~/must/all/match', debugHandler)

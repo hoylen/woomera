@@ -8,6 +8,147 @@ part of woomera;
 abstract class WoomeraException implements Exception {}
 
 //================================================================
+// Exceptions relating to request handler registration
+
+//----------------------------------------------------------------
+/// Indicates the pattern on a Registration is invalid.
+
+class BadRegistrationPattern extends WoomeraException {
+  /// Constructor for a bad registration pattern
+
+  BadRegistrationPattern(MethodMirror mm, this.error) {
+    try {
+      location = mm.location;
+      // ignore: avoid_catching_errors
+    } on UnsupportedError {
+      // No location information to report
+    }
+
+    name = MirrorSystem.getName(mm.qualifiedName);
+    if (name.startsWith('.')) {
+      name = name.substring(1); // remove leading "."
+    }
+  }
+
+  /// Name of method
+  String name;
+
+  /// The location in the source of the Registration annotation.
+  SourceLocation location;
+
+  /// The error message indicating why the pattern was invalid.
+  final ArgumentError error;
+
+  @override
+  String toString() {
+    final optionalLocation = (location != null) ? '($location)' : '';
+    return 'Bad pattern in Registration: $name $optionalLocation: $error';
+  }
+}
+
+//----------------------------------------------------------------
+/// Indicates an automatic registration annotation was place on a bad function.
+///
+/// The type signature of the function or method was not the [RequestHandler]
+/// function type.
+
+class RegistrationNotRequestHandler extends WoomeraException {
+  /// Constructor
+  RegistrationNotRequestHandler(this.location, this.name, this.registration);
+
+  /// Library where the function was defined.
+  final SourceLocation location;
+
+  /// Name of the function
+  final String name;
+
+  /// The registration annotation
+  final Handles registration;
+
+  @override
+  String toString() =>
+      'function is not a RequestHandler: $location $name (registration: $registration)';
+}
+
+//----------------------------------------------------------------
+/// Package not found
+///
+/// One or more of the packages was not found.
+///
+/// The constructor of a [ServerPipeline] was asked to look for [Handles]
+/// annotations from a package that doesn't exist. This exception can also
+/// occur in the constructor of a [Server] (which creates an initial set of
+/// pipelines by invoking the _ServerPipeline_ constructor).
+
+class LibraryNotFound extends WoomeraException {
+  /// Constructor
+  LibraryNotFound(Iterable<String> missing)
+      : packages = List<String>.from(missing);
+
+  /// Packages which were not found
+  final List<String> packages;
+
+  @override
+  String toString() => 'packages not found: ${packages.join(', ')}';
+}
+
+//----------------------------------------------------------------
+/// Attempt to register a duplicate rule in a pipeline.
+///
+/// A rule already exists in the pipeline for the same HTTP method and path.
+///
+/// This is treated as an error, because it usually a sign of a coding error.
+///
+/// If there are duplicate rules, the first one will match the request and the
+/// subsequent ones will normally never get used. The only situation where
+/// duplicate rules are useful is if the earlier rule(s) deliberately returned
+/// null, so the rule matching process continues and tries to match the request
+/// to subsequent rules. That is, the application deliberately wants a single
+/// request to be processed by multiple request handlers. This rare situation
+/// can be implemented by putting subsequent rules into different pipelines.
+/// There is no restriction on duplicate rules if they appear in different
+/// pipelines. The restriction is only on duplicate rules in the same pipeline.
+
+class AlreadyRegistered extends WoomeraException {
+  /// Constructor
+  AlreadyRegistered(
+      this.method, this.pattern, this.newHandler, this.existingHandler);
+
+  /// HTTP method
+  final String method;
+
+  /// Path
+  final Pattern pattern;
+
+  /// The new request handler being registered.
+  final RequestHandler newHandler;
+
+  /// The request handler that has already been registered in the pipeline.
+  final RequestHandler existingHandler;
+
+  @override
+  String toString() {
+    try {
+      String n;
+      SourceLocation loc;
+
+      final r1 = reflect(existingHandler);
+      if (r1 is ClosureMirror) {
+        loc = r1.function.location;
+        n = MirrorSystem.getName(r1.function.qualifiedName);
+      }
+
+      return 'already registered: $method $pattern already handled by $n ($loc)';
+
+      // ignore: avoid_catching_errors
+    } on UnsupportedError {
+      // No location information to report
+      return 'already registered: $method $pattern';
+    }
+  }
+}
+
+//================================================================
 // Limit exceptions
 
 //----------------------------------------------------------------

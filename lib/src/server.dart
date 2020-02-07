@@ -71,30 +71,59 @@ class Server {
   //----------------------------------------------------------------
   /// Constructor
   ///
-  /// Creates a new [Server].
+  /// Creates a new [Server] with pipelines that do not automatically have rules
+  /// created from annotations. Annotations are much more easier to use, so
+  /// try to use [Server.fromAnnotations] instead of this constructor.
+  /// This constructor might be deprecated in a future release.
   ///
   /// After creation, a typical application should:
   ///
   /// - change the [bindPort];
   /// - optionally change the [bindAddress] (when not deployed with a reverse proxy);
-  /// - configure the first pipeline with handlers;
-  /// - optional create and configure additional pipelines;
+  /// - optionally create and configure additional pipelines;
+  /// - optionally manually register request handlers on the pipelines;
   /// - define a server-level [exceptionHandler];
   ///
   /// and then invoke the [run] method to start the Web server.
-  ///
-  /// By default this constructor creates the first pipeline in [pipelines].
-  /// Since all Web servers would need at least one pipeline; and simple
-  /// applications usually don't need more than one pipeline.  But
-  /// [numberOfPipelines] can be set to zero or a number greater than one, to
-  /// create that number of pipelines.
-  ///
-  /// There is nothing special about these initial pipelines. The application
-  /// can also create them and add them to the [pipelines] list.
 
   Server({int numberOfPipelines = 1}) {
     for (var x = 0; x < numberOfPipelines; x++) {
       pipelines.add(ServerPipeline());
+    }
+  }
+
+  //----------------------------------------------------------------
+  /// Creates a Server and populates pipelines with rules from annotations.
+  ///
+  /// By default (if no _pipelines_ are specified), it creates a server with
+  /// a single default pipeline. And that pipeline is automatically populated
+  /// with rules based from [Handles] annotations that are found on request
+  /// handler functions.
+  ///
+  /// If a list of pipeline names is provided in [pipelines], those pipelines
+  /// are created and automatically populated with rules. Those [Handles]
+  /// annotations must specify the name of the pipeline they are for.
+  /// Note: when a list of pipeline names is provided, the default pipeline is
+  /// not created unless the [ServerPipeline.defaultName] explicitly appears as
+  /// one of the names in the list.
+  ///
+  /// **Important:** the list of [libraries] must be correct, otherwise it
+  /// may not find all the annotations. Please see the documentation on
+  /// [ServerPipeline.fromAnnotations] for details about the _libraries_ and
+  /// _scanAllFileLibraries_ parameters.
+  ///
+  // Throws a [LibraryNotFound] if one or more of the explicitly identified
+  // libraries does not exist.
+
+  Server.fromAnnotations(
+      {Iterable<String> pipelines,
+      Iterable<String> libraries,
+      bool scanAllFileLibraries = true}) {
+    // Create all the requested pipelines
+
+    for (final name in pipelines ?? [ServerPipeline.defaultName]) {
+      this.pipelines.add(ServerPipeline.fromAnnotations(name, libraries,
+          scanAllFileLibraries: scanAllFileLibraries));
     }
   }
 
@@ -192,7 +221,18 @@ class Server {
 
   int bindPort;
 
-  /// The handler pipeline.
+  /// The handler pipelines.
+  ///
+  /// To retrieve a pipeline by its name, use the [pipeline] method.
+  /// Avoid using the list of pipelines directly.
+  ///
+  /// This list is directly accessible because earlier versions of the
+  /// framework allowed pipelines to be directly manipulated (e.g. creating
+  /// new pipelines and appending them to the list). Now that the framework
+  /// supports automatic registration via annotations, the need to directly
+  /// manipulate a server's pipeline has greatly reduced. Therefore, directly
+  /// manipulating the list of pipelines is discouraged; and a future release
+  /// may make this list private.
   ///
   /// This is a [List] of [ServerPipeline] that the request is processed through.
   ///
@@ -308,6 +348,15 @@ class Server {
 
   //================================================================
   // Methods
+
+  //----------------------------------------------------------------
+  /// Retrieve a pipeline from the server by its name.
+  ///
+  /// Throws an exception if a pipeline with the name does not exist in the
+  /// server.
+
+  ServerPipeline pipeline(String name) =>
+      pipelines.firstWhere((p) => p.name == name);
 
   //----------------------------------------------------------------
   /// Starts the Web server.
@@ -588,7 +637,7 @@ class Server {
         methodFound = true;
 
         for (var rule in rules) {
-          final params = rule._matches(pathSegments);
+          final params = rule.pattern.match(pathSegments);
 
           if (params != null) {
             // A matching rule was found
