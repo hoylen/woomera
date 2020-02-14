@@ -262,9 +262,9 @@ an _internal path_ to an _external path_.
 This code:
 
 ```dart
-  final gDayUrl = req.rewriteUrl("~/G'day");
+final gDayUrl = req.rewriteUrl("~/G'day");
 
-  resp.write('<li><a href="${HEsc.attr(gDayUrl)}">Good day</a></li>');  
+resp.write('<li><a href="${HEsc.attr(gDayUrl)}">Good day</a></li>');
 ```
 
 Results in the HTML response containing:
@@ -323,10 +323,10 @@ It is similar to a request handler, because it is a method that
 returns a _Response_ object. But it is different, because it is also
 passed the exception and sometimes a stack trace.
 
-Here is an example exception handler:
-
+Here is an example of a server exception handler:
 
 ```dart
+@Handles.exceptions()
 Future<Response> myExceptionHandler(
     Request req, Object ex, StackTrace st) async {
   int status;
@@ -363,13 +363,6 @@ Future<Response> myExceptionHandler(
 }
 ```
 
-Set the exception handler for the _Server_ like this (before _run_ is
-invoked on the server):
-
-```dart
-ws.exceptionHandler = myExceptionHandler;
-```
-
 This exception handler customizes the error page when the
 `NotFoundException` is encountered: which is raised by the framework
 when none of the rules matched the request. Notice that it reports a
@@ -382,16 +375,16 @@ the method exist but their pattern did not match the requested path
 
 - **Patterns** are used for specifying which HTTP requests a request
   handler will process. When represented as a string, they look like
-  "~/foo/bar/baz" or "~/account/:varname/profile".
+  `~/foo/bar/baz` or `~/account/:varname/profile`.
   
 - Paths are one component of a URL. There are two types of paths:
 
   - **External paths** which are values that can be used externally.
-    For example, "/foo/bar/baz" and "/account/24601/profile".
+    For example, `/foo/bar/baz` and `/account/24601/profile`.
 	
   - **Internal paths** are used internally in the code. They look
     similar to patterns, but every segment is a literal value.
-	For example, "~/foo/bar/baz" and "~/account/24601/profile".
+	For example, `~/foo/bar/baz` and `~/account/24601/profile`.
 
 These different items are used in different places:
 
@@ -733,7 +726,13 @@ exception, and are expected to generate a _Response_. The exception
 handler should create a response that is as an error page for the
 client.
 
+##### 5.2.1 Server exception handler
+
+There can be at most one _server exception handler_. Servers should
+provide one, because it is used to indicate a page is not found.
+
 ```dart
+@Handles.exceptions()
 Future<Response> myExceptionHandler(Request req
     Object exception, StackTrace st) async {
   var resp = ResponseBuffered(ContentType.html);
@@ -754,8 +753,23 @@ Future<Response> myExceptionHandler(Request req
 }
 ```
 
-Exception handlers can be associated with each pipelines and with the
-server by setting the _exceptionHandler_ members.
+##### 5.2.2 Pipeline exception handler
+
+Each pipeline can also have its own exception handler.
+
+``` dart
+@Handles.pipelineExceptions()
+Future<Response> myExceptionHandler(Request req
+    Object exception, StackTrace st) async {
+	// for the default pipeline
+}
+
+@Handles.pipelineExceptions(pipeline: 'myCustomPipeline')
+Future<Response> myExceptionHandler(Request req
+    Object exception, StackTrace st) async {
+	// for the pipeline named "myCustomPipeline"
+}
+```
 
 Different exception handlers for different pipelines can be used to
 handle exceptions differently. For example, one pipeline could be used
@@ -766,12 +780,34 @@ HTML error page.
 #### 5.3 Low-level exception handling
 
 In addition to the high-level exception handlers, a low-level
-exception handler that can be associated with the server by setting
-the _exceptionHandlerRaw_ member.
+raw exception handler can be associated with the server.
 
 It is called a "low-level" or "raw" exception handler, because it
 needs to process a Dart HttpRequest and generate a HTTP response
 without the aid of the Woomera classes.
+
+``` dart
+@Handles.rawExceptions()
+Future<void> myLowLevelExceptionHandler(
+    HttpRequest rawRequest, String requestId, Object ex, StackTrace st) async {
+
+  final resp = rawRequest.response;
+
+  resp
+    ..statusCode = HttpStatus.internalServerError
+    ..headers.contentType = ContentType.html
+    ..write('''<!DOCTYPE html>
+<html>
+...
+</html>
+''');
+
+  await resp.close();
+}
+```
+
+It is triggered in rare situations where a high-level exception
+handler cannot be used.
 
 #### 5.4 Exception handling process
 
@@ -790,21 +826,19 @@ application has provided.
   is not found) are also handled by the server's high-level exception
   handler.
 
-- If no high-level exception handler was attached to the server, the
-  low-level exception handler on the server is used.
-
-- If there is no custom low-level exception handler, a default
-  exception handler is used.
-
+- If no custom high-level exception handler was attached to the server,
+  a built-in default high-level exception handler is used.
+  
 If one of those exception handlers throws an exception, the exception
 it was processing is wrapped in an _ExceptionHandlerException_, which
 is then passed to the next handler in the process.
 
-It is recommended to provide at least one custom exception handler,
-since the default exception handler just produces a plain text
-response that purely functional and not pretty. It is common to just
-provide a high-level server exception handler; and only provide the
-others if there is a special need for them.
+It is recommended to provide at least the high-level server exception
+handler, since the default exception handler just produces a plain
+text response that purely functional and not pretty. It also handles
+the page not found errors.
+
+
 
 ### 6. Responses
 

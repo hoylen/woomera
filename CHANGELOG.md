@@ -1,5 +1,9 @@
 # Changelog
 
+## 4.5.0
+
+- Added the use of annotations to create exception handlers.
+
 ## 4.4.0
 
 - Added the use of annotations to create rules on pipelines.

@@ -112,18 +112,89 @@ class Server {
   /// [ServerPipeline.fromAnnotations] for details about the _libraries_ and
   /// _scanAllFileLibraries_ parameters.
   ///
-  // Throws a [LibraryNotFound] if one or more of the explicitly identified
-  // libraries does not exist.
+  /// Throws a [LibraryNotFound] if one or more of the explicitly identified
+  /// libraries does not exist.
+  ///
+  /// Throws an [ArgumentError] if there are _Handles_ annotations that have
+  /// not been used (i.e. their pipeline names don't appear in _pipelines_)
+  /// and [ignoreUnusedAnnotations] is false (which is the default). This
+  /// usually indicates a error in the code, since the function the annotation
+  /// is on will probably never get invoked. Remove the offending annotation(s),
+  /// or set _ignoreUnusedAnnotations_ to true.
 
   Server.fromAnnotations(
       {Iterable<String> pipelines,
       Iterable<String> libraries,
-      bool scanAllFileLibraries = true}) {
+      bool scanAllFileLibraries = true,
+      bool ignoreUnusedAnnotations = false}) {
+    // Make sure annotations from the desired libraries have been scanned
+    // This step is important, since the pipelines could be an empty list and
+    // the libraries do need to be scanned before attempting to retrieve a
+    // server exception handler.
+
+    try {
+      ServerPipeline._annotations
+          .scan(libraries ?? [], scanAllFileLibraries: scanAllFileLibraries);
+    } on LibraryNotFound catch (e) {
+      // Throw this exception from here, to avoid confusing programmers with a
+      // stack trace that includes internal details that are irrelevant to
+      // debugging their code.
+      //
+      // This exception means one or more of the values in [libraries] does
+      // not exist in the program. Solution: remove or fix the offending value.
+      //
+      // Don't know what library values to use? Set the logging level for
+      // "woomera.handles" to FINEST to log the URIs for the libraries that
+      // are scanned or skipped.
+
+      // ignore: use_rethrow_when_possible
+      throw e;
+    }
+
     // Create all the requested pipelines
 
     for (final name in pipelines ?? [ServerPipeline.defaultName]) {
-      this.pipelines.add(ServerPipeline.fromAnnotations(name, libraries,
-          scanAllFileLibraries: scanAllFileLibraries));
+      // Note: this won't need to scan the libraries, because they have already
+      // been scanned above.
+      final newPipeline = ServerPipeline.fromAnnotations(name, libraries,
+          scanAllFileLibraries: scanAllFileLibraries);
+
+      this.pipelines.add(newPipeline);
+    }
+
+    // Set the server exception handler from annotations
+
+    final seh = ServerPipeline._annotations.findServerExceptionHandler();
+    if (seh != null) {
+      exceptionHandler = seh.handler;
+    }
+
+    // Set the server raw exception handler from annotations
+
+    final sreh = ServerPipeline._annotations.findServerRawExceptionHandler();
+    if (sreh != null) {
+      exceptionHandlerRaw = sreh.handler;
+    }
+
+    // Check if all the _Handles_ annotations have been used.
+    //
+    // If they haven't, throw an exception. That is less confusing than having
+    // the program run, but some things mysteriously not working as expected.
+
+    if (!ignoreUnusedAnnotations) {
+      final notUsed = ServerPipeline._annotations.checkForUnusedAnnotations();
+      if (notUsed.isNotEmpty) {
+        // Solution: fix the program by removing the unused annotations.
+        //
+        // If the program deliberately has unused annotations, invoke this
+        // constructor with [ignoreUnusedAnnotations]=true to skip this check.
+
+        final noun = notUsed.length == 1 ? 'annotation' : 'annotations';
+
+        throw ArgumentError('Handles $noun not used by the pipelines:\n'
+            '  ${notUsed.join('\n  ')}\n'
+            '  [${notUsed.length} unused $noun]');
+      }
     }
   }
 
@@ -266,6 +337,9 @@ class Server {
   ///
   /// Ideally, this exception handler should not thrown an exception.  But if it
   /// did, the low-level exception handler will handle it.
+  ///
+  /// This server exception handler can also be set using a
+  /// `@Handles.exceptions()` annotation.
 
   ExceptionHandler exceptionHandler;
 
@@ -294,6 +368,9 @@ class Server {
   /// to handle exceptions raised by _requestCreator_ the high-level one is
   /// probably better; since the application is using this package to avoid
   /// dealing with the low-level Dart HttpRequest.
+  ///
+  /// This server raw exception handler can also be set using a
+  /// `@Handles.rawExceptions()` annotation.
 
   ExceptionHandlerRaw exceptionHandlerRaw;
 

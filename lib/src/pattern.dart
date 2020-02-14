@@ -262,9 +262,10 @@ class Pattern {
   /// The pattern "~/foo/bar?/baz" has an optional segment. It will match the
   /// paths "/foo/bar/baz" or "/foo/baz".
   ///
-  /// The pattern "~/foo/*" has a wildcard segment. If the path is "/foo/bar",
-  /// "bar" is the value of the key "*". If the path is "/foo/abc/def", the
-  /// value of the key "*" is "abc/def".
+  /// The pattern `~/foo/*` has a wildcard segment. If the path is "/foo/bar",
+  /// "bar" is the value of the key `*`. If the path is "/foo/abc/def", the
+  /// value of the key `*` is "abc/def". If the path is "/foo/x/y/z", the
+  /// value of the key `*` is "x/y/z".
 
   RequestParams match(List<String> components) {
     final result = RequestParams._internalConstructor();

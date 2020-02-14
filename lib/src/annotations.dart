@@ -18,20 +18,29 @@ part of woomera;
 typedef HandlerWrapper = RequestHandler Function(Handles rego, Object obj);
 
 //################################################################
-/// Information for creating a rule.
+/// Information for creating a rule or initializing exception handlers.
 ///
 /// Instances of this class is designed to be used as an annotation on a
-/// top-level function or static member, intended to handle a HTTP request.
-/// The [Server.fromAnnotations] and [ServerPipeline.fromAnnotations]
-/// constructors uses these annotations to create [ServerRule] for the
-/// pipelines.
+/// top-level function or static member that will be used to populate rules
+/// and exception handlers when using the [Server.fromAnnotations] and
+/// [ServerPipeline.fromAnnotations] constructors.
 ///
-/// ## Usage as an annotation
+/// ## Annotating request handlers
 ///
-/// It identifies the [ServerPipeline] that the request handler is for: by its
-/// [pipeline] member and also the order in which the rule is added to that
-/// pipeline. The HTTP method and request path the rule will match is indicated
-/// by the [httpMethod] and the string representation of the [pattern].
+/// Annotate a request handler to automatically populate pipelines with
+/// [ServerRule] objects.
+///
+/// Use the convenience constructors [Handles.get], [Handles.post],
+/// [Handles.put] etc. that are named after a standard HTTP method,
+/// or the generic [Handles.request] constructor.
+///
+/// The [httpMethod] is the HTTP request method that the rule will handle.
+///
+/// The [ServerPipeline] it is for is identified by the [pipeline].
+/// The order for the rule is determined by the [priority] and then the
+/// [pattern]. Normally, the _priority_ does not need to be changed from the
+/// default of zero, since sorting by the _pattern_ usually produces a correctly
+/// working pipeline.
 ///
 /// For example, used as an annotation on a top-level function, for the
 /// default pipeline:
@@ -43,13 +52,13 @@ typedef HandlerWrapper = RequestHandler Function(Handles rego, Object obj);
 /// }
 /// ```
 ///
-/// Usage as an annotation on a method:
+/// Usage as an annotation on a static method, for a named pipeline:
 ///
 /// ```dart
 /// class SomeClass {
 ///
-///   @Handles.put('~/foo/bar/baz', pipeline='mySpecialPipeline')
-///   Future<Response> myPostHandler(Request req) {
+///   @Handles.post('~/foo/bar/baz', pipeline='mySpecialPipeline')
+///   static Future<Response> myPostHandler(Request req) {
 ///     ...
 ///   }
 /// }
@@ -110,18 +119,52 @@ typedef HandlerWrapper = RequestHandler Function(Handles rego, Object obj);
 /// Handles.handlerWrapper = myWrapper;
 /// ```
 ///
-/// ## Constructors
+/// ## Annotating exception handlers
 ///
-/// The named constructors can be used for the the standard HTTP methods.
+/// Annotate exception handlers to automatically set them. The three types of
+/// exception handlers are supported.
 ///
-/// - [Handles.get]
-/// - [Handles.post]
-/// - [Handles.put]
-/// - [Handles.patch]
-/// - [Handles.delete]
-/// - [Handles.head]
+/// Use the [Handles.exceptions] constructor for the server exception
+/// handler. Servers should at least provide one of these exception handlers
+/// to customise the "not found" error page.
 ///
-/// The default constructor accepts the HTTP method as a parameter.
+/// ```dart
+/// @Handles.exceptions()
+/// Future<Response> foo(Request req, Object exception, StackTrace st) async {
+///   ...
+/// }
+/// ```
+///
+/// Use the [Handles.pipelineExceptions] constructor for pipeline exception
+/// handlers. This allows exception handling to be customised per-pipeline,
+/// instead of having all exceptions handled the same way by the server
+/// exception handler.
+///
+/// An optional pipeline name can be passed to it, otherwise it will be the
+/// pipeline exception handler for the default pipeline.
+///
+/// ```dart
+/// @Handles.pipelineExceptions(pipeline='mySpecialPipeline')
+/// Future<Response> foo(Request req, Object exception, StackTrace st) async {
+///   ...
+/// }
+/// ```
+///
+/// Use the [Handles.rawExceptions] constructor for the raw server
+/// exception handler.
+///
+/// ```dart
+/// @Handles.rawException()
+/// Future<void> Function(HttpRequest rawRequest, String requestId,
+///   Object exception, StackTrace st) async {
+///   ...
+/// }
+/// ```
+///
+/// In a program, there cannot be more than one pipeline exception handler for
+/// the same pipeline (i.e. the same pipeline name). There cannot be more than
+/// one server exception handler, and there cannot be more than one server raw
+/// exception handler.
 ///
 /// ## Logging
 ///
@@ -193,6 +236,26 @@ class Handles {
   //================================================================
   // Constructors
 
+  //----------------------------------------------------------------
+  // Constructors for request handler annotations.
+
+  //----------------
+  /// Use the [Handles.request] constructor instead.
+  ///
+  /// The default constructor made sense when this class was only used for
+  /// annotating request handlers, but the annotations are more readable
+  /// using _Handles.request_ now that it is also used for different types of
+  /// exception handlers.
+
+  @deprecated
+  const Handles(this.httpMethod, this.pattern,
+      {String pipeline, this.priority = 0})
+      : pipeline = pipeline ?? ServerPipeline.defaultName,
+        assert(httpMethod != null),
+        assert(pattern != null),
+        assert(priority != null);
+
+  //----------------
   /// Constructor with a specific HTTP method.
   ///
   /// The [httpMethod] is the name of the HTTP method, and [pattern] is the
@@ -200,11 +263,14 @@ class Handles {
   /// name identifies the pipeline the rule is for, and [priority] controls
   /// the order in which the rule is added to the pipeline.
 
-  const Handles(this.httpMethod, this.pattern,
-      {this.priority = 0, this.pipeline = ServerPipeline.defaultName});
+  const Handles.request(this.httpMethod, this.pattern,
+      {String pipeline, this.priority = 0})
+      : pipeline = pipeline ?? ServerPipeline.defaultName,
+        assert(httpMethod != null),
+        assert(pattern != null),
+        assert(priority != null);
 
   //----------------
-
   /// Constructor with the HTTP GET method.
   ///
   /// The [pattern] is the string representation of the pattern to match.
@@ -215,6 +281,7 @@ class Handles {
       {this.priority = 0, this.pipeline = ServerPipeline.defaultName})
       : httpMethod = 'GET';
 
+  //----------------
   /// Constructor with the HTTP POST method.
   ///
   /// The [pattern] is the string representation of the pattern to match.
@@ -225,29 +292,100 @@ class Handles {
       {this.priority = 0, this.pipeline = ServerPipeline.defaultName})
       : httpMethod = 'POST';
 
+  //----------------
   /// Constructor with the HTTP PUT method.
 
   const Handles.put(this.pattern,
       {this.priority = 0, this.pipeline = ServerPipeline.defaultName})
       : httpMethod = 'PUT';
 
+  //----------------
   /// Constructor with the HTTP PATCH method.
 
   const Handles.patch(this.pattern,
       {this.priority = 0, this.pipeline = ServerPipeline.defaultName})
       : httpMethod = 'PATCH';
 
+  //----------------
   /// Constructor with the HTTP DELETE method.
 
   const Handles.delete(this.pattern,
       {this.priority = 0, this.pipeline = ServerPipeline.defaultName})
       : httpMethod = 'DELETE';
 
+  //----------------
   /// Constructor with the HTTP HEAD method.
 
   const Handles.head(this.pattern,
       {this.priority = 0, this.pipeline = ServerPipeline.defaultName})
       : httpMethod = 'HEAD';
+
+  //----------------------------------------------------------------
+  /// Constructor for pipeline exception handler annotations.
+  ///
+  /// The optional [pipeline] name identifies the pipeline the exception handler
+  /// is for. If it is not provided, the exception handler is for the default
+  /// pipeline.
+  ///
+  /// Note: page not found exceptions are not processed by the pipeline
+  /// exception handlers, but by the server exception handlers. You should
+  /// have a `@Handles.exceptions()` annotation before annotating additional
+  /// exception handlers with this pipeline exception annotation.
+
+  const Handles.pipelineExceptions({String pipeline})
+      : pipeline = pipeline ?? ServerPipeline.defaultName,
+        httpMethod = null,
+        pattern = null,
+        priority = null;
+
+  //----------------------------------------------------------------
+  /// Constructor for server exception handler annotation.
+  ///
+  /// A program can have at most one such annotation.
+
+  const Handles.exceptions()
+      : pipeline = null,
+        httpMethod = null,
+        pattern = null,
+        priority = _serverHighLevel;
+
+  //----------------------------------------------------------------
+  /// Constructor for low-level server exception handler annotation.
+  ///
+  /// A program can have at most one such annotation.
+
+  const Handles.rawExceptions()
+      : pipeline = null,
+        httpMethod = null,
+        pattern = null,
+        priority = _serverLowLevel;
+
+  // If the pipeline name and priority are both not null, it is an annotation
+  // for a request handler.
+  //
+  // If the pipeline name is not null, but the priority is null, it is a
+  // pipeline exception handler.
+  //
+  // If pipeline name is null, it is a server exception handler (when the
+  // priority is 0) and a low-level server exception handler (when the
+  // priority is ).
+
+  //================================================================
+  // Constants
+
+  /// Indicator for a server exception handler.
+  ///
+  /// The object annotates a server exception handler when
+  /// the [pipeline] is null and [priority] set to this value.
+
+  static const _serverHighLevel = 1;
+
+  /// Indicator for a raw server exception handler.
+  ///
+  /// The object annotates a raw server exception handler when
+  /// the [pipeline] is null and [priority] set to this value.
+
+  static const _serverLowLevel = -1;
 
   //================================================================
   // Static members
@@ -270,7 +408,11 @@ class Handles {
   //================================================================
   // Members
 
-  /// Name of the pipeline for the rule to be created in.
+  /// Name of the pipeline.
+  ///
+  /// Not null when this annotates a request handler or pipeline exception
+  /// handler. Null means this annotates a server exception handler or
+  /// server raw exception handler.
 
   final String pipeline;
 
@@ -278,6 +420,10 @@ class Handles {
   ///
   /// The value should be an uppercase string. For example, "GET", "POST" and
   /// "PUT".
+  ///
+  /// Only used when annotating request handlers. Null when it is annotating
+  /// an exception handler, server exception handler or server raw exception
+  /// handler.
 
   final String httpMethod;
 
@@ -293,6 +439,11 @@ class Handles {
   /// automatic registrations are added to a pipeline. But normally, setting
   /// the priority is not necessary, since the ordering of registrations by
   /// their [pattern] should produce the correct result.
+  ///
+  /// Null if this is annotating a pipeline exception handler. When this is
+  /// annotating a server exception handler or raw server exception handler,
+  /// this value is set to either [_serverHighLevel] or [_serverLowLevel],
+  /// respectively.
 
   final int priority;
 
@@ -301,458 +452,77 @@ class Handles {
   /// Note: this has to be the string representation of a pattern instead of
   /// a [Pattern] object, since _Registration_ objects must have a constant
   /// constructor for it to be used as an annotation.
+  ///
+  /// Only used when annotating request handlers. Null when it is annotating
+  /// an exception handler, server exception handler or server raw exception
+  /// handler.
 
   final String pattern;
 
   //================================================================
   // Methods
 
-  //----------------------------------------------------------------
+  /// Indications if this is describing an exception handler or not.
 
-  @override
-  String toString() {
-    final pipeStr =
-        (pipeline != ServerPipeline.defaultName) ? 'pipeline="$pipeline" ' : '';
-    final priorityStr = (priority != 0) ? 'priority=$priority ' : '';
+  //bool get isExceptionHandler => pipelineName == null;
 
-    return '$pipeStr$priorityStr$httpMethod $pattern';
-  }
-}
+  /// Indications if this is describing a request handler or not.
 
-//################################################################
-/// Annotated request handler
-///
-/// This class represents a function or static method that has a [Handles]
-/// annotation.
-///
-/// Instances of this class are created by the scanning process. The scanning
-/// process is triggered by the creation of a pipeline that uses automatic
-/// registration to populate its rules. The pipeline constructor invokes the
-/// [list] method to obtain the annoated request handlers for the pipeline.
-///
-/// Instances contain the request [handler] itself along with information about
-/// it: the [location] it is in and its [name]. It also contains a copy of the
-/// information from the annotation: the [pipelineName],
-/// [httpMethod], [priority] and [pattern].
+  bool get isRequestHandler => pattern != null;
 
-class _AnnotatedRequestHandler {
-  //================================================================
-  // Constructors
+  /// Indicates if this is describing a pipeline exception handler
 
-  //----------------------------------------------------------------
-  /// Constructor of an annotated request handler.
+  bool get isPipelineExceptionHandler =>
+      (!isRequestHandler) && pipeline != null;
 
-  _AnnotatedRequestHandler(
-      Handles registration, MethodMirror methodMirror, Function theFunction) {
-    // Assume default values if (somehow) the values in the registration are
-    // null. This is to reduce the amount of possible errors. The only value
-    // that can't be null is the pattern.
+  /// Indicates if this is describing a server exception handler
 
-    if (registration.pattern == null) {
-      throw ArgumentError.notNull('pattern');
-    }
+  bool get isServerExceptionHandler =>
+      (!isRequestHandler) && pipeline == null && priority == _serverHighLevel;
 
-    pipelineName = registration.pipeline ?? ServerPipeline.defaultName;
-    httpMethod = registration.httpMethod ?? 'GET';
-    priority = registration.priority ?? 0;
-    pattern = Pattern(registration.pattern);
+  /// Indicates if this is describing a server raw exception handler
 
-    // Information about the request handler
-
-    location = methodMirror.location;
-
-    name = MirrorSystem.getName(methodMirror.qualifiedName);
-    if (name.startsWith('.')) {
-      name = name.substring(1); // strip off "."
-    }
-
-    // Get the request handler to use
-
-    if (Handles.handlerWrapper != null) {
-      // A handler wrapper was defined. Use it to process the object that
-      // was annotated (even if it is already a RequestHandler).
-      handler = Handles.handlerWrapper(registration, theFunction);
-    } else if (theFunction is RequestHandler) {
-      // Function cannot be used as a handler
-      handler = theFunction;
-    }
-
-    if (handler == null) {
-      // Cannot use the annotated object.
-      // Either: there was no handler wrapper (or it strangely returned
-      // null) or the object was not a RequestHandler.
-
-      throw RegistrationNotRequestHandler(location, name, registration);
-    }
-  }
-
-  //================================================================
-  // Static members
-
-  /// Cache of the already found annotated request handlers.
-  ///
-  /// These have been populated from the [_librariesScanned] libraries.
-
-  static final Map<String, List<_AnnotatedRequestHandler>> _found = {};
-
-  /// The libraries that have already been scanned to populate [_found].
-  ///
-  /// It is possible, but unusual, for the pipeline constructor to be invoked
-  /// on different occasions with a different list of packages to be scanned.
-  /// This member tracks all the packages that have already been scanned, so
-  /// they don't have to be re-scanned.
-
-  static final List<String> _librariesScanned = [];
-
-  /// Indicates if the [_librariesScanned] already includes all file libraries.
-
-  static bool _allFilesLibrariesScanned = false;
-
-  //================================================================
-  // Members
-
-  // Values derived from the [Handles] annotation.
-  //
-  // Note: we don't simply store the annotation, because it is a const object
-  // and we want to change the pipeline name, method, and priority to defaults
-  // if (for some strange reason) they were null in the annotation. Also,
-  // the pattern is a string in the _Handles_, and we want to covert it into
-  // a [Pattern] object. The conversion will detect bad patterns.
-
-  String pipelineName;
-  String httpMethod;
-  int priority;
-  Pattern pattern;
-
-  /// Source location of the request handler
-
-  SourceLocation location;
-
-  /// Name of the handler function
-
-  String name;
-
-  /// The request handler function the annotation was on.
-
-  RequestHandler handler;
-
-  //================================================================
-  // Methods
-
-  //----------------------------------------------------------------
-  /// Compares this annotated registration handler to [other].
-  ///
-  /// Returns a negative value if `this` is order before `other`, a positive
-  /// value if `this` is ordered after `other`, or zero if `this` and `other`
-  /// are equivalent.
-  ///
-  /// The order is determined by these values, in order:
-  ///
-  /// - pipeline name;
-  /// - HTTP method;
-  /// - priority; and finally
-  /// - the pattern.
-  ///
-  /// Note: when sorting a list of annotated request handlers in a value of
-  /// [_found], the pipeline name are all the same value. Also,
-  /// sorting by HTTP method will not matter when it is used to create a rule
-  /// on the pipeline, since those rules will be grouped according to the HTTP
-  /// method.
-  ///
-  /// The priority allows explicit control over the ordering of the rules. But
-  /// it is probably not necessary, since the order of the patterns will
-  /// produce a working pipeline. See [Pattern.compareTo] for how patterns are
-  /// ordered.
-
-  int compareTo(_AnnotatedRequestHandler other) {
-    // Compare by pipeline name
-
-    final x = pipelineName.compareTo(other.pipelineName);
-    if (x != 0) {
-      return x;
-    }
-
-    // Compare by HTTP method
-
-    final a = httpMethod.compareTo(other.httpMethod);
-    if (a != 0) {
-      return a; // method determines order
-    }
-
-    // Compare by priority
-
-    final b = priority.compareTo(other.priority);
-    if (b != 0) {
-      return -b; // priority order: negate so higher priority appears earlier
-    }
-
-    // Compare by pattern
-
-    return pattern.compareTo(other.pattern); // pattern determines order
-  }
+  bool get isServerRawExceptionHandler =>
+      (!isRequestHandler) && pipeline == null && priority == _serverLowLevel;
 
   //----------------------------------------------------------------
 
   @override
   String toString() {
-    final pipeStr = (pipelineName != ServerPipeline.defaultName)
-        ? 'pipeline="$pipelineName" '
-        : '';
-    final priorityStr = (priority != 0) ? 'priority=$priority ' : '';
+    if (pipeline != null) {
+      // For a pipeline
 
-    return '$pipeStr$priorityStr$httpMethod $pattern => $name ($location)';
-  }
+      final pipeStr = (pipeline != ServerPipeline.defaultName)
+          ? 'pipeline="$pipeline" '
+          : '';
 
-  //================================================================
-  // Static methods
+      if (pattern != null) {
+        // Request handler
+        assert(httpMethod != null, 'invalid Handler');
+        assert(priority != null, 'invalid Handler');
 
-  //----------------------------------------------------------------
-  /// Retrieve a list of annotated request handlers for a pipeline.
-  ///
-  /// Only those where the [Handles] annotation's pipeline name is
-  /// [pipelineName] are returned.
-  ///
-  /// Only annotated request handlers found in the listed [libraries] and from
-  /// files outside any packages are considered.
+        final priorityStr = (priority != 0) ? 'priority=$priority ' : '';
+        return '$pipeStr$priorityStr$httpMethod $pattern';
+      } else {
+        // Pipeline exception handler
+        assert(httpMethod == null, 'invalid Handler');
+        assert(priority == null, 'invalid Handler');
 
-  static Iterable<_AnnotatedRequestHandler> list(
-      String pipelineName, Iterable<String> libraries,
-      {bool scanAllFileLibraries = true}) {
-    assert(pipelineName != null);
-    assert(libraries != null);
-
-    // Make sure cache is populated from the explicitly requested libraries or
-    // from all the files (if scanAllFileLibraries is true).
-    // Previous scans might not have been told about these same libraries.
-
-    _updateCache(libraries, scanAllFileLibraries: scanAllFileLibraries);
-
-    // Pick the registrations with the desired pipeline name
-
-    return _found[pipelineName] ?? <_AnnotatedRequestHandler>[];
-  }
-
-  //----------------------------------------------------------------
-  /// Populates [_found] for files and the identified packages.
-  ///
-  /// Ensures a scan has been performed on the [libraries] and files that don't
-  /// belong to any package.
-  ///
-  /// This does nothing if [_found] already contains all the
-  /// annotated request handlers from the requested [libraries].
-
-  static void _updateCache(Iterable<String> libraries,
-      {bool scanAllFileLibraries = true}) {
-    // Determine if a scan is required
-
-    final needToScanFiles =
-        (scanAllFileLibraries && !_allFilesLibrariesScanned);
-    final unscanned =
-        libraries.where((lib) => !_librariesScanned.contains(lib));
-
-    // Perform scan if needed
-
-    if (needToScanFiles || unscanned.isNotEmpty) {
-      // Scan
-
-      _scanSystem(unscanned, doFiles: needToScanFiles);
-
-      _allFilesLibrariesScanned = needToScanFiles;
-      _librariesScanned.addAll(unscanned);
-
-      // Sort the annotated request handlers (from this and any previous scans)
-
-      for (final arh in _found.values) {
-        arh.sort((a, b) => a.compareTo(b));
+        return '${pipeStr}pipeline exception handler';
       }
+    } else {
+      // For the server
 
-      // Logging
+      assert(pattern == null);
+      assert(httpMethod == null);
 
-      for (final pipelineName in List<String>.from(_found.keys)..sort()) {
-        // Above sorting is just so the logging is stable/consistent
-        final regosWithHandlers = _found[pipelineName];
-
-        final p = (pipelineName != ServerPipeline.defaultName)
-            ? '"$pipelineName" pipeline'
-            : 'default pipeline';
-        final c = (regosWithHandlers.length != 1)
-            ? '${regosWithHandlers.length} Registration annotations found'
-            : '${regosWithHandlers.length} Registration annotation found';
-
-        if (_logHandles.level <= Level.FINER) {
-          // Log all the registrations with their request handlers
-          _logHandles.finer('$p: $c\n  ${regosWithHandlers.join('\n  ')}');
-        } else if (_logHandles.level <= Level.FINE) {
-          // Log all the registrations without the request handler
-          final brief =
-              regosWithHandlers.map((r) => '${r.httpMethod} ${r.pattern}');
-          _logHandles.fine('$p: $c\n  ${brief.join('\n  ')}');
-        } else if (_logHandles.level <= Level.CONFIG) {
-          // Only log the number of registrations found
-          _logHandles.config('$p: $c');
-        }
-      }
-    }
-  }
-
-  //----------------------------------------------------------------
-  /// Scan the program for annotations.
-  ///
-  /// Libraries are scanned for annotations, if those libraries have not already
-  /// been scanned.
-  ///
-  /// This method will only scan the libraries whose URLs are explicitly listed
-  /// in [librariesToScan]. Or if [doFiles] is true, which treats all libraries
-  /// that have a URL with the "file" scheme to be scanned (even if it is not
-  /// explicitly listed in _librariesToScan_).
-  ///
-  /// Throws a [LibraryNotFound] if any of the libraries listed in
-  /// [librariesToScan] does not exist.
-
-  static void _scanSystem(Iterable<String> librariesToScan, {bool doFiles}) {
-    // Track packages which were encountered
-
-    final seenPackages = <String, bool>{};
-
-    // Scan all the libraries for registrations
-
-    final mirrorSys = currentMirrorSystem();
-
-    if (mirrorSys == null) {
-      throw UnimplementedError('cannot scan for annotations: no mirror system');
-    }
-
-    for (final entry in mirrorSys.libraries.entries) {
-      final libUrl = entry.key;
-      final library = entry.value;
-
-      if (libUrl.scheme != 'dart') {
-        // Not a core library, so might be ok (core libraries are never scanned)
-
-        if (!_librariesScanned.contains(library)) {
-          // Hasn't been previously scanned
-
-          if (librariesToScan.contains(libUrl.toString()) ||
-              (libUrl.scheme == 'file' && doFiles)) {
-            // Need to scan this library, since it is either one of the
-            // libraries there were explicitly asked to be scanned, or it is
-            // a file-library and it was asked to scan all file-libraries.
-
-            _logHandles.finest('scanning $libUrl');
-            _scanLibrary(libUrl, library);
-            _librariesScanned.add(libUrl.toString());
-          }
-        }
-      }
-    }
-
-    // Check all the explicitly requested libraries were encountered
-
-    final missing =
-        librariesToScan.where((url) => !seenPackages.containsKey(url));
-    if (missing.isNotEmpty) {
-      throw LibraryNotFound(missing);
-    }
-  }
-
-  //----------------------------------------------------------------
-  /// Scan a library for _Handles_ annotations.
-  ///
-  /// Finds all the top-level functions and static methods inside classes, and
-  /// scans each of them for [Handles] annotations.
-
-  static void _scanLibrary(Uri library, LibraryMirror libMirror) {
-    for (final declaration in libMirror.declarations.values) {
-      if (declaration is ClassMirror) {
-        _scanClass(library, declaration);
-      } else if (declaration is MethodMirror) {
-        // Top level function: process it
-
-        final cm = libMirror.getField(declaration.simpleName);
-        final dynamic item = cm.hasReflectee ? cm.reflectee : null;
-
-        if (item is Function) {
-          _scanFunction(library, declaration, item);
-        } else {
-          _logHandles
-              .severe('not a function: $library ${declaration.qualifiedName}');
-        }
-      }
-    }
-  }
-
-  //----------------------------------------------------------------
-  // Scan a class for static members with [Handles] annotations.
-
-  static void _scanClass(Uri library, ClassMirror classMirror) {
-    // Class: process its static methods
-
-    for (final staticMember in classMirror.staticMembers.values) {
-      if (staticMember is MethodMirror) {
-        if (!(staticMember.isGetter ||
-            staticMember.isSetter ||
-            staticMember.isOperator)) {
-          final cm = classMirror.getField(staticMember.simpleName);
-          final dynamic item = cm.hasReflectee ? cm.reflectee : null;
-
-          if (item is Function) {
-            _scanFunction(library, staticMember, item);
-          } else {
-            _logHandles.severe(
-                'not a function: $library ${staticMember.qualifiedName}');
-          }
-        }
-      }
-    }
-  }
-
-  //----------------------------------------------------------------
-  /// Scan a function or static method for [Handles] annotations.
-  ///
-  /// For all the registration annotations found on it, a
-  /// [_AnnotatedRequestHandler] object is created and appended to the
-  /// [_found] list under the pipeline identified in the
-  /// annotation.
-  ///
-  /// Note: a method may have more than one registration annotation on it.
-  /// Each one will result in its own annotated request handler.
-
-  static void _scanFunction(
-      Uri library, MethodMirror methodMirror, Function theFunction) {
-    for (final instanceMirror in methodMirror.metadata) {
-      if (instanceMirror.hasReflectee) {
-        // The annotation is an instance of the [Registration] class
-
-        final dynamic annotation = instanceMirror.reflectee;
-
-        if (annotation is Handles) {
-          // [Handles] annotation found
-
-          try {
-            // Create a new annotated request handler and add it to [_found].
-
-            final entry =
-                _AnnotatedRequestHandler(annotation, methodMirror, theFunction);
-
-            // Note: entry.pipelineName will always have a value, even if the
-            // annotation.pipelineName was null.
-            final goodName = entry.pipelineName;
-
-            if (!_found.containsKey(goodName)) {
-              _found[goodName] = []; // new pipeline name: start a new list
-            }
-            _found[goodName].add(entry); // add the entry to the named list
-
-            // ignore: avoid_catching_errors
-          } on ArgumentError catch (e) {
-            // Pattern constructor did not accept the pattern string.
-            // Throw an exception that indicates the location of the annotation
-            // (from the methodMirror) for easier debugging.
-            throw BadRegistrationPattern(methodMirror, e);
-          }
-        } else {
-          // ignore all other types of annotation
-        }
+      if (priority == _serverHighLevel) {
+        return 'server exception handler';
+      } else if (priority == _serverLowLevel) {
+        return 'server raw exception handler';
+      } else {
+        assert(false, 'invalid Handler');
+        return 'invalid Handler';
       }
     }
   }

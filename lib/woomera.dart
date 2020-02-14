@@ -69,6 +69,7 @@ import 'package:uuid/uuid.dart';
 // export 'src/...dart';
 
 part 'src/annotations.dart';
+part 'src/annotations_scanner.dart';
 part 'src/core_request.dart';
 part 'src/core_response.dart';
 part 'src/exceptions.dart';

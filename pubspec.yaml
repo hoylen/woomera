@@ -1,6 +1,6 @@
 name: woomera
-version: 4.4.0
-description: Web framework for handling HTTP requests, managing sessions and generating responses
+version: 4.5.0
+description: "Framework for implementing Web servers: handling HTTP requests, managing sessions and generating responses"
 homepage: https://github.com/hoylen/woomera
 
 environment:

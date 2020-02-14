@@ -31,6 +31,7 @@ help:
 	@echo "Targets for ${APP_NAME} (version ${APP_VERSION}):"
 	@if [ -e "test" ]; then \
 	  echo "Development targets:"; \
+	  echo "  dartfmt     - format Dart files"; \
 	  echo "  dartdoc     - generate API documentation"; \
 	  echo "  dartdocview - view generated API documentation"; \
 	  echo "  build       - creates tar distributable"; \
@@ -93,6 +94,9 @@ purge: uninstall
 
 # Development targets
 
+dartfmt:
+	@dartfmt -w lib test example | grep -v ^Unchanged
+
 dartdoc:
 	@dartdoc
 
@@ -124,7 +128,9 @@ build:
 
 clean:
 	@rm -f -r .pub build doc/api *~
-	@find coverage-suite -type l -name \*.dart -exec rm {} \;
-	@-rmdir coverage-suite
+	@if [ -d coverage-suite ]; then \
+	  find coverage-suite -type l -name \*.dart -exec rm {} \; ; \
+	  rmdir coverage-suite ; \
+	fi
 
 #EOF

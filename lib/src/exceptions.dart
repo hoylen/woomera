@@ -8,15 +8,42 @@ part of woomera;
 abstract class WoomeraException implements Exception {}
 
 //================================================================
-// Exceptions relating to request handler registration
+// Exceptions relating to Handles annotations
 
 //----------------------------------------------------------------
-/// Indicates the pattern on a Registration is invalid.
+/// Library not found
+///
+/// One or more of the libraries that was passed into [Server.fromAnnotations]
+/// or [ServerPipeline.fromAnnotations] does not exist.
+///
+/// To fix the problem, remove or fix the offending value.
+///
+/// To discover the correct library URIs that can be used, set the logging level
+/// for the "woomera.handles" logger to FINEST. It will then log the URI for
+/// libraries that are scanned or skipped.
 
-class BadRegistrationPattern extends WoomeraException {
-  /// Constructor for a bad registration pattern
+class LibraryNotFound extends WoomeraException {
+  /// Constructor
+  LibraryNotFound(Iterable<String> missing)
+      : libraryUris = List<String>.from(missing);
 
-  BadRegistrationPattern(MethodMirror mm, this.error) {
+  /// Packages which were not found
+  final List<String> libraryUris;
+
+  @override
+  String toString() {
+    final noun = (libraryUris.length == 1) ? 'library' : 'libraries';
+    return '$noun not found:\n  ${libraryUris.join('\n  ')}';
+  }
+}
+
+//----------------------------------------------------------------
+/// Indicates the pattern to create a Handles object is invalid.
+
+class BadHandlesPattern extends WoomeraException {
+  /// Constructor for a bad handles pattern
+
+  BadHandlesPattern(MethodMirror mm, this.error) {
     try {
       location = mm.location;
       // ignore: avoid_catching_errors
@@ -33,7 +60,7 @@ class BadRegistrationPattern extends WoomeraException {
   /// Name of method
   String name;
 
-  /// The location in the source of the Registration annotation.
+  /// The location of the object.
   SourceLocation location;
 
   /// The error message indicating why the pattern was invalid.
@@ -41,20 +68,20 @@ class BadRegistrationPattern extends WoomeraException {
 
   @override
   String toString() {
-    final optionalLocation = (location != null) ? '($location)' : '';
-    return 'Bad pattern in Registration: $name $optionalLocation: $error';
+    final loc = (location != null) ? ' ($location)' : '';
+    return 'bad pattern: ${error.message}: "${error.invalidValue}": $name$loc';
   }
 }
 
 //----------------------------------------------------------------
-/// Indicates an automatic registration annotation was place on a bad function.
+/// Indicates an Handles annotation was place on the wrong type of function.
 ///
 /// The type signature of the function or method was not the [RequestHandler]
 /// function type.
 
-class RegistrationNotRequestHandler extends WoomeraException {
+class NotRequestHandler extends WoomeraException {
   /// Constructor
-  RegistrationNotRequestHandler(this.location, this.name, this.registration);
+  NotRequestHandler(this.location, this.name, this.annotation);
 
   /// Library where the function was defined.
   final SourceLocation location;
@@ -62,34 +89,69 @@ class RegistrationNotRequestHandler extends WoomeraException {
   /// Name of the function
   final String name;
 
-  /// The registration annotation
-  final Handles registration;
+  /// The annotation
+  final Handles annotation;
 
   @override
   String toString() =>
-      'function is not a RequestHandler: $location $name (registration: $registration)';
+      'function is not a RequestHandler: $annotation: $name ($location)';
 }
 
 //----------------------------------------------------------------
-/// Package not found
+/// Indicates an Handles annotation was place on the wrong type of function.
 ///
-/// One or more of the packages was not found.
-///
-/// The constructor of a [ServerPipeline] was asked to look for [Handles]
-/// annotations from a package that doesn't exist. This exception can also
-/// occur in the constructor of a [Server] (which creates an initial set of
-/// pipelines by invoking the _ServerPipeline_ constructor).
+/// The type signature of the function or method was not the [ExceptionHandler]
+/// function type.
 
-class LibraryNotFound extends WoomeraException {
+class NotExceptionHandler extends WoomeraException {
   /// Constructor
-  LibraryNotFound(Iterable<String> missing)
-      : packages = List<String>.from(missing);
+  NotExceptionHandler(this.location, this.name, this.annotation);
 
-  /// Packages which were not found
-  final List<String> packages;
+  /// Library where the function was defined.
+  final SourceLocation location;
+
+  /// Name of the function
+  final String name;
+
+  /// The annotation
+  final Handles annotation;
 
   @override
-  String toString() => 'packages not found: ${packages.join(', ')}';
+  String toString() =>
+      'function is not a ExceptionHandler: $annotation: $name ($location)';
+}
+
+//----------------------------------------------------------------
+/// Indicates a Handles annotation already exists for the exception handler.
+
+class DupliateExceptionHandler extends WoomeraException {
+  /// Constructor
+  DupliateExceptionHandler(
+    this.location,
+    this.name,
+    this.annotation,
+    this.existingLocation,
+    this.existingName,
+  );
+
+  /// Library where the function was defined.
+  final SourceLocation location;
+
+  /// Name of the function
+  final String name;
+
+  /// The annotation
+  final Handles annotation;
+
+  /// Location of the already existing annotated exception handler
+  final SourceLocation existingLocation;
+
+  /// Name of the already existing annotated exception handler
+  final String existingName;
+
+  @override
+  String toString() => 'duplicate $annotation: $name ($location)\n'
+      '  existing exception handler: $existingName ($existingLocation)';
 }
 
 //----------------------------------------------------------------
@@ -109,9 +171,9 @@ class LibraryNotFound extends WoomeraException {
 /// There is no restriction on duplicate rules if they appear in different
 /// pipelines. The restriction is only on duplicate rules in the same pipeline.
 
-class AlreadyRegistered extends WoomeraException {
+class DuplicateRule extends WoomeraException {
   /// Constructor
-  AlreadyRegistered(
+  DuplicateRule(
       this.method, this.pattern, this.newHandler, this.existingHandler);
 
   /// HTTP method
@@ -136,14 +198,17 @@ class AlreadyRegistered extends WoomeraException {
       if (r1 is ClosureMirror) {
         loc = r1.function.location;
         n = MirrorSystem.getName(r1.function.qualifiedName);
+        if (n.startsWith('.')) {
+          n = n.substring(1); // remove leading '.'
+        }
       }
 
-      return 'already registered: $method $pattern already handled by $n ($loc)';
+      return 'duplicate rule: $method $pattern already handled by $n ($loc)';
 
       // ignore: avoid_catching_errors
     } on UnsupportedError {
       // No location information to report
-      return 'already registered: $method $pattern';
+      return 'duplicate rule: $method $pattern';
     }
   }
 }

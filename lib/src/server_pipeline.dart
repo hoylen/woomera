@@ -69,11 +69,38 @@ class ServerPipeline {
       String pipelineName, Iterable<String> libraries,
       {bool scanAllFileLibraries = true})
       : name = pipelineName ?? defaultName {
-    for (final arh in _AnnotatedRequestHandler.list(name, libraries ?? [],
-        scanAllFileLibraries: scanAllFileLibraries)) {
+    // Make sure annotations from the desired libraries have been scanned
+
+    _annotations.scan(libraries ?? [],
+        scanAllFileLibraries: scanAllFileLibraries);
+
+    // Set the request handlers from annotations
+
+    var haveRequestHandlers = false;
+    for (final arh in _annotations.listRequestHandlers(name)) {
       _register(arh.httpMethod, arh.pattern, arh.handler,
           manualRegistration: false);
+      haveRequestHandlers = true;
     }
+
+    if (!haveRequestHandlers) {
+      // Usually a programming error, since there is no point in creating a
+      // pipeline with no request handlers. Check the name is correct.
+
+      throw ArgumentError.value(pipelineName, 'pipelineName',
+          'no Handles annotations on request handlers exist for this pipeline');
+    }
+
+    // Set the pipeline exception handler from annotations
+
+    final apeh = _annotations.findPipelineExceptionHandler(name);
+    if (apeh != null) {
+      exceptionHandler = apeh.handler;
+    }
+
+    // Record that annotations with the name have been used to create a pipeline
+
+    _annotations.markAsUsed(name);
   }
 
   //================================================================
@@ -89,6 +116,21 @@ class ServerPipeline {
   static const defaultName = '';
 
   //================================================================
+  // Static members
+
+  /// Annotated handlers in the program
+  ///
+  /// This is effectively a global variable, since a program only has one set
+  /// of libraries. So once the libraries have been scanned, the annotated
+  /// handlers can be cached for creating multiple pipelines, setting server
+  /// exception handlers and server raw exception handlers.
+  ///
+  /// This static member is used by [ServerPipeline.fromAnnotations] and
+  /// [Server.fromAnnotations].
+
+  static final _annotations = _AnnotationScanner();
+
+  //================================================================
   // Members
 
   /// Name of the pipeline.
@@ -102,6 +144,10 @@ class ServerPipeline {
   ///
   /// Exception/error handler for the pipeline. If not set, exceptions/errors
   /// will be handled by the server-level exception/error handler.
+  ///
+  /// This pipeline exception handler can also be set using a
+  /// `@Handles.exception()` annotation, providing it the name of the
+  /// pipeline if it is not the default pipeline.
 
   ExceptionHandler exceptionHandler;
 
@@ -226,7 +272,7 @@ class ServerPipeline {
     // variable names should be considered a duplicate. What about wildcards?
 
     if (existingRule != null) {
-      throw AlreadyRegistered(method, pattern, handler, existingRule.handler);
+      throw DuplicateRule(method, pattern, handler, existingRule.handler);
     }
 
     // Record the rule

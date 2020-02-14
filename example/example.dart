@@ -11,7 +11,8 @@
 
 import 'dart:async';
 import 'dart:convert' show json;
-import 'dart:io' show ContentType, HttpStatus, InternetAddress;
+import 'dart:io' show ContentType, HttpStatus, InternetAddress, HttpRequest;
+import 'dart:math';
 
 import 'package:logging/logging.dart';
 
@@ -34,17 +35,26 @@ const int port = 1024;
 // Constants are used for these so that the same value is used throughout the
 // application if the values are changed (i.e. so the link URL always matches
 // the path to the handler).
+//
+// The various parameter names are also defined as constants, so the same value
+// is used in both the URL/form and when it is processed.
 
-const String pathFormGet = '~/date-calculator/form';
-const String pathFormPost = pathFormGet; // can be a different value too
+// For the general example showing path parameters
 
-// Names of the form parameters.
-// Constants are used for these so the HTML form inputs uses the same value that
-// the form processor expects.
+const String testPattern = '~/example/:foo/:bar/baz';
+//const String _uParamFoo = 'foo';
+//const String _uParamBar = 'bar';
+//const testPattern2 = '~/example/:$_uParamFoo/:$_uParamBar/baz';
 
-const String _pParamTitle = 'title';
-const String _pParamFromDate = 'fromDate';
-const String _pParamToDate = 'toDate';
+// For the POST request example
+
+const String iPathFormHandler = '~/welcome';
+const String _pParamName = 'personName';
+
+// For the exception throwing example
+
+const String iPathExceptionGenerator = '~/throw-exception';
+const String _qParamProcessedBy = 'for';
 
 //================================================================
 // Globals
@@ -57,16 +67,21 @@ Logger simLog = Logger('simulation');
 //================================================================
 // Exceptions
 
-class DemoException1 implements Exception {
-  @override
-  String toString() => 'wrong order: no title';
+enum HandledBy {
+  pipelineExceptionHandler,
+  serverExceptionHandler,
+  defaultServerExceptionHandler
 }
 
-class DemoException2 implements Exception {
-  DemoException2(this.title);
-  String title;
-  @override
-  String toString() => 'wrong order: with title "$title"';
+/// Exception that is thrown by [requestHandlerThatAlwaysThrowsException].
+///
+/// This is used to demonstrate how exceptions are processed by the
+/// _pipeline exception handler_ and _server exception handler_.
+
+class DemoException implements Exception {
+  DemoException(this.handledBy);
+
+  final HandledBy handledBy;
 }
 
 //================================================================
@@ -96,56 +111,132 @@ Future<Response> homePage(Request req) async {
   // `HEsc.attr(req.rewriteUrl(...))`.
 
   final resp = ResponseBuffered(ContentType.html)..write('''
-<!doctype html>
-<html>
+<!DOCTYPE html>
+<html lang="en">
 <head>
-  <title>Example</title>
+      <title>Example</title>
 </head>
 
 <body>
-  <header>
-    <h1>Example</h1>
-  </header>
+      <header>
+        <h1>Example</h1>
+      </header>
 
-  <ul>
-    <li>
-      Example with form parameters:
-      <a href="${req.ura(pathFormGet)}">date calculator</a></li>
-    <li>
-      Examples with path parameters:
-      <a href="${req.ura('~/example/first/second/baz')}">1</a>
-      <a href="${req.ura('~/example/alpha/beta/baz')}">2</a>
-      <a href="${req.ura('~/example/barComponentIsEmpty//baz')}">3</a>
-    </li>
-    <li>
-      Example with query parameters:
-      <a href="${req.ura('~/example/a/b/baz?alpha=1&beta=two&gamma=three')}">1</a>
-      <a href="${req.ura('~/example/a/b/baz?delta=query++parameters&delta=are&delta=repeatable')}">2</a>
-      <a href="${req.ura('~/example/a/b/baz?emptyString=')}">3</a>
-    </li>
-    <li>
-      No match:
-      <a href="${req.ura('~/no/such/page')}">1</a>
-      <a href="${req.ura('~/example/first/second/noMatch')}">2</a>
-    </li>
-    <li>
-      Other:
+      <h2>Request handlers</h2>
+      
+      <p>The framework finds a <em>request handler</em> to process the HTTP
+      request. A match is found if the HTTP method is the same and the request
+      URL's path matches the pattern.
+      When a match is found, any path parameters (as defined by the pattern),
+      query parameters and POST parameters are passed to the request handler.</p>
+      
+      <p>In the first two sets of links, this pattern will be matched:
+       <code>${HEsc.text(testPattern)}</code></p>
+       
       <ul>
-        <li>Response from a stream:
-          <a href="${req.ura('~/stream')}">no delay</a>,
-          <a href="${req.ura('~/stream?milliseconds=200')}">with delay</a></li>
-        <li><a href="${req.ura('~/json')}">Response is JSON</a></li>
+        <li>
+          Examples with path parameters:    
+          <a href="${req.ura('~/example/first/second/baz')}">1</a>
+          <a href="${req.ura('~/example/alpha/beta/baz')}">2</a>
+          <a href="${req.ura('~/example/barComponentIsEmpty//baz')}">3</a>
+        </li>
+        <li>
+          Example with query parameters:
+          <a href="${req.ura('~/example/a/b/baz?alpha=1&beta=two&gamma=three')}">1</a>
+          <a href="${req.ura('~/example/a/b/baz?delta=query++parameters&delta=are&delta=repeatable')}">2</a>
+          <a href="${req.ura('~/example/a/b/baz?emptyString=')}">3</a>
+        </li>
+        <li>
+          Example with form parameters:
+          <form method="POST" action="${req.ura(iPathFormHandler)}">
+            <input type="text" name="${HEsc.attr(_pParamName)}">
+            <input type="submit">
+          </form>
+        </li>
       </ul>
-    </li>
+    
+      
+      <h2>Exception handling</h2>
+      
+      <h3>Not found exceptions</h3>
+      
+      <p>If a <em>request handler</em> cannot be found, the framework throws a
+      <em>NotFoundException</em>, which triggers the
+      <em>server exception handler</em>.</p>
+    
+      <ul>
+        <li><a href="${req.ura('~/no/such/page')}">
+           Does not match any pattern</a></li>
+         <li><a href="${req.ura('~/example/first/second/noMatch')}">
+           A partial match is still not a match</a></li>
+      </ul>
+        
+      <p>A <em>server exception handler</em> is defined using the
+      <code>@Handles.serverException()</code>
+      annotation on an <code>ExceptionHandler</code> function.</p>
+      
+      <h3>Other exceptions</h3>
+      
+      <p>If the <em>request handler</em> throws an exception, it triggers the
+      <em>pipeline exception handler</em> from the pipeline the request
+      handler was on. If there is no pipeline exception handler, or it also
+      throws an exception, the <em>server exception handler</em> is
+      triggered.</p>
+      
+      <ul>
+        <li>
+          <a href="${req.ura(iPathExceptionGenerator)}">Case 1</a>:
+          Exception thrown by the request handler. It is processed by the
+          pipeline exception handler.
+        </li>
+       <li>
+          <a href="${req.ura('$iPathExceptionGenerator?$_qParamProcessedBy=server')}">
+          Case 2</a>:
+          Exception thrown by the request handler. It is processed by the
+          pipeline exception handler, but it throws an exception. That second
+          exception is processed by the server pipeline exception handler.
+        </li>
+        <li>
+          <a href="${req.ura('$iPathExceptionGenerator?$_qParamProcessedBy=defaultServer')}">
+          Case 3</a>:
+          Exception thrown by the request handler. It is processed by the
+          pipeline exception hander, but it throws an exception. That second
+          exception is processed by the server exception handler, but it
+          throws an exception. That third exception causes the built-in
+          default server exception hander to run.
+        </li>
+      </ul>
+      
+      <p>A <em>pipeline exception handler</em> is defined using the
+      <code>@Handles.exception()</code> annotation on an
+      <code>ExceptionHandler</code> function. A <em>server exception handler</em>
+      is defined using a <code>@Handles.serverException()</code> annotation
+      on an <code>ExceptionHandler()</code> function.
+      
+      <p>There is also a <em>server raw exception handler</em> which is
+      triggered in edge-case situations, when the normal server or
+      pipeline exception handlers cannot be used. It is defined
+      using the <code>@Handles.rawServerException()</code> annotation on an
+      <code>ExceptionHandlerRaw</code> function. This example does not
+      demonstrate the raw exception handler, since it is not easy to
+      trigger it.</p>
+      
+      <h2>Other features</h2>
 
-  </ul>
+          <ul>
+            <li>Request handler that produces a response from a stream:
+              <a href="${req.ura('~/stream')}">no delay</a>,
+              <a href="${req.ura('~/stream?milliseconds=200')}">with delay</a></li>
+            <li><a href="${req.ura('~/json')}">JSON response instead of HTML</a></li>
+          </ul>
+      
 
-  <footer>
-    <p style="font-size: small">Demo of the
-    <a style="text-decoration: none; color: inherit;"
-       href="https://pub.dartlang.org/packages/woomera">Woomera Dart Package</a>
-    </p>
-  </footer>
+      <footer>
+        <p style="font-size: small">Demo of the
+        <a style="text-decoration: none; color: inherit;"
+           href="https://pub.dartlang.org/packages/woomera">Woomera Dart Package</a>
+        </p>
+      </footer>
 </body>
 </html>
 ''');
@@ -156,69 +247,33 @@ Future<Response> homePage(Request req) async {
 }
 
 //----------------------------------------------------------------
-// Date calculator form page.
-//
-// This handles the GET request for the form.
+/// Request handler that displays the parameters.
+///
+/// The [debugHandler] is a request handler that simply displays out all the
+/// request parameters on the HTML page that is returned.
 
-@Handles.get(pathFormGet)
-Future<Response> dateCalcGetHandler(Request req) async {
-  assert(req.method == 'GET');
-
-  final resp = ResponseBuffered(ContentType.html)..write('''
-<!doctype html>
-<html>
-<head>
-  <title>Date calculator</title>
-</head>
-
-<body>
-  <header>
-    <h1>Date calculator</h1>
-  </header>
-
-  <form method="POST" action="${req.ura(pathFormPost)}">
-    <p>Title: <input name="${HEsc.attr(_pParamTitle)}"/></p>
-    
-    <p>From
-      <input name="${HEsc.attr(_pParamFromDate)}" type="date"/>
-      to
-      <input name="${HEsc.attr(_pParamToDate)}" type="date"/>
-      <input type="submit" value="Calculate number of days"/>
-    </p>
-  </form>
-  
-  <p style="font-size: small">Enter a "from" date that is after the "to" date
-  to cause the handler to raise an exception. Different exceptions are raised
-  if the title is blank or not.</p>
-  
-  <footer><p><a href="${req.ura('~/')}">Home</a></p></footer>
-</body>
-</html>
-''');
-
-  return resp;
-}
+@Handles.get(testPattern)
+Future<Response> myDebugHandler(Request req) async => debugHandler(req);
 
 //----------------------------------------------------------------
-/// Date calculator results page.
+/// Example request handler for a POST request
 ///
 /// This handles the POST request when the form is submitted.
 
-@Handles.post(pathFormPost)
+@Handles.post(iPathFormHandler)
 Future<Response> dateCalcPostHandler(Request req) async {
   assert(req.method == 'POST');
 
-  // Get the form parameters
-
-  // POST requests with MIME type of "application/x-www-form-urlencoded"
-  // (e.g. from a normal HTML form) will populate the request's postParams
+  // Get the input values from the form
+  //
+  // HTTP requests with MIME type of "application/x-www-form-urlencoded"
+  // (e.g. from a HTTP POST request for a HTML form) will populate the request's
+  // postParams member.
   assert(req.postParams != null);
 
-  // The form parameters can be retrieved as strings from postParams.
+  // The input values can be retrieved as strings from postParams.
 
-  final title = req.postParams[_pParamTitle];
-  final fromStr = req.postParams[_pParamFromDate];
-  final toStr = req.postParams[_pParamToDate];
+  var name = req.postParams[_pParamName];
 
   // The list access operator on postParams (pathParams and queryParams too)
   // cleans up values by collapsing multiple whitespaces into a single space,
@@ -233,98 +288,68 @@ Future<Response> dateCalcPostHandler(Request req) async {
   assert(req.postParams['noSuchParameter'] == '');
   assert(req.postParams.values('noSuchParameter', raw: true).isEmpty);
 
-  try {
-    // The form parameters are strings that may need to be converted
+  // Produce the response
 
-    // Note: a good Web application should validate all input, since the input
-    // could be invalid or malicious. In this situation, the browser might not
-    // support the HTML5 date input and the user could have typed in an invalid
-    // value.
+  if (name.isEmpty) {
+    name = 'world'; // default value if no name was provided
+  }
 
-    final now = DateTime.now();
-    final today = DateTime(now.year, now.month, now.day); // midnight
+  // Produce the response
 
-    final fromDate = (fromStr.isNotEmpty) ? DateTime.parse(fromStr) : today;
+  // Note: values that cannot be trusted should be escaped, in case they
+  // contain reserved characters or malicious text. Text in HTML content can
+  // be escaped by calling `HEsc.text`. Text in attributes can be escaped by
+  // calling `HEsc.attr` (e.g. "... <a title="${HEsc.attr(value)} href=...").
 
-    final toDate = (toStr.isNotEmpty) ? DateTime.parse(toStr) : today;
-
-    // Use the form parameters and produce the response
-
-    if (fromDate.isAfter(toDate)) {
-      // Normally a handler should deal with the error and produce an
-      // appropriate response (e.g. a page with an error message).
-      // But in this example, two different exceptions are thrown, to
-      // demonstrate the exception handlers being used. Exception handlers
-      // allow the Web application to always produce a user friendly response,
-      // even if the handler didn't catch all the possible exceptions.
-      if (title.isEmpty) {
-        throw DemoException1();
-      } else {
-        throw DemoException2(title);
-      }
-    }
-
-    final diff = toDate.difference(fromDate);
-
-    // Produce the response
-
-    // Note: values that cannot be trusted should be escaped, in case they
-    // contain reserved characters or malicious text. Text in HTML content can
-    // be escaped by calling `HEsc.text`. Text in attributes can be escaped by
-    // calling `HEsc.attr` (e.g. "... <a title="${HEsc.attr(value)} href=...").
-
-    final resp = ResponseBuffered(ContentType.html)..write('''
-<!doctype html>
-<html>
+  final resp = ResponseBuffered(ContentType.html)..write('''
+<!DOCTYPE html>
+<html lang="en">
 <head>
-  <title>Date calculator</title>
+  <title>Welcome</title>
 </head>
 
 <body>
   <header>
-    <h1>Date calculator</h1>
+    <h1>Welcome</h1>
   </header>
-  
-  <h2>${HEsc.text(title)}</h2>
-  
-  <p>From ${_formatDate(fromDate)} to ${_formatDate(toDate)}: ${diff.inDays} days.</p>
+    
+  <p>Hello ${HEsc.text(name)}</p>
 
-  <p><a href="${req.ura(pathFormGet)}">Back to form</a></p>
+  <p><a href="${req.ura('~/')}">Home</a></p>
 </body>
 </html>
 ''');
 
-    return resp;
-  } on FormatException {
-    // Produce an error response
+  return resp;
+}
 
-    return ResponseBuffered(ContentType.html)
-      ..status = HttpStatus.badRequest
-      ..write('''
- <!doctype html>
-<html>
-<head>
-  <title>Date calculator</title>
-</head>
+//----------------------------------------------------------------
+/// Request handler that generates an exception.
+///
+/// This is used to demonstrate the different exception handlers.
 
-<body>
-  <header>
-    <h1>Date calculator</h1>
-  </header>
-  
-  <p>Error: invalid date(s) entered</p>
+@Handles.get(iPathExceptionGenerator)
+Future<Response> requestHandlerThatAlwaysThrowsException(Request req) async {
+  final value = req.queryParams[_qParamProcessedBy];
 
-  <p><a href="${req.ura(pathFormGet)}">Back to form</a></p>
-</body>
-</html>
-    ''');
+  switch (value) {
+    case '':
+    case 'pipeline':
+      throw DemoException(HandledBy.pipelineExceptionHandler);
+      break;
+    case 'server':
+      throw DemoException(HandledBy.serverExceptionHandler);
+      break;
+    case 'defaultServer':
+      throw DemoException(HandledBy.defaultServerExceptionHandler);
+      break;
+    default:
+      throw FormatException('unsupported value: $value');
   }
 }
 
-String _formatDate(DateTime dt) => dt.toIso8601String().substring(0, 10);
-
 //----------------------------------------------------------------
-/// Stream handler
+/// Example of a request handler that uses a stream to generate the response.
 ///
 /// This is an example of using a [ResponseStream] to progressively
 /// create the response, instead of using [ResponseBuffered]. The other class
@@ -350,6 +375,7 @@ Future<Response> streamTest(Request req) async {
   return resp;
 }
 
+//----------------
 // The stream that produces the data making up the response.
 //
 // It produces a stream of bytes (List<int>) that make up the contents of
@@ -386,9 +412,6 @@ Future<Response> handleJson(Request req) async {
   return resp;
 }
 
-@Handles.get('~/example/:foo/:bar/baz')
-Future<Response> myDebugHandler(Request req) async => debugHandler(req);
-
 //================================================================
 // Exception handlers
 //
@@ -401,6 +424,7 @@ Future<Response> myDebugHandler(Request req) async => debugHandler(req);
 /// This will handle all exceptions raised by the application's request
 /// handlers.
 
+@Handles.pipelineExceptions()
 Future<Response> pipelineExceptionHandler(
     Request req, Object exception, StackTrace st) async {
   log
@@ -408,20 +432,35 @@ Future<Response> pipelineExceptionHandler(
         'pipeline exception handler: ${exception.runtimeType}: $exception')
     ..finest('stack trace: $st');
 
-  if (exception is DemoException1) {
-    final h = ResponseBuffered(ContentType.html)
-      ..status = HttpStatus.badRequest;
-
-    final message = 'Dates are in the wrong order';
-    _produceErrorPage(h, exception, message, 'pipeline', req.rewriteUrl('~/'));
-
-    return h;
-  } else {
-    // If this pipeline exception handler raises an exception, the server
-    // exception handler will get an [ExceptionHandlerException] containing
-    // the original exception and the exception that is raised.
-    throw StateError('pipeline exception hander raised exception');
+  if (exception is DemoException) {
+    if (exception.handledBy != HandledBy.pipelineExceptionHandler) {
+      // Throw an exception. This will trigger the server exception handler
+      // (if there is one) to process it.
+      throw StateError('throw something');
+    }
   }
+
+  final resp = ResponseBuffered(ContentType.html)
+    ..status = HttpStatus.internalServerError
+    ..write('''
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <title>Error</title>
+</head>
+<body>
+  <h1 style="color: red">Exception thrown</h1>
+
+  <p style='font-size: small'>This error page was produced by the
+  <strong>pipeline</strong> exception handler.
+  See logs for details.</p>
+
+  <a href="${req.ura('~/')}">Home</a>
+</body>
+</html>
+''');
+
+  return resp;
 }
 
 //----------------------------------------------------------------
@@ -435,11 +474,26 @@ Future<Response> pipelineExceptionHandler(
 /// this exception handler to process (i.e. generate a 404/405 error page for
 /// the client).
 
+@Handles.exceptions()
 Future<Response> serverExceptionHandler(
     Request req, Object exception, StackTrace st) async {
   log
     ..warning('server exception handler: ${exception.runtimeType}: $exception')
     ..finest('stack trace: $st');
+
+  if (exception is ExceptionHandlerException) {
+    final originalException = exception.previousException;
+
+    assert(exception.exception is StateError);
+
+    if (originalException is DemoException) {
+      if (originalException.handledBy != HandledBy.serverExceptionHandler) {
+        // Throw an exception. This will trigger the server raw exception handler
+        // (if there is one) to process it.
+        throw originalException;
+      }
+    }
+  }
 
   // Create a response
 
@@ -449,20 +503,43 @@ Future<Response> serverExceptionHandler(
 
   String message;
   if (exception is NotFoundException) {
+    // A server exception handler gets this exception when no request handler
+    // was found to process the request. HTTP has two different status codes
+    // for this, depending on if the server supports the HTTP method or not.
     resp.status = (exception.found == NotFoundException.foundNothing)
         ? HttpStatus.methodNotAllowed
         : HttpStatus.notFound;
     message = 'Page not found';
   } else if (exception is ExceptionHandlerException) {
+    // A server exception handler gets this exception if a pipeline exception
+    // handler threw an exception (while it was trying to handle an exception
+    // thrown by a request handler).
     resp.status = HttpStatus.badRequest;
     message = 'Pipeline exception handler threw an exception';
   } else {
-    // Catch all
+    // A server exception handler gets all the exceptions thrown by a request
+    // handler, if there was no pipeline exception handler.
     resp.status = HttpStatus.internalServerError;
     message = 'Internal error: unexpected exception';
   }
 
-  _produceErrorPage(resp, exception, message, 'server', req.rewriteUrl('~/'));
+  resp.write('''
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <title>Exception</title>
+</head>
+<body>
+  <h1 style="color: red">${HEsc.text(message)}</h1>
+
+  <p style='font-size: small'>This error page was produced by the
+  <strong>server</strong> exception handler.
+  See logs for details.</p>
+
+  <a href="${req.ura('~/')}">Home</a>
+</body>
+</html>
+''');
 
   return resp;
 
@@ -473,28 +550,37 @@ Future<Response> serverExceptionHandler(
 }
 
 //----------------------------------------------------------------
+/// This is an example of a server raw exception handler.
+///
+/// But in this simple example, there is no way to invoke it. Raw exception
+/// handlers are triggered in very rare situations.
 
-void _produceErrorPage(ResponseBuffered resp, Object exception, String message,
-    String whichExceptionHandler, String homePageUrl) {
-  // Internal information should never be revealed to the client.
+@Handles.rawExceptions()
+Future<void> myLowLevelExceptionHandler(
+    HttpRequest rawRequest, String requestId, Object ex, StackTrace st) async {
+  simLog.severe('[$requestId] raw exception (${ex.runtimeType}): $ex\n$st');
 
-  resp.write('''
-<!doctype html>
-<html>
-<head>
-  <title>Exception</title>
-</head>
+  final resp = rawRequest.response;
+  assert(resp != null);
+
+  resp
+    ..statusCode = HttpStatus.internalServerError
+    ..headers.contentType = ContentType.html
+    ..write('''<!DOCTYPE html>
+<html lang="en">
+<head><title>Error</title></head>
 <body>
-  <h1 style="color: red">${HEsc.text(message)}</h1>
-
+  <h1>Error</h1>
+  <p>Something went wrong.</p>
+  
   <p style='font-size: small'>This error page was produced by the
-  <strong>${HEsc.text(whichExceptionHandler)}</strong> exception handler.
+  server <strong>raw</strong> exception handler.
   See logs for details.</p>
-
-  <a href="${HEsc.attr(homePageUrl)}">Home</a>
 </body>
 </html>
 ''');
+
+  await resp.close();
 }
 
 //================================================================
@@ -505,7 +591,11 @@ void _produceErrorPage(ResponseBuffered resp, Object exception, String message,
 ///
 /// This is used for testing the server.
 ///
-/// Try running this for coverage testing.
+/// Run this program with the "-t" option to use this function, instead of
+/// running a real server.
+///
+/// This function has been designed to exercise all the features of this
+/// example program. So it can be used to perform coverage testing.
 
 Future simulatedRun(Server server) async {
   simLog.info('started');
@@ -524,82 +614,72 @@ Future simulatedRun(Server server) async {
   }
 
   {
-    // Simulate a GET request to retrieve the form
+    // Simulate a GET request to retrieve the example pattern page
 
-    simLog.info('GET form');
+    simLog.info('GET example page');
 
-    var req = Request.simulatedGet(pathFormGet);
-    var resp = await server.simulate(req);
+    final req = Request.simulatedGet('~/example/foo/bar/baz');
+    final resp = await server.simulate(req);
+    simLog.info('example page content-type: ${resp.contentType}');
     assert(resp.status == HttpStatus.ok);
-    simLog.finer('form page body:\n${resp.bodyStr}');
-    assert(resp.bodyStr.contains('<form '));
-    assert(resp.bodyStr.contains('<input '));
+    assert(resp.contentType == ContentType.text);
+    simLog.finer('example page body:\n${resp.bodyStr}');
+  }
 
+  {
     // Simulate a POST request from submitting the form
 
     simLog.info('POST form');
 
-    final postParams = RequestParamsMutable()
-      ..add(_pParamTitle, 'Testing')
-      ..add(_pParamFromDate, '2019-01-01')
-      ..add(_pParamToDate, '2019-02-28');
+    final postParams = RequestParamsMutable()..add(_pParamName, 'test process');
 
-    req = Request.simulatedPost(pathFormPost, postParams);
-    resp = await server.simulate(req);
+    final req = Request.simulatedPost(iPathFormHandler, postParams);
+    final resp = await server.simulate(req);
     assert(resp.status == HttpStatus.ok);
     simLog.finer('form response body:\n${resp.bodyStr}');
-    assert(resp.bodyStr.contains('58 days'));
+    assert(resp.bodyStr.contains('Hello test process'));
+  }
 
-    // Simulate a POST request from submitting the form with invalid dates
-    // This causes an error that the handler takes care of.
+  {
+    // Simulate a GET request that triggers the pipeline exception handler.
 
-    simLog.info('POST form: exception 0');
+    simLog.info('GET: pipeline exception handler');
 
-    req = Request.simulatedPost(
-        pathFormPost,
-        RequestParamsMutable()
-          ..add(_pParamTitle, 'Testing')
-          ..add(_pParamFromDate, 'yesterday')
-          ..add(_pParamToDate, 'tomorrow')); // dates that can't be parsed
+    final req = Request.simulatedGet(iPathExceptionGenerator);
 
-    resp = await server.simulate(req);
+    final resp = await server.simulate(req);
+    assert(resp.status == HttpStatus.internalServerError);
+    simLog.finer('exception body:\n${resp.bodyStr}');
+    assert(
+        resp.bodyStr.contains('<strong>pipeline</strong> exception handler'));
+  }
+
+  {
+    // Simulate a GET request that triggers the server exception handler.
+
+    simLog.info('GET: server exception handler');
+
+    final req = Request.simulatedGet(iPathExceptionGenerator,
+        queryParams: RequestParamsMutable()..add(_qParamProcessedBy, 'server'));
+
+    final resp = await server.simulate(req);
     assert(resp.status == HttpStatus.badRequest);
-    simLog.finer('form error body 0:\n${resp.bodyStr}');
-    assert(resp.bodyStr.contains('invalid date(s) entered'));
+    simLog.finer('exception body:\n${resp.bodyStr}');
+    assert(resp.bodyStr.contains('<strong>server</strong> exception handler'));
+  }
 
-    // Simulate a POST request from submitting the form with invalid values
-    // This raises an exception for the pipeline exception handler.
+  {
+    // Simulate a GET request that triggers the default server exception handler
 
-    simLog.info('POST form: exception 1');
+    simLog.info('GET: default server exception handler');
 
-    req = Request.simulatedPost(
-        pathFormPost,
-        RequestParamsMutable()
-          ..add(_pParamTitle, '') // no title
-          ..add(_pParamFromDate, '2019-12-31')
-          ..add(_pParamToDate, '1970-01-01')); // to date before from date error
+    final req = Request.simulatedGet(iPathExceptionGenerator,
+        queryParams: RequestParamsMutable()
+          ..add(_qParamProcessedBy, 'defaultServer'));
 
-    resp = await server.simulate(req);
-    assert(resp.status == HttpStatus.badRequest);
-    simLog.finer('form error body 1:\n${resp.bodyStr}');
-    assert(resp.bodyStr.contains('<strong>pipeline</strong>'));
-
-    // Simulate a POST request from submitting the form with invalid values
-    // This raises an exception for the server exception handler.
-
-    simLog.info('POST form: exception 2');
-
-    req = Request.simulatedPost(
-        pathFormPost,
-        RequestParamsMutable()
-          ..add(_pParamTitle, 'Testing') // title present
-          ..add(_pParamFromDate, '2019-12-31')
-          ..add(_pParamToDate, '1970-01-01')); // to date before from date error
-
-    resp = await server.simulate(req);
-    assert(resp.status == HttpStatus.badRequest);
-    simLog.finer('form error body 2:\n${resp.bodyStr}');
-    assert(resp.bodyStr.contains('<strong>server</strong>'));
+    final resp = await server.simulate(req);
+    assert(resp.status == HttpStatus.internalServerError);
+    simLog.finer('exception body:\n${resp.bodyStr}');
   }
 
   {
@@ -669,26 +749,15 @@ Server _serverSetup() {
   // reverse Web proxy, but might be restrictive for testing.
   //
   // Since the Server constructor is not passed any pipeline names, by default
-  // it creates one pipeline with the default name and it automatically
-  // registers request handlers that have been annotated with Registration
-  // objects.
+  // it creates one pipeline with the default name. Request handlers and
+  // exception handlers are set up via the [Handles] annotations.
 
   final webServer = Server.fromAnnotations()
     ..bindAddress = InternetAddress.anyIPv6
     ..v6Only = false // false = listen to any IPv4 and any IPv6 address
-    ..bindPort = port
-    ..exceptionHandler = serverExceptionHandler;
+    ..bindPort = port;
 
   log.info('Web server running on port $port');
-
-  //--------
-  // Setup the exception handler for the default pipeline.
-
-  webServer.pipeline(ServerPipeline.defaultName).exceptionHandler =
-      pipelineExceptionHandler;
-
-  // The debugHandler is a handler that is provided by Woomera. It prints
-  // out all the parameters it receives, and can be used for debugging.
 
   return webServer;
 }
@@ -718,10 +787,10 @@ void _loggingSetup() {
   Logger('woomera.response').level = commonLevel;
   Logger('woomera.session').level = commonLevel;
 
-  // To see the Registration annotations that have been found, set this to
+  // To see the Handles annotations that have been found, set this to
   // FINE. Set it to FINER for more details. Set it to FINEST to see what
-  // files and/or libraries were scanned for Registration annotations.
-  Logger('woomera.registration').level = commonLevel;
+  // files and/or libraries were scanned and not scanned for annotations.
+  Logger('woomera.handles').level = commonLevel;
 }
 
 //----------------------------------------------------------------
@@ -744,7 +813,6 @@ Future main(List<String> args) async {
   } else {
     await server.run(); // run Web server
     // Unless the server's [stop] method is invoked, the server will run
-    // forever, listening for requests, so normally execution never gets past
-    // this line.
+    // forever, listening for requests, so normally execution never gets here.
   }
 }
