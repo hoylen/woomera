@@ -1,5 +1,9 @@
 # Changelog
 
+## 4.5.1-beta
+
+- Fixed annotation scanner to work when there are Dart extensions.
+
 ## 4.5.0
 
 - Added the use of annotations to create exception handlers.

@@ -637,14 +637,28 @@ class _AnnotationScanner {
       } else if (declaration is MethodMirror) {
         // Top level function: process it
 
-        final cm = libMirror.getField(declaration.simpleName);
-        final dynamic item = cm.hasReflectee ? cm.reflectee : null;
+        try {
+          final cm = libMirror.getField(declaration.simpleName);
+          final dynamic item = cm.hasReflectee ? cm.reflectee : null;
 
-        if (item is Function) {
-          _scanFunction(library, declaration, item);
-        } else {
-          _logHandles
-              .severe('not a function: $library ${declaration.qualifiedName}');
+          if (item is Function) {
+            _scanFunction(library, declaration, item);
+          } else {
+            _logHandles
+                .severe(
+                'not a function: $library ${declaration.qualifiedName}');
+          }
+        } on NoSuchMethodError catch(e) {
+          final name = MirrorSystem.getName(declaration.simpleName);
+          if (name.contains('.')) {
+            // Dart extensions result in top level methods/functions whose names
+            // are "ExtensionName.MethodName". Ignore the exceptions cause by
+            // these.
+            _logHandles.finer('ignored extension method: $name');
+          } else {
+            // Some other cause
+            rethrow;
+          }
         }
       }
     }
