@@ -16,18 +16,8 @@ part of core;
 // filters: before after
 
 /// Type for a request factory.
-///
-/// Note: despite the name, this has nothing to do with the Dart factory keyword.
 
 typedef RequestCreator = FutureOr<Request> Function(
-    HttpRequest request, String id, Server server);
-
-/// Use [RequestCreator] typedef instead.
-///
-/// This name can be confused with the `factory` feature in Dart.
-
-@deprecated
-typedef RequestFactory = FutureOr<Request> Function(
     HttpRequest request, String id, Server server);
 
 //----------------------------------------------------------------
@@ -297,26 +287,6 @@ class Server {
   /// listening for requests over HTTP. Null means it is not running.
 
   bool get isSecure => _isSecure;
-
-  //================================================================
-  // For backward compatibility
-  // TODO: remove in a future release.
-
-  /// Use [requestCreator] instead.
-  ///
-  /// This name can be confused with the `factory` feature in Dart.
-
-  @deprecated
-  RequestCreator get requestFactory => requestCreator;
-
-  /// Use [requestCreator] instead.
-  ///
-  /// This name can be confused with the `factory` feature in Dart.
-
-  @deprecated
-  set requestFactory(RequestCreator c) {
-    requestCreator = c;
-  }
 
   //================================================================
   // Methods

@@ -74,7 +74,6 @@ String dumpServer(Server server,
     buf.write('\n\n');
   }
 
-
   final pipelineVariables = <String>[];
 
   var num = 0;

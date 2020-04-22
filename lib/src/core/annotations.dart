@@ -239,23 +239,6 @@ class Handles {
   //----------------------------------------------------------------
   // Constructors for request handler annotations.
 
-  //----------------
-  /// Use the [Handles.request] constructor instead.
-  ///
-  /// The default constructor made sense when this class was only used for
-  /// annotating request handlers, but the annotations are more readable
-  /// using _Handles.request_ now that it is also used for different types of
-  /// exception handlers.
-
-  @deprecated
-  const Handles(this.httpMethod, this.pattern,
-      {String pipeline, this.priority = 0})
-      : pipeline = pipeline ?? ServerPipeline.defaultName,
-        assert(httpMethod != null),
-        assert(pattern != null),
-        assert(priority != null);
-
-  //----------------
   /// Constructor with a specific HTTP method.
   ///
   /// The [httpMethod] is the name of the HTTP method, and [pattern] is the

@@ -1,11 +1,17 @@
 # Changelog
 
-## 5.0.0-beta
+## 5.0.0
 
 - Fixed annotation scanner to work when there are Dart extensions.
 - Separated annotation scanning code into a separate library.
 - Breaking change: Server.fromAnnotations becomes serverFromAnnotations.
 - Breaking change: ServerPipeline.fromAnnotations serverPipelineFromAnnotations.
+- Removed deprecated Response.header method (use headerAdd, headerAddDate).
+- Removed deprecated Response.headers (use headerExists, headerNames, etc).
+- Removed deprecated RequestFactory (use RequestCreator).
+- Removed deprecated Server.requestFactory (use Server.requestCreator).
+- Removed deprecated Handles.Handles (use Handles.request).
+- Removed deprecated Request.hasSession (use session != null).
 
 ## 4.5.0
 

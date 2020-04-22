@@ -59,25 +59,6 @@ abstract class Response {
   String _headerCanonicalName(String str) => str.trim().toUpperCase();
 
   //----------------------------------------------------------------
-  /// HTTP headers that will be added to the response
-  ///
-  /// This has been deprecated because it is dangerous to access the headers
-  /// Map directly.  Since header names are case insensitive, accidentally
-  /// using strings containing capital letters with the Map may produce
-  /// unexpected results.
-  ///
-  /// Use methods [headerAdd], [headerAddDate], [headerExists] and
-  /// [headerValues] instead. They work correctly when the names contain
-  /// uppercase letters, lowercase letters or a mixture of both.
-  ///
-  /// Avoid using this member directly. If you have a reason to need it,
-  /// please submit an issue in GitHub and a case-safe method can be created
-  /// for it. <https://github.com/hoylen/woomera/issues>
-
-  @deprecated
-  Map<String, List<String>> get headers => _headers;
-
-  //----------------------------------------------------------------
   /// Whether a header has been set or not.
   ///
   /// Returns true if one or more headers with the [name] has been set.
@@ -222,17 +203,6 @@ abstract class Response {
       // Name does not exist
       return false;
     }
-  }
-
-  //----------------------------------------------------------------
-  /// Set a HTML header
-  ///
-  /// Use [headerAdd] instead. This old method should be avoided, because
-  /// its name is easily confused with the new [headers] member.
-
-  @deprecated
-  void header(String name, String value) {
-    headerAdd(name, value);
   }
 
   //================================================================

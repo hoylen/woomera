@@ -221,15 +221,14 @@ class Request {
 
   /// Returns the [HttpRequest].
   ///
-  /// This member should not be used unless absolutely necessary. It is now
-  /// deprecated: please use [method], [requestPath], [headers], [cookies],
-  /// [bodyBytes], [bodyStr] to obtain information that was previously obtained
-  /// from the Request's `request` member.
+  /// This member should not be used unless absolutely necessary.
+  /// Please use [method], [requestPath], [headers], [cookies],
+  /// [bodyBytes], [bodyStr] to obtain information about the request.
   ///
-  /// It is only implemented for [Request] objects from real HTTP requests, and
+  /// It is only available for [Request] objects from real HTTP requests, and
   /// will throw an [UnsupportedError] exception when called on a simulated
-  /// _Request_. Therefore, using it will prevent the server from being tested
-  /// using [Server.simulate].
+  /// _Request_. Therefore, using this method will prevent the server from being
+  /// tested using [Server.simulate].
   ///
   /// If a value is required from [HttpRequest], consider submitting an issue
   /// to have it exposed by [Request] in a manner that allows it to be used for
@@ -605,13 +604,6 @@ class Request {
       await session.suspend(this);
     }
   }
-
-  /// Indicates if the request has a session or not.
-  ///
-  /// Deprecated: please use `x.session != null` instead of `x.hasSession`.
-
-  // TODO: @deprecated
-  bool get hasSession => session != null;
 
   //================================================================
   // Internal methods
