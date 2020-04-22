@@ -45,8 +45,8 @@ ServerPipeline serverPipelineFromAnnotations(
   var haveRequestHandlers = false;
   for (final arh in _annotations.listRequestHandlers(pipeline.name)) {
     try {
-      pipeline.registerInternal(arh.httpMethod, arh.pattern, arh.handler,
-          manualRegistration: false);
+      pipeline.register(arh.httpMethod, null, arh.handler,
+          pattern: arh.pattern);
     } on DuplicateRule catch (e) {
       // Since Mirrors is available, use the enhanced exception that can
       // show where the existing handler came from

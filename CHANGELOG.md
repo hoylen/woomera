@@ -1,5 +1,9 @@
 # Changelog
 
+## 5.1.0
+
+- Merged ServerPipeline.registerInternal into the register method.
+
 ## 5.0.0
 
 - Fixed annotation scanner to work when there are Dart extensions.

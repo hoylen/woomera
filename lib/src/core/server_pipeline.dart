@@ -76,38 +76,6 @@ class ServerPipeline {
   // Methods
 
   //----------------------------------------------------------------
-  /// Generic registration of a request handler for any HTTP method.
-  ///
-  /// Register a request [handler] to match a HTTP [httpMethod] and [pattern].
-  ///
-  /// Convenience methods for common methods exist: [get], [post], [put],
-  /// [patch], [delete]. They simply invoke this method with corresponding
-  /// values for the HTTP method.
-  ///
-  /// Throws an [ArgumentError] if the values are invalid (in particular, if
-  /// the pattern is not a valid pattern).
-
-  void register(String httpMethod, String pattern, RequestHandler handler) {
-    if (httpMethod == null) {
-      throw ArgumentError.notNull('method');
-    }
-    if (httpMethod.isEmpty) {
-      throw ArgumentError.value(httpMethod, 'method', 'Empty string');
-    }
-    if (pattern == null) {
-      throw ArgumentError.notNull('pattern');
-    }
-    if (handler == null) {
-      throw ArgumentError.notNull('handler');
-    }
-
-    // Note: the Pattern constructor below can also throw an ArgumentError
-
-    registerInternal(httpMethod, Pattern(pattern), handler,
-        manualRegistration: true);
-  }
-
-  //----------------------------------------------------------------
   /// Register a GET request handler.
   ///
   /// Shorthand for calling [register] with the method set to "GET".
@@ -162,13 +130,38 @@ class ServerPipeline {
   }
 
   //----------------------------------------------------------------
-  /// Internal registration method for adding a rule.
+  /// Registration of a request handler for any HTTP method.
   ///
-  /// Used by both [register] and `serverPipelineFromAnnotations`.
+  /// Register a request [handler] to match a HTTP [method] and pattern.
+  /// The pattern can be provided as a string [patternStr] or a [Pattern]
+  /// object. If the [pattern] object is provided, the _patternStr_ is ignored.
+  ///
+  /// Convenience methods for common HTTP methods exist: [get], [post], [put],
+  /// [patch], [delete]. They simply invoke this method with corresponding
+  /// values for the HTTP method.
+  ///
+  /// Throws an [ArgumentError] if the values are invalid (in particular, if
+  /// the pattern string is not a valid pattern).
 
-  void registerInternal(String method, Pattern pattern, RequestHandler handler,
-      {bool manualRegistration}) {
-    _logServer.config('register: $method $pattern');
+  void register(String method, String patternStr, RequestHandler handler,
+      {Pattern pattern}) {
+    if (method == null) {
+      throw ArgumentError.notNull('method');
+    }
+    if (method.isEmpty) {
+      throw ArgumentError.value(method, 'method', 'Empty string');
+    }
+    if (handler == null) {
+      throw ArgumentError.notNull('handler');
+    }
+
+    if (pattern == null && patternStr == null) {
+      throw ArgumentError.notNull('patternStr');
+    }
+
+    final patternObj = pattern ?? Pattern(patternStr); // throws ArgumentError
+
+    _logServer.config('register: $method $patternObj');
 
     // Get the list of rules for the HTTP method
 
@@ -180,7 +173,7 @@ class ServerPipeline {
 
     // Check another rule does not already exist with the same path
 
-    final newRule = ServerRule(pattern.toString(), handler);
+    final newRule = ServerRule(patternObj.toString(), handler);
     final existingRule = methodRules
         .firstWhere((sr) => sr.pattern == newRule.pattern, orElse: () => null);
 
@@ -190,7 +183,7 @@ class ServerPipeline {
     // variable names should be considered a duplicate. What about wildcards?
 
     if (existingRule != null) {
-      throw DuplicateRule(method, pattern, handler, existingRule.handler);
+      throw DuplicateRule(method, patternObj, handler, existingRule.handler);
     }
 
     // Record the rule
