@@ -1,4 +1,4 @@
-part of woomera;
+part of core;
 
 //----------------------------------------------------------------
 /// Session that is maintained between HTTP requests.

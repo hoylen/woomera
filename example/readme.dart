@@ -8,7 +8,7 @@ import 'package:woomera/woomera.dart';
 Future<void> main() async {
   // Create and configure server
 
-  final ws = Server.fromAnnotations()
+  final ws = serverFromAnnotations()
     ..bindAddress = InternetAddress.anyIPv6
     ..bindPort = 1024;
 

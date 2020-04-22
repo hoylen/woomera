@@ -1,4 +1,4 @@
-part of woomera;
+part of core;
 
 //----------------------------------------------------------------
 /// HTML escaping methods for escaping values for output in HTML.

@@ -1,4 +1,4 @@
-part of woomera;
+part of core;
 
 //================================================================
 /// Handler for proxying requests to another server.

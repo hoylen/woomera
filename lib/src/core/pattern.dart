@@ -1,4 +1,4 @@
-part of woomera;
+part of core;
 
 //################################################################
 /// Pattern that is used to match a path.

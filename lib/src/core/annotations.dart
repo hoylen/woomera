@@ -1,4 +1,4 @@
-part of woomera;
+part of core;
 
 //################################################################
 /// Function type for handler wrapper.
@@ -22,8 +22,8 @@ typedef HandlerWrapper = RequestHandler Function(Handles rego, Object obj);
 ///
 /// Instances of this class is designed to be used as an annotation on a
 /// top-level function or static member that will be used to populate rules
-/// and exception handlers when using the [Server.fromAnnotations] and
-/// [ServerPipeline.fromAnnotations] constructors.
+/// and exception handlers when using `serverFromAnnotations` and
+/// `serverPipelineFromAnnotations`.
 ///
 /// ## Annotating request handlers
 ///

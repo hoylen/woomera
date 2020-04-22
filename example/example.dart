@@ -12,7 +12,6 @@
 import 'dart:async';
 import 'dart:convert' show json;
 import 'dart:io' show ContentType, HttpStatus, InternetAddress, HttpRequest;
-import 'dart:math';
 
 import 'package:logging/logging.dart';
 
@@ -752,7 +751,7 @@ Server _serverSetup() {
   // it creates one pipeline with the default name. Request handlers and
   // exception handlers are set up via the [Handles] annotations.
 
-  final webServer = Server.fromAnnotations()
+  final webServer = serverFromAnnotations()
     ..bindAddress = InternetAddress.anyIPv6
     ..v6Only = false // false = listen to any IPv4 and any IPv6 address
     ..bindPort = port;

@@ -1,4 +1,4 @@
-part of woomera;
+part of core;
 
 //================================================================
 /// Response returned by simulations.

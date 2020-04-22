@@ -1,4 +1,4 @@
-part of woomera;
+part of core;
 
 //================================================================
 /// Request handler which shows out the request parameters to the client.

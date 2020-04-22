@@ -1,4 +1,4 @@
-part of woomera;
+part of core;
 
 //================================================================
 /// Request class.
@@ -209,21 +209,13 @@ class Request {
   }
 
   //================================================================
-  /*
   /// The underlying HTTP request.
   ///
   /// An instance of [HttpRequest] the produced the context.
   ///
-  /// Applications should not use this member, because it is not available in
-  /// the [RequestSimulated]. So using it would preven the application from
-  /// being tested using the simulation.
-  ///
-  /// It is provided in case there are some properties of the [HttpRequest]
-  /// that is not yet exposed in a Woomera [Request]. If there is, please
-  /// submit an issue, so it could be included in _Request_.
-
-  @deprecated
-  HttpRequest get httpRequest => _httpRequest;*/
+  /// Applications do not have access this member, because it is not available
+  /// in a simulated request (created using [Request.simulated]). So using it
+  /// would prevent the application from being tested using the simulation.
 
   final _CoreRequest _coreRequest;
 

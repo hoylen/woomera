@@ -1,4 +1,19 @@
-part of woomera;
+part of scan;
+
+//################################################################
+// Static members
+
+/// Annotated handlers in the program
+///
+/// This is effectively a global variable, since a program only has one set
+/// of libraries. So once the libraries have been scanned, the annotated
+/// handlers can be cached for creating multiple pipelines, setting server
+/// exception handlers and server raw exception handlers.
+///
+/// This static member is used by [serverPipelineFromAnnotations] and
+/// [serverFromAnnotations].
+
+final _annotations = _AnnotationScanner();
 
 //################################################################
 
@@ -53,7 +68,7 @@ class _AnnotatedRequestHandler extends _AnnotatedHandlerBase {
   /// Constructor of an annotated request handler.
 
   _AnnotatedRequestHandler(
-      Handles annotation, MethodMirror methodMirror, Function theFunction)
+      Handles annotation, MethodMirror methodMirror, this.annotatedFunction)
       : assert(annotation.isRequestHandler),
         super(methodMirror) {
     // Assume default values if (somehow) the values in the registration are
@@ -72,15 +87,17 @@ class _AnnotatedRequestHandler extends _AnnotatedHandlerBase {
     priority = annotation.priority ?? 0;
     pattern = Pattern(annotation.pattern);
 
-    // Get the request handler to use
+    // Convert the function into a request handler (if necessary)
 
     if (Handles.handlerWrapper != null) {
       // A handler wrapper was defined. Use it to process the object that
       // was annotated (even if it is already a RequestHandler).
-      handler = Handles.handlerWrapper(annotation, theFunction);
-    } else if (theFunction is RequestHandler) {
-      // Function cannot be used as a handler
-      handler = theFunction;
+      handler = Handles.handlerWrapper(annotation, annotatedFunction);
+      // Warning: above handlerWrapper could return null
+    } else if (annotatedFunction is RequestHandler) {
+      // Function can be used as a handler
+      // ignore: avoid_as
+      handler = annotatedFunction as RequestHandler;
     }
 
     if (handler == null) {
@@ -107,6 +124,10 @@ class _AnnotatedRequestHandler extends _AnnotatedHandlerBase {
   String httpMethod;
   int priority;
   Pattern pattern;
+
+  /// The function the annotation was on (before applying any `handlerWrapper`)
+
+  final Function annotatedFunction;
 
   /// The request handler function the annotation was on.
 
@@ -346,7 +367,7 @@ class _AnnotationScanner {
 
   /// Tracks which pipelines have been created using annotations.
   ///
-  /// This is used by [Server.fromAnnotations] to check if all the annotations
+  /// This is used by [serverFromAnnotations] to check if all the annotations
   /// have been used to create pipelines. If not a warning is logged, since
   /// a possible mistake is to create annotations that are never used.
 
@@ -418,7 +439,7 @@ class _AnnotationScanner {
   ///
   /// Note: this does not check that any server exception handler or
   /// server raw exception handler has been used or not. Since this method
-  /// is invoked by [Server.fromAnnotations], which uses them before invoking
+  /// is invoked by [serverFromAnnotations], which uses them before invoking
   /// this method.
 
   List<String> checkForUnusedAnnotations() {
@@ -644,11 +665,11 @@ class _AnnotationScanner {
           if (item is Function) {
             _scanFunction(library, declaration, item);
           } else {
-            _logHandles
-                .severe(
+            _logHandles.severe(
                 'not a function: $library ${declaration.qualifiedName}');
           }
-        } on NoSuchMethodError catch(e) {
+          // ignore: avoid_catching_errors
+        } on NoSuchMethodError {
           final name = MirrorSystem.getName(declaration.simpleName);
           if (name.contains('.')) {
             // Dart extensions result in top level methods/functions whose names
@@ -775,7 +796,7 @@ class _AnnotationScanner {
           name = name.substring(1); // strip off "."
         }
 
-        throw DupliateExceptionHandler(methodMirror.location, name, annotation,
+        throw DuplicateExceptionHandler(methodMirror.location, name, annotation,
             existing.location, existing.name);
       }
       _foundExceptionHandlers[goodName] = entry;
@@ -790,7 +811,7 @@ class _AnnotationScanner {
           name = name.substring(1); // strip off "."
         }
 
-        throw DupliateExceptionHandler(methodMirror.location, name, annotation,
+        throw DuplicateExceptionHandler(methodMirror.location, name, annotation,
             _foundRawExceptionHandler.location, _foundRawExceptionHandler.name);
       }
 

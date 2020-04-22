@@ -70,7 +70,7 @@ import 'dart:io';
 import 'package:woomera/woomera.dart';
 
 Future<void> main() async {
-  final ws = Server.fromAnnotations()
+  final ws = serverFromAnnotations()
     ..bindAddress = InternetAddress.anyIPv6
     ..bindPort = 1024;
 
@@ -145,7 +145,7 @@ A _Server_ object must be created and configured for the TCP/IP
 address and port it will listen for HTTP requests on.
 
 ```dart
-final ws = Server.fromAnnotations()
+final ws = serverFromAnnotations()
   ..bindAddress = InternetAddress.anyIPv6
   ..bindPort = 1024;
 ```
@@ -176,11 +176,18 @@ numbers are require special permission to use.
 
 #### 1.4 Annotating request handlers
 
-When a server is created using `Server.fromAnnotations`, it scans the
+When a server is created using `serverFromAnnotations`, it scans the
 program for top-level functions and static methods. Those with
 `Handles` annotations are used to create rules for handling HTTP
 requests.  When processing a HTTP request, if the rule matches the
 request, the request handler is invoked.
+
+A `Server` can also be created using its constructor, but all the
+request handlers and exception handers would need to be explicitly
+registered with it. It is more tedious than automatically registering
+them from the annotations, but is necessary when the Dart Mirrors
+package can't be used. Scanning of the program for annotations
+requires the Dart Mirrors package.
 
 A request handler is a function with a _Request_ parameter and returns
 a Future to a _Response_.
@@ -614,7 +621,7 @@ control over how and when rules are matched (and consequently which
 request handlers are invoked).
 
 In the above example, the default pipeline was used. The default
-pipeline is created if the _Server.fromAnnotations` constructor is
+pipeline is created if the _serverFromAnnotations` constructor is
 used with no parameters. The annotations define rules for the default
 pipeline, if no _pipeline_ parameter is passed to the _Handles_
 constructor.
@@ -623,7 +630,7 @@ constructor.
 @Handles.get('~/foo/bar')
 ...
 
-final server = Server.fromAnnotations();
+final server = serverFromAnnotations();
 ```
 
 #### 4.2 Behavour of pipelines
@@ -662,7 +669,7 @@ error in JSON.
 #### 4.3 Creating multiple pipelines
 
 Multiple pipelines can be created by providing a list of pipeline
-names to the _Server.fromAnnotations_ constructor. To associate an
+names to the _serverFromAnnotations_ constructor. To associate an
 annotation to a pipeline, specify the pipeline name as a parameter to
 the _Handles_ constructor.
 
@@ -677,10 +684,10 @@ the _Handles_ constructor.
 ...
 
 
-final server = Server.fromAnnotations(['api', Pipeline.defaultName, 'third']);
+final server = serverFromAnnotations(['api', Pipeline.defaultName, 'third']);
 ```
 
-Note: if a list of names is provided to the _Server.fromAnnotations_
+Note: if a list of names is provided to the _serverFromAnnotations_
 constructor, the default pipeline is not created unless its name is
 explicitly one of the names in the list.
 

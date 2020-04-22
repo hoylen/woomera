@@ -1,8 +1,11 @@
 # Changelog
 
-## 4.5.1-beta
+## 5.0.0-beta
 
 - Fixed annotation scanner to work when there are Dart extensions.
+- Separated annotation scanning code into a separate library.
+- Breaking change: Server.fromAnnotations becomes serverFromAnnotations.
+- Breaking change: ServerPipeline.fromAnnotations serverPipelineFromAnnotations.
 
 ## 4.5.0
 

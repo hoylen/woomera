@@ -1,4 +1,4 @@
-part of woomera;
+part of core;
 
 //================================================================
 /// Abstract base class for a response.

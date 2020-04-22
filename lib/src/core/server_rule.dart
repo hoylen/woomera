@@ -1,4 +1,4 @@
-part of woomera;
+part of core;
 
 //################################################################
 /// Represents a rule for processing HTTP requests.

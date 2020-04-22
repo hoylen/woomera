@@ -1,4 +1,4 @@
-part of woomera;
+part of core;
 
 //================================================================
 /// Headers in a simulated request or response

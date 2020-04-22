@@ -1,4 +1,4 @@
-part of woomera;
+part of core;
 
 //================================================================
 /// Handler for returning static files and directory listings.
