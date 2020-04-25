@@ -4,6 +4,7 @@
 
 - Merged ServerPipeline.registerInternal into the register method.
 - Request.pathSegments now works with server base paths.
+- Improved detection of redundant rules with patterns that match the same paths.
 
 ## 5.0.0
 

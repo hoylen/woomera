@@ -18,6 +18,8 @@ part of core;
 /// - optional segments (value ends with a question mark "?")
 /// - wildcard segments (entire value is a single asterisk "*")
 ///
+/// The segment types cannot be combined. For example, ":foo?" is not allowed.
+///
 /// A pattern can have at most one wildcard segment. The behaviour is undefined
 /// if there are two or more wildcard segments.
 ///
@@ -42,6 +44,28 @@ class Pattern {
 
     while (_segments.isNotEmpty && _segments[0].isEmpty) {
       _segments.removeAt(0); // remove leading slashes "/", "//", "/////"
+    }
+
+    // Check for invalid combinations of segment types
+
+    for (final seg in _segments) {
+      var numSpecials = 0;
+      String name;
+      if (_isVariable(seg)) {
+        numSpecials++;
+        name = _variableName(seg);
+      }
+      if (_isOptional(seg)) {
+        numSpecials++;
+        name = _optionalName(seg);
+      }
+      if (name == wildcard) {
+        numSpecials++;
+      }
+
+      if (1 < numSpecials) {
+        throw ArgumentError.value(pattern, 'pattern', 'invalid segment: $seg');
+      }
     }
   }
 
@@ -135,7 +159,7 @@ class Pattern {
   int get hashCode => _segments.hashCode;
 
   //----------------------------------------------------------------
-  /// Comparing two patterns.
+  /// Comparing two patterns for ordering them.
   ///
   /// This is used for sorting [Handles] annotations, to define the order
   /// of the rules that are automatically registered with a pipeline (if the
@@ -155,6 +179,10 @@ class Pattern {
   ///
   /// A more practical example are the patterns "~/abc/def/" and
   /// "~/abc/def/:variable".
+  ///
+  /// Note: the names of variables are significant when comparing them.
+  /// For example, "~/:a" and "~/:b" will return a non-zero value,
+  /// but [matchesSamePaths] will return true.
 
   int compareTo(Pattern other) {
     var varNameOrder = 0;
@@ -329,6 +357,49 @@ class Pattern {
   }
 
   //----------------------------------------------------------------
+  /// Checks if two patterns will match the exact same set of paths.
+  ///
+  /// That is, the two patterns are exactly the same except that any variables
+  /// in them may have different variable names.
+  ///
+  /// For example, "~/foo/:bar" and "~/foo/:XYZ" will return true, but
+  /// [compareTo] does not return zero for them.
+
+  bool matchesSamePaths(Pattern other) {
+    if (_segments.length != other._segments.length) {
+      return false;
+    }
+
+    for (var x = 0; x < _segments.length; x++) {
+      final s1 = _segments[x];
+      final s2 = other._segments[x];
+
+      if (_isVariable(s1)) {
+        if (!_isVariable(s2)) {
+          return false;
+        }
+        // Do not care if variable names are different
+      } else if (_isOptional(s1)) {
+        if (!_isOptional(s2)) {
+          return false;
+        }
+        if (_optionalName(s1) != _optionalName(s2)) {
+          return false;
+        }
+      } else if (s1 == wildcard) {
+        if (s2 != wildcard) {
+          return false;
+        }
+      } else {
+        // Literal segment
+        if (s1 != s2) {
+          return false;
+        }
+      }
+    }
+
+    return true;
+  }
 
   @override
   String toString() => '~/${_segments.join(_pathSeparator)}';

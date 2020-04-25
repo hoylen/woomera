@@ -190,10 +190,26 @@ class Request {
             'application/x-www-form-urlencoded') {
       // Read in the contents of the request
 
-      // Convert the request body into a string
-      // TODO: check specification whether this can use AsciiDecoder instead of UTF-8
+      // Get the request body into a string
+      //
+      // URL-encoded form data only contains ASCII characters (when properly
+      // encoded). But here we'll use _bodyStr_ which interprets the body bytes
+      // as UTF-8: to avoid extra code to decode ASCII (which is a subset of
+      // UTF-8) and just in case a non-compliant client sends non-ASCII code
+      // points in the common UTF-8 encoding.
+      //
+      // In the extremely unlikely situation where a non-compliant client
+      // incorrectly sends non-ASCII code points and doesn't use UTF-8, this
+      // code will raise an encoding exception or silently produce the wrong
+      // result. Undefined behaviour is expected if the client produces wrong
+      // data! It could could try to detect a character encoding in the header,
+      // but that would be an overkill, since there is no charset parameter for
+      // this media type.
+      //
+      // So treating the body as UTF-8 is good enough. It works for correct
+      // input, and the behaviour is undefined for incorrect input.
 
-      final str = await _coreRequest.bodyStr(maxPostSize);
+      final str = await _coreRequest.bodyStr(maxPostSize); // assumes UTF-8
 
       // Parse the string into parameters
 
@@ -315,10 +331,10 @@ class Request {
   /// The request path as a String.
   ///
   /// The request path is the path of the internal URL. That is, it excludes
-  /// the host, port, base path and any query parameters.
+  /// the host, port, base path, query parameters and fragment identifiers
   ///
   /// This method returns the request path as a string. This is a value that
-  /// starts with '~/' (e.g. '~/foo/bar/baz/').
+  /// starts with '~/' (e.g. '~/foo/bar/baz').
   ///
   /// This is a value that starts with '~/'.
 
@@ -326,6 +342,12 @@ class Request {
 
   //----------------
   /// The request path as a list of segments.
+  ///
+  /// For example, if [requestPath] would have returned "~/foo/bar/baz",
+  /// this method would return ["foo", "bar, "baz"].
+  ///
+  /// Note: since this is equivalent to the internal URL, segments from the
+  /// server base path are not included.
   ///
   /// See [requestPath] for more information.
 
@@ -339,9 +361,11 @@ class Request {
 
   //----------------------------------------------------------------
   /// Cookies
+  ///
+  /// Warning: this may include the session cookie created by the Woomera
+  /// session feature.
 
   Iterable<Cookie> get cookies => _coreRequest.cookies;
-  // TODO: remove session cookie from result
 
   //================================================================
   // Body of the request
@@ -495,26 +519,22 @@ class Request {
 
     // First, try finding a session cookie
 
-    assert(_coreRequest != null); // todo: if never false, remove following if
+    if (_coreRequest.sessionId != null) {
+      // Explicitly passed in sessionId (simulations only)
+      sessionId = _coreRequest.sessionId;
+      conflictingSessionId = false;
+    } else {
+      // Examine cookies for the session cookie
 
-    if (_coreRequest != null) {
-      if (_coreRequest.sessionId != null) {
-        // Explicitly passed in sessionId (simulations only)
-        sessionId = _coreRequest.sessionId;
-        conflictingSessionId = false;
-      } else {
-        // Examine cookies for the session cookie
-
-        for (var cookie in _coreRequest.cookies) {
-          if (cookie.name == server.sessionCookieName) {
-            if (sessionId == null) {
-              sessionId = cookie.value;
-              assert(conflictingSessionId == null);
-              conflictingSessionId = false;
-            } else {
-              if (sessionId != cookie.value) {
-                conflictingSessionId = true;
-              }
+      for (var cookie in _coreRequest.cookies) {
+        if (cookie.name == server.sessionCookieName) {
+          if (sessionId == null) {
+            sessionId = cookie.value;
+            assert(conflictingSessionId == null);
+            conflictingSessionId = false;
+          } else {
+            if (sessionId != cookie.value) {
+              conflictingSessionId = true;
             }
           }
         }

@@ -284,7 +284,7 @@ void loggingSetup() {
 //----------------------------------------------------------------
 
 Future main() async {
-  // loggingSetup(); // TODO: Uncomment if you want logging
+  // loggingSetup(); // Uncomment if you want logging
 
   // Start the server
 

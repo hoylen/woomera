@@ -917,6 +917,13 @@ class Server {
   ///
   /// The base path is prepended to all patterns and is a simple
   /// way to "move" all the URLs to a different root.
+  ///
+  /// The [value] must be a string that starts with a "/". Unless it is not
+  /// "/", it must not end with a "/". For example, "/", "/abc", "/abc/def" are
+  /// valid values. But "/abc/" and "/abc/def/" are not.
+  ///
+  /// If the value is null or an empty string, it is the same as setting the
+  /// base path to "/".
 
   set basePath(String value) {
     if (value == null || value.isEmpty) {

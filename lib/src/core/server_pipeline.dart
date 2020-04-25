@@ -171,16 +171,22 @@ class ServerPipeline {
       _rulesByMethod[method] = methodRules;
     }
 
-    // Check another rule does not already exist with the same path
+    // Check if another rule already exists with the "same" pattern.
+    // It is an error if one exists.
+    //
+    // It is not an error to have two rules that match a path. The order
+    // of those rules will determine which one matches, and there can be other
+    // paths that match one and not the other. So both have a purpose.
+    //
+    // But it is an error to have two rules with the "same" pattern. With them,
+    // the first rule will always match, and there are no paths which will
+    // not match one and match the other. So one of them is redundant. If it
+    // was allowed, one of them will never get used.
 
     final newRule = ServerRule(patternObj.toString(), handler);
-    final existingRule = methodRules
-        .firstWhere((sr) => sr.pattern == newRule.pattern, orElse: () => null);
-
-    // TODO: fix the above check for an existing rule with the "same" pattern
-    // The above check treats variable names as significant, but for the
-    // purposes of detecting "duplicate rules", rules which only differ by their
-    // variable names should be considered a duplicate. What about wildcards?
+    final existingRule = methodRules.firstWhere(
+        (sr) => sr.pattern.matchesSamePaths(newRule.pattern),
+        orElse: () => null);
 
     if (existingRule != null) {
       throw DuplicateRule(method, patternObj, handler, existingRule.handler);

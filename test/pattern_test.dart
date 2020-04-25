@@ -49,6 +49,10 @@ void invalidPatterns() {
       'foo',
       '/foo',
       '~~/bar',
+      '~/combined/component/:abc?',
+      '~/combined/component/:*',
+      '~/combined/component/*?',
+      '~/combined/component/:*?',
     ]) {
       test(sample.isNotEmpty ? sample : '(blank string)', () {
         try {
@@ -155,7 +159,7 @@ void matching() {
 
 void sorting() {
   group('ordering', () {
-    test('same', () {
+    test('ordered equally', () {
       for (final pair in [
         ['~/literal', '~/literal'],
         ['~/:variable', '~/:variable'],
@@ -167,12 +171,12 @@ void sorting() {
         final p1 = Pattern(pair[0]);
         final p2 = Pattern(pair[1]);
 
-        expect(p1.compareTo(p2), equals(0), reason: '$p1 not the same as $p2');
-        expect(p2.compareTo(p1), equals(0), reason: '$p1 not the same as $p2');
+        expect(p1.compareTo(p2), equals(0), reason: '$p1 not ordered as $p2');
+        expect(p2.compareTo(p1), equals(0), reason: '$p1 not ordered as $p2');
       }
     });
 
-    test('different', () {
+    test('ordered differently', () {
       for (final pair in [
         ['~/foo', '~/zzz'],
         ['~/foo', '~/:foo'],
@@ -201,6 +205,54 @@ void sorting() {
   });
 }
 
+void sameness() {
+  group('same', () {
+    test('same patterns', () {
+      for (final pair in [
+        ['~/literal', '~/literal'],
+        ['~/:variable', '~/:variable'],
+        ['~/:variable', '~/:differentVariableName'],
+        ['~/optional?', '~/optional?'],
+        ['~/*', '~/*'],
+        ['~/a/b/c/d', '~/a/b/c/d'],
+        ['~/a/:b/c/d', '~/a/:B/c/d'],
+        ['~/a/:aaaVarName/same', '~/a/:zzzVarName/same'],
+      ]) {
+        final p1 = Pattern(pair[0]);
+        final p2 = Pattern(pair[1]);
+
+        expect(p1.matchesSamePaths(p2), isTrue, reason: '$p1 not the same as $p2');
+        expect(p2.matchesSamePaths(p1), isTrue, reason: '$p1 not the same as $p2');
+      }
+    });
+
+    test('not same patterns', () {
+      for (final pair in [
+        ['~/foo', '~/zzz'],
+        ['~/foo', '~/:foo'],
+        ['~/foo', '~/foo?'],
+        ['~/foo', '~/*'],
+        ['~/optional?', '~/differentOptionalName?'],
+        ['~/bar?', '~/:bar'],
+        ['~/bar?', '~/*'],
+        ['~/:baz', '~/*'],
+        ['~/a/longerPath', '~/a'],
+        ['~/a?/longerPath', '~/a?'],
+        ['~/:a/longerPath', '~/:a'],
+        ['~/*/longerPath', '~/*'],
+        ['~/a/b/c/d', '~/a/b/c/zzz'],
+        ['~/a/:zzzVarName/ccc', '~/a/:aaaVarName/zzz'],
+      ]) {
+        final p1 = Pattern(pair[0]);
+        final p2 = Pattern(pair[1]);
+
+        expect(p1.matchesSamePaths(p2), isFalse, reason: 'same: $p1 versus $p2');
+        expect(p2.matchesSamePaths(p1), isFalse, reason: 'same: $p2 versus $p1');
+      }
+    });
+  });
+}
+
 //================================================================
 
 Future main() async {
@@ -208,4 +260,5 @@ Future main() async {
   invalidPatterns();
   matching();
   sorting();
+  sameness();
 }
