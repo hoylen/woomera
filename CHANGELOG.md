@@ -3,6 +3,7 @@
 ## 5.1.0
 
 - Merged ServerPipeline.registerInternal into the register method.
+- Request.pathSegments now works with server base paths.
 
 ## 5.0.0
 

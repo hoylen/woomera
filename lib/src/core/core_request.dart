@@ -72,8 +72,6 @@ class _CoreRequestReal implements _CoreRequest {
     var p = _httpRequest.uri.path;
 
     if (p.startsWith(serverBasePath)) {
-      // TODO: this needs more work to account for # and ? parameters
-
       if (p.length <= serverBasePath.length) {
         p = '~/';
       } else {
@@ -89,11 +87,27 @@ class _CoreRequestReal implements _CoreRequest {
   @override
   List<String> _pathSegments(String serverBasePath) {
     try {
-      final segments = _httpRequest.uri.pathSegments;
+      var segments = _httpRequest.uri.pathSegments;
 
-      // TODO: remove the base path segments
-      assert(serverBasePath == '/'); // TODO: support real values in base path
-      if (serverBasePath != '/') {}
+      // Remove server base path from the start of the segments
+
+      assert(serverBasePath.startsWith('/'));
+      if (1 < serverBasePath.length) {
+        final sbpSegments = serverBasePath.substring(1).split('/');
+
+        if (segments.length < sbpSegments.length) {
+          return null; // request's path is shorter than the server base path
+        }
+        for (var x = 0; x < sbpSegments.length; x++) {
+          if (segments[x] != sbpSegments[x]) {
+            return null; // request's path does not match the server base path
+          }
+        }
+
+        segments = segments.sublist(sbpSegments.length); // remaining segments
+      }
+
+      // Check for malicious segments
 
       if (segments.contains('..')) {
         _logRequest.finest('path contains "..": request rejected');
