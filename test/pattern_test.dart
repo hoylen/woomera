@@ -221,8 +221,10 @@ void sameness() {
         final p1 = Pattern(pair[0]);
         final p2 = Pattern(pair[1]);
 
-        expect(p1.matchesSamePaths(p2), isTrue, reason: '$p1 not the same as $p2');
-        expect(p2.matchesSamePaths(p1), isTrue, reason: '$p1 not the same as $p2');
+        expect(p1.matchesSamePaths(p2), isTrue,
+            reason: '$p1 not the same as $p2');
+        expect(p2.matchesSamePaths(p1), isTrue,
+            reason: '$p1 not the same as $p2');
       }
     });
 
@@ -246,8 +248,10 @@ void sameness() {
         final p1 = Pattern(pair[0]);
         final p2 = Pattern(pair[1]);
 
-        expect(p1.matchesSamePaths(p2), isFalse, reason: 'same: $p1 versus $p2');
-        expect(p2.matchesSamePaths(p1), isFalse, reason: 'same: $p2 versus $p1');
+        expect(p1.matchesSamePaths(p2), isFalse,
+            reason: 'same: $p1 versus $p2');
+        expect(p2.matchesSamePaths(p1), isFalse,
+            reason: 'same: $p2 versus $p1');
       }
     });
   });

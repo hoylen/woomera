@@ -25,6 +25,39 @@ part of scan;
 /// If [locations] is false, no "from" comments are generated. The default
 /// is true.
 ///
+///
+/// **Suggested usage**
+///
+/// During development, have a separate development source file that contains a
+/// single function to build a _Server_ from annotations by invoking the
+/// `serverFromAnnotations` function. For example:
+///
+/// ```
+/// Server serverBuilder(
+///    {Iterable<String> pipelines,
+///      Iterable<String> libraries,
+///      bool scanAllFileLibraries = true,
+///      bool ignoreUnusedAnnotations = false}) =>
+///   serverFromAnnotations(pipelines:pipelines,
+///      libraries: libraries,
+///      scanAllFileLibraries: scanAllFileLibraries,
+///      ignoreUnusedAnnotations: ignoreUnusedAnnotations);
+/// ```
+///
+/// When it is ready for production release, after invoking that function
+/// run [dumpServer] and save the output to a generated source file. Then:
+///
+/// 1. Replace the development source file with the generated source file
+///    (saving a copy of the development source file for later use).
+/// 2. Change the `import 'package:woomera/woomera.dart'` in the program to
+///    `import 'package:woomera/core.dart'`.
+///
+/// The program can then be compiled with _dart2native_, because it no longer
+/// needs the Dart Mirrors package.
+///
+/// To continue further development using the convenient annotations,
+/// put back the original development source file.
+///
 /// **Known limitations**
 ///
 /// If a _handlerWrapper_ is used to convert the annotated function into a
@@ -34,7 +67,7 @@ part of scan;
 /// (i.e. the `Handler` object).
 
 String dumpServer(Server server,
-    {String functionName = 'serverFromRegistrations',
+    {String functionName = 'serverBuilder',
     String libraryName,
     Iterable<String> importedLibraries,
     bool timestamp = true,
@@ -54,7 +87,12 @@ String dumpServer(Server server,
     libraryPrefixes.addAll(importedLibraries);
   }
 
-  buf.write('Server $functionName() {\n');
+  buf.write('''
+Server $functionName({Iterable<String> pipelines,
+      Iterable<String> libraries,
+      bool scanAllFileLibraries,
+      bool ignoreUnusedAnnotations}) {
+''');
 
   // Wrapper
 
@@ -67,7 +105,7 @@ String dumpServer(Server server,
         '  //          The first argument to the handlerWrapper is null\n'
         '  //          in the code below.\n'
         '\n'
-        '  final _wrap = $wName;');
+        '  const _wrap = $wName;');
     if (locations) {
       buf.write(' // from $wLoc');
     }
