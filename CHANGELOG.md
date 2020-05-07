@@ -1,5 +1,9 @@
 # Changelog
 
+## 5.2.0
+
+- Added support for Dart 2.8: preserveHeaderCase for SimulatedHttpHeaders.
+
 ## 5.1.0
 
 - Merged ServerPipeline.registerInternal into the register method.

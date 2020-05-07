@@ -4,12 +4,21 @@ part of core;
 /// Headers in a simulated request or response
 
 class SimulatedHttpHeaders extends HttpHeaders {
-  final Map<String, List<String>> _data = <String, List<String>>{};
+  // Map from the lowercase value of the header name to the "current case" of
+  // the header name. This is to support the `preserveHeaderCase` feature that
+  // was introduced in Dart 2.8 for the [add] and [set] methods.
+
+  final _originalHeaderNames = <String, String>{};
+
+  // Map from the lowercase value of the header name to its values.
+
+  final _data = <String, List<String>>{};
 
   //----------------------------------------------------------------
 
   @override
-  void add(String name, Object value) {
+  void add(String name, Object value, {bool preserveHeaderCase = false}) {
+    // Dart 2.8 adds the preserveHeaderCase option
     final lcName = name.toLowerCase();
 
     List<String> values;
@@ -19,6 +28,8 @@ class SimulatedHttpHeaders extends HttpHeaders {
       values = (_data[lcName] = <String>[]);
     }
     values.add(value.toString());
+
+    _originalHeaderNames[lcName] = preserveHeaderCase ? name : lcName;
   }
 
   //----------------------------------------------------------------
@@ -49,8 +60,13 @@ class SimulatedHttpHeaders extends HttpHeaders {
   //----------------------------------------------------------------
 
   @override
-  void set(String name, Object value) {
-    _data[name.toLowerCase()] = [value.toString()];
+  void set(String name, Object value, {bool preserveHeaderCase = false}) {
+    // Dart 2.8 adds the preserveHeaderCase option
+    final lcName = name.toLowerCase();
+
+    _data[lcName] = [value.toString()];
+
+    _originalHeaderNames[lcName] = preserveHeaderCase ? name : lcName;
   }
 
   //----------------------------------------------------------------
@@ -59,8 +75,13 @@ class SimulatedHttpHeaders extends HttpHeaders {
   void remove(String name, Object value) {
     final lcName = name.toLowerCase();
 
-    if (_data.containsKey(lcName)) {
-      _data[lcName].remove(value);
+    final values = _data[lcName];
+    if (values != null) {
+      values.remove(value);
+      if (values.isEmpty) {
+        _data.remove(lcName);
+        _originalHeaderNames.remove(lcName);
+      }
     }
   }
 
@@ -68,7 +89,10 @@ class SimulatedHttpHeaders extends HttpHeaders {
 
   @override
   void removeAll(String name) {
-    _data.remove(name.toLowerCase());
+    final lcName = name.toLowerCase();
+
+    _data.remove(lcName);
+    _originalHeaderNames.remove(lcName);
   }
 
   //----------------------------------------------------------------
@@ -76,7 +100,7 @@ class SimulatedHttpHeaders extends HttpHeaders {
   @override
   void forEach(void Function(String name, List<String> values) f) {
     for (var key in _data.keys) {
-      f(key.toLowerCase(), _data[key]);
+      f(_originalHeaderNames[key], _data[key]);
     }
   }
 
@@ -90,5 +114,6 @@ class SimulatedHttpHeaders extends HttpHeaders {
   @override
   void clear() {
     _data.clear();
+    _originalHeaderNames.clear();
   }
 }

@@ -28,7 +28,7 @@ const bool interactiveMode = false;
 const bool doLogging = false;
 
 /// Port to listen on
-int portNumber = 1024;
+int portNumber = 2048;
 
 //----------------------------------------------------------------
 // Internal

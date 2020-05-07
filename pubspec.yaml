@@ -1,5 +1,5 @@
 name: woomera
-version: 5.1.0
+version: 5.2.0
 description: "Framework for implementing Web servers: handling HTTP requests, managing sessions and generating responses"
 homepage: https://github.com/hoylen/woomera
 

@@ -20,10 +20,12 @@ Main features include:
   HTTP request paths to be easily specified and different segments of
   the path to be used as parameters.
   
-- Exception handling mechanism to handle uncaught and unexpected
+- Exception handling mechanism to handle all uncaught and unexpected
   exceptions.  This ensures the Web application can always generate a
-  user-friendly error page, instead of them seeing an internal error
-  message. Error handling is simplified and the Web application is
+  user-friendly error page, instead of sometimes producing unexpected
+  results when an exception was not caught. This is especially useful
+  when using third-party packages that might throw undocumented
+  exceptions. Error handling is simplified and the Web application is
   more robust and reliable.
 
 - Session management using cookies or URL rewriting. The HTTP protocol
@@ -32,7 +34,7 @@ Main features include:
   used to remember the user's account after they have signed in.  URL
   rewriting works even if cookies have been disabled in the browser.
 
-- Responses can be are buffered, and sent as the HTTP response only
+- Responses can be buffered, and sent as the HTTP response only
   when it is complete.  Therefore, if an error occurs the user won't
   see a partially generated page.
 
@@ -44,13 +46,10 @@ Main features include:
   request handler can log the request and the second request handler
   perform the actual processing.
 
-- A testing feature to test the Web application without using a Web
+- A testing feature for testing the Web application without using a Web
   browser. This does not replace testing with a real Web browser, but
   runs faster than controlling a Web browser using WebDriver or
   Selenium Remote Control.
-
-**Note:** This version **requires Dart 2**.  Please use version
-"<3.0.0" if running **Dart 1**.
 
 This following is a tutorial which provides an overview the main
 features of the package. For details about the package and its
