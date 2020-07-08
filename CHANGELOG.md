@@ -1,5 +1,9 @@
 # Changelog
 
+## 5.3.0
+
+- Enhancements to dumpServer to generate code that doesn't need dart:mirrors.
+
 ## 5.2.0
 
 - Added support for Dart 2.8: preserveHeaderCase for SimulatedHttpHeaders.

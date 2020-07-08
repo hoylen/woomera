@@ -46,10 +46,16 @@ Main features include:
   request handler can log the request and the second request handler
   perform the actual processing.
 
-- A testing feature for testing the Web application without using a Web
+- Features for testing the Web application without using a Web
   browser. This does not replace testing with a real Web browser, but
   runs faster than controlling a Web browser using WebDriver or
   Selenium Remote Control.
+
+- Can either use annotations to dynamically identify handler methods,
+  or statically identify them without relying on annotations. Static
+  identification does not require the _dart:mirrors_ package.  A
+  _dumpServer_ function is available to make it easy to switch between
+  dynamic and static methods.
 
 This following is a tutorial which provides an overview the main
 features of the package. For details about the package and its
