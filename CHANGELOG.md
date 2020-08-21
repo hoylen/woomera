@@ -4,6 +4,7 @@
 
 - Added mode for handling parameter whitespace and line terminators.
 - Deprecated the "raw" parameter: use the new mode parameter instead.
+- Upgraded to uuid 2.1.0, since earlier versions generated non-unique UUIDs.
 
 ## 5.3.0
 
