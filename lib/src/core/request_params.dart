@@ -1,7 +1,72 @@
 part of core;
 
-//----------------------------------------------------------------
+//################################################################
+/// Modes for processing parameter values.
+///
+/// Used to determine the behaviour of the [RequestParams.values] and
+/// [RequestParamsMutable.remove] methods.
+///
+/// Typically, [ParamsMode.standard] is used for parameters that do not
+/// have multiple lines, and [ParamsMode.rawLines] is used for parameters
+/// that can have multiple lines. The [ParamsMode.raw] is used to obtain
+/// the values without any changes.
+///
+/// For example, if the request contained the value of
+/// "`\t a  b \t\t c \r\n d \t`":
+///
+/// - the _standard_ value will be "`a b c d`";
+/// - the _rawLines_ value will be "`a  b \t\t c \n d`"; and
+/// - the _raw_ value will be "`\t a  b \t\t c \r\n d \t`".
+///
+/// Be aware that values can contain any Unicode code point. In particular,
+/// the _rawLines_ mode can return values containing
+/// horizontal tabs (U+0009), non-breaking spaces (U+00A0),
+/// zero width no-break space (U+FEFF) and other Unicode whitespaces.
+/// The _raw_ mode may also return values containing carriage return (U+000D),
+/// vertical tabs (U+000B), line separators (U+2028) and
+/// paragraph separators (U+2029).
+///
+/// Line terminators are defined as the _ECMAscript line
+/// terminator code points_
+/// ([line terminator](https://ecma-international.org/ecma-262/9.0/#table-33))
+/// and
+/// whitespace defined as the _ECMAscript whitespace code points_
+/// ([whitespace](https://ecma-international.org/ecma-262/9.0/#table-32)).
 
+enum ParamsMode {
+  /// Whitespace and line terminators are sanitized.
+  ///
+  ///   - line terminators are converted into spaces (U+0020);
+  ///   - all other whitespaces are also converted into spaces (U+0020);
+  ///   - multiple spaces are collapsed into a single space; and
+  ///   - spaces at either end of the string are trimmed away.
+
+  standard,
+
+  /// Line terminators are converted into a line feed.
+  ///
+  /// This means:
+  ///   - line terminators are converted into a line feed (U+000A);
+  ///   - whitespace at either end of the string are trimmed away.
+  ///
+  /// Note: multiple line terminators are converted into the same number
+  /// of line feeds. They are not collapsed together (except if they are trimmed
+  /// from the ends).
+
+  rawLines,
+
+  /// Values are unchanged.
+  ///
+  /// This mode is the same as setting the deprecated `raw` parameter  to true.
+  ///
+  /// Most applications will probably want to use the [rawLines] mode,
+  /// unless they really want to preserve the different types of
+  /// line terminators and/or keep leading and trailing whitespace.
+
+  raw
+}
+
+//################################################################
 /// Represents a collection of parameters.
 ///
 /// Parameters are name-value pairs. But there can be multiple values for the
@@ -66,23 +131,35 @@ class RequestParams {
   void _populateFromQueryString(String queryStr, {Encoding encoding = utf8}) {
     assert(!queryStr.contains('?'));
 
-    for (var pair in queryStr.split('&')) {
-      if (pair.isNotEmpty) {
-        final index = pair.indexOf('=');
-        if (index == -1) {
-          // no "=": use whole string as key and the value is empty string
-          final key = Uri.decodeQueryComponent(pair, encoding: encoding);
-          _add(key, ''); // no "=" found, treat value as empty string
-        } else if (index != 0) {
-          final key = pair.substring(0, index);
-          final value = pair.substring(index + 1);
-          _add(Uri.decodeQueryComponent(key, encoding: encoding),
-              Uri.decodeQueryComponent(value, encoding: encoding));
-        } else {
-          // Has "=", but is first character: key is empty string
-          _add('',
-              Uri.decodeQueryComponent(pair.substring(1), encoding: encoding));
+    try {
+      for (var pair in queryStr.split('&')) {
+        if (pair.isNotEmpty) {
+          final index = pair.indexOf('=');
+          if (index == -1) {
+            // no "=": use whole string as key and the value is empty string
+            final key = Uri.decodeQueryComponent(pair, encoding: encoding);
+            _add(key, ''); // no "=" found, treat value as empty string
+          } else if (index != 0) {
+            final key = pair.substring(0, index);
+            final value = pair.substring(index + 1);
+            _add(Uri.decodeQueryComponent(key, encoding: encoding),
+                Uri.decodeQueryComponent(value, encoding: encoding));
+          } else {
+            // Has "=", but is first character: key is empty string
+            _add(
+                '',
+                Uri.decodeQueryComponent(pair.substring(1),
+                    encoding: encoding));
+          }
         }
+      }
+
+      // ignore: avoid_catching_errors
+    } on ArgumentError catch (e) {
+      if (e.message == 'Illegal percent encoding in URI') {
+        throw MalformedPathException();
+      } else {
+        rethrow;
       }
     }
   }
@@ -143,28 +220,33 @@ class RequestParams {
   ///
   /// For the [key] all values that match [value] are removed.
   ///
-  /// If [raw] is true, the [value] must match exactly for it to be removed.
-  /// Otherwise (the default), the value is removed if its sanitized value
-  /// is the same as the sanitized [value]: where all leading and trailing
-  /// whitespace are removed and multiple whitespaces are treated as a single
-  /// space.
+  /// The [mode] determines how the value is processed before comparing it
+  /// with the actual value.
 
-  void _remove(String key, String value, {bool raw = false}) {
+  void _remove(String key, String value, ParamsMode mode) {
     final values = _data[key];
     if (values != null) {
-      values.removeWhere((raw)
-          ? ((e) => e == value)
-          : ((e) => _sanitize(e) == _sanitize(value)));
+      values.removeWhere((e) => _sanitize(e, mode) == _sanitize(value, mode));
     }
   }
 
   //----------------------------------------------------------------
-  /// Retrieves a single sanitized value for the key.
+  /// Retrieves a single fully sanitized value for the key.
   ///
-  /// Values are sanitized by trimming whitespace from both ends
-  /// of the string. The empty string is returned if there is no value
-  /// matching the [key] or there is a value but it only contains
-  /// nothing except whitespace (includes the case when it is the empty string).
+  /// Values are always processed according to the [ParamsMode.standard]
+  /// mode. That is, all whitespaces (including line terminators) are converted
+  /// into spaces (U+0020); multiple spaces are collapsed into a single space;
+  /// and spaces at either ends are trimmed. To use other modes, use the
+  /// [values] method.
+  ///
+  /// The empty string will be returned if:
+  ///
+  /// - there is no value matching the [key];
+  /// - there is a value but it only contains whitespace; or
+  /// - there is a value that contains zero characters.
+  ///
+  /// If there is a need to distinguish between these different values, use
+  /// the _values_ method instead.
   ///
   /// This operator must only be used for parameters which are single valued.
   /// If the key matches multiple values: in production mode,
@@ -172,19 +254,14 @@ class RequestParams {
   /// raised. Use the [values] method for keys with multiple values.
   ///
   /// This operator never returns null.
-  ///
-  /// It is not possible to distinguish between a value that does not
-  /// exist and a value that is a blank or empty string. If that distinction
-  /// is important, use the [values] method instead. The [values] method
-  /// should be used if the raw values (i.e. without whitespace trimming)
-  /// are required.
 
   String operator [](String key) {
     final values = _data[key];
     if (values == null) {
       return ''; // no value for key
     } else if (values.length == 1) {
-      return _sanitize(values[0] ?? ''); // returns sanitized single value
+      // Single value
+      return _sanitize(values[0] ?? '', ParamsMode.standard);
     } else {
       assert(values.length == 1, 'multi-valued: do not use [] with "$key"');
       return ''; // error value
@@ -197,37 +274,88 @@ class RequestParams {
   /// Returns a list of values for the key. If there are no values
   /// an empty list is returned.
   ///
-  /// By default, all values (if any) are trimmed of whitespace from both ends.
-  /// If [raw] is true, the values are not trimmed.
+  /// The values are processed according to the [mode], which defaults to
+  /// [ParamsMode.standard]. In the default mode, this method is like
+  /// the `[]` operator except it supports zero or more values matching the
+  /// same key.
+  ///
+  /// Unlike the `[]` operator, this method allows different modes to be used.
+  /// In particular, the [ParamsMode.rawLines] is useful for input that
+  /// can contains multiple lines (e.g. from a _textarea_ element).
+  ///
+  /// If the deprecated `raw` parameter is set to true, it is the same as using
+  /// the [ParamsMode.raw] mode. It is being replaced by the _mode_
+  /// parameter which gives greater flexibility to this method.
+  /// Do not use both _raw_ and _mode_.
 
-  List<String> values(String key, {bool raw = false}) {
+  List<String> values(String key,
+      {@deprecated bool raw = false, ParamsMode mode = ParamsMode.standard}) {
     assert(key != null);
+
+    // When the deprecated "raw" parameter is removed, delete the next few lines
+    // and just use the "mode".
+    assert(
+        !raw || raw && mode == ParamsMode.standard, 'do not mix raw with mode');
+    final _realMode = raw ? ParamsMode.raw : mode;
 
     final values = _data[key];
 
     if (values == null) {
       // Return empty list
       return <String>[];
-    } else if (raw) {
-      // Return list of raw values
+    } else if (_realMode == ParamsMode.raw) {
+      // Don't need to apply _sanitize, since it won't change the values
       return values;
     } else {
-      // Return list of trimmed values
-      final x = values.map(_sanitize);
-      return List<String>.from(x);
+      // Apply _sanitize to all the values and return a list
+      return List<String>.from(
+          values.map<String>((x) => _sanitize(x, _realMode)));
     }
   }
 
   //================================================================
   // Sanitize section
 
+  // Matches a **single** ECMAScript line terminator code point
+  // https://ecma-international.org/ecma-262/9.0/#table-33
+
+  static final _lineTerminatorRegex = RegExp(r'[\u000A\u000D\u2028\u2029]');
+
+  // Matches **one or more** ECMAScript whitespace code points
+  // https://ecma-international.org/ecma-262/9.0/#table-32
+  // Note: the line terminators are a subset of these code points.
+
   static final _whitespacesRegex = RegExp(r'\s+');
 
-  static String _sanitize(String str) {
+  /// Processes the [str] according to the [mode]
+  ///
+  /// See the documentation of [ParamsMode] for details.
+
+  static String _sanitize(String str, ParamsMode mode) {
     assert(str != null);
 
-    final s = str.trim();
-    return s.replaceAll(_whitespacesRegex, ' ');
+    String x;
+
+    switch (mode) {
+      case ParamsMode.standard:
+        x = str
+            .replaceAll('\r\n', ' ')
+            .replaceAll(_lineTerminatorRegex, ' ')
+            .replaceAll(_whitespacesRegex, ' ')
+            .trim();
+        break;
+      case ParamsMode.rawLines:
+        x = str
+            .replaceAll('\r\n', '\n') // CR-LF pair is treated as one
+            .replaceAll(_lineTerminatorRegex, '\n')
+            .trim();
+        break;
+      case ParamsMode.raw:
+        x = str;
+        break;
+    }
+
+    return x;
   }
 
   //================================================================
@@ -304,14 +432,32 @@ class RequestParamsMutable extends RequestParams {
   ///
   /// For the [key] all values that match [value] are removed.
   ///
-  /// If [raw] is true, the [value] must match exactly for it to be removed.
-  /// Otherwise (the default), the value is removed if its sanitized value
-  /// is the same as the sanitized [value]: where all leading and trailing
-  /// whitespace are removed and multiple whitespaces are treated as a single
-  /// space.
+  /// The [mode] determines how values are processed before it is compared
+  /// for a match. It defaults to [ParamsMode.standard].
+  ///
+  /// For example, if values for the _key_ are
+  /// `[ "a b", "a b ", "a\nb" ]`,
+  /// the _value_ being removed is `"a b"` and the _mode_ is:
+  ///
+  /// - [ParamsMode.standard], all values are removed;
+  /// - [ParamsMode.rawLines], the first and second values are removed;
+  /// - [ParamsMode.raw], only the first value is removed.
+  ///
+  /// If the deprecated `raw` parameter is set to true, it is the same as using
+  /// the [ParamsMode.raw] mode. It is being replaced by the _mode_
+  /// parameter, which gives greater flexibility to this method.
+  /// Do not use both _raw_ and _mode_.
 
-  void remove(String key, String value, {bool raw = false}) =>
-      _remove(key, value, raw: raw);
+  void remove(String key, String value,
+      {@deprecated bool raw = false, ParamsMode mode = ParamsMode.standard}) {
+    // When the deprecated "raw" parameter is removed, delete the next few lines
+    // and just use the "mode".
+    assert(
+        !raw || raw && mode == ParamsMode.standard, 'do not mix raw with mode');
+    final _realMode = raw ? ParamsMode.raw : mode;
+
+    _remove(key, value, _realMode);
+  }
 
   //----------------------------------------------------------------
   /// Removes all values.

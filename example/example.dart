@@ -284,8 +284,10 @@ Future<Response> dateCalcPostHandler(Request req) async {
   // That [RequestParams.values] method can also be used to obtain the actual
   // value without any whitespace processing.
 
-  assert(req.postParams['noSuchParameter'] == '');
-  assert(req.postParams.values('noSuchParameter', raw: true).isEmpty);
+  assert(req.postParams['np'] == '');
+  assert(req.postParams.values('np', mode: ParamsMode.standard).isEmpty);
+  assert(req.postParams.values('np', mode: ParamsMode.rawLines).isEmpty);
+  assert(req.postParams.values('np', mode: ParamsMode.raw).isEmpty);
 
   // Produce the response
 

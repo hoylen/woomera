@@ -149,7 +149,7 @@ void _dumpParam(RequestParams p, ResponseBuffered resp) {
 
       for (var k in keys) {
         resp.write('<dt><code>${HEsc.text(k)}</code></dt><dd><ul>');
-        for (var v in p.values(k, raw: true)) {
+        for (var v in p.values(k, mode: ParamsMode.raw)) {
           resp.write('<li><code>${HEsc.text(v)}</code></li>');
         }
         resp.write('</ul></dd>');

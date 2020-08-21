@@ -1,5 +1,10 @@
 # Changelog
 
+## 5.4.0
+
+- Added mode for handling parameter whitespace and line terminators.
+- Deprecated the "raw" parameter: use the new mode parameter instead.
+
 ## 5.3.0
 
 - Enhancements to dumpServer to generate code that doesn't need dart:mirrors.

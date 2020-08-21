@@ -130,21 +130,21 @@ Future<Response> testHandler(Request req) async {
   final buf = StringBuffer('${req.method};');
 
   for (var key in req.pathParams.keys) {
-    for (var value in req.pathParams.values(key, raw: true)) {
+    for (var value in req.pathParams.values(key, mode: ParamsMode.raw)) {
       buf.write('Path.$key=$value;');
     }
   }
 
   if (req.postParams != null) {
     for (var key in req.postParams.keys) {
-      for (var value in req.postParams.values(key, raw: true)) {
+      for (var value in req.postParams.values(key, mode: ParamsMode.raw)) {
         buf.write('Post.$key=$value;');
       }
     }
   }
 
   for (var key in req.queryParams.keys) {
-    for (var value in req.queryParams.values(key, raw: true)) {
+    for (var value in req.queryParams.values(key, mode: ParamsMode.raw)) {
       buf.write('Query.$key=$value;');
     }
   }
@@ -264,7 +264,7 @@ Future<String> getRequest(String path) async {
 /// POST
 
 Future<String> postRequest(String path, String data) async {
-  // Note: must use "localhost" becaues "127.0.0.1" does not work: strange!
+  // Note: must use "localhost" because "127.0.0.1" does not work: strange!
 
   final request = await HttpClient().post('localhost', portNumber, path);
 

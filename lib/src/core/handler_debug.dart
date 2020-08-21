@@ -15,7 +15,7 @@ Future<Response> debugHandler(Request req) async {
 
   var hasParams = false;
   for (var key in req.pathParams.keys) {
-    for (var value in req.pathParams.values(key, raw: true)) {
+    for (var value in req.pathParams.values(key, mode: ParamsMode.raw)) {
       buf.write('Path parameter: $key = "$value"\n');
       hasParams = true;
     }
@@ -26,7 +26,7 @@ Future<Response> debugHandler(Request req) async {
 
   hasParams = false;
   for (var key in req.queryParams.keys) {
-    for (var value in req.queryParams.values(key, raw: true)) {
+    for (var value in req.queryParams.values(key, mode: ParamsMode.raw)) {
       buf.write('Query parameter: $key = "$value"\n');
       hasParams = true;
     }
@@ -38,7 +38,7 @@ Future<Response> debugHandler(Request req) async {
   hasParams = false;
   if (req.postParams != null) {
     for (var key in req.postParams.keys) {
-      for (var value in req.postParams.values(key, raw: true)) {
+      for (var value in req.postParams.values(key, mode: ParamsMode.raw)) {
         buf.write('POST parameter: $key = "$value"\n');
         hasParams = true;
       }

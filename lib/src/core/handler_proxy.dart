@@ -135,7 +135,7 @@ class Proxy {
 
       var sep = '?';
       for (var key in req.queryParams.keys) {
-        for (var value in req.queryParams.values(key, raw: true)) {
+        for (var value in req.queryParams.values(key, mode: ParamsMode.raw)) {
           buf
             ..write(sep)
             ..write(Uri.encodeQueryComponent(key))
