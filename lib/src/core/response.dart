@@ -302,7 +302,7 @@ abstract class Response {
           c.secure = true; // HTTPS only: better security, but not for testing
         }
         cookieAdd(c);
-      } else if (req._sessionWasSetInRequest) {
+      } else if (req._haveSessionCookie) {
         // Need to clear the session cookie
         cookieDelete(req.server.sessionCookieName, req.server.basePath);
       }

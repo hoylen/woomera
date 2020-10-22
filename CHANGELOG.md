@@ -1,5 +1,9 @@
 # Changelog
 
+## 5.4.1
+
+- Added session ID to log message when multiple session IDs are encountered.
+
 ## 5.4.0
 
 - Added mode for handling parameter whitespace and line terminators.

@@ -469,7 +469,7 @@ class Request {
   /// session one) this is set to true.
   ///
   /// A session handler should not change the value of this member. Since the
-  /// Web server normally does not have a reliable mechanism of knowning if
+  /// Web server normally does not have a reliable mechanism of determining if
   /// the browser supports cookies or not.
   ///
   /// A better approach is for the application to set some cookie (any cookie)
@@ -482,12 +482,12 @@ class Request {
 
   bool _sessionUsingCookies;
 
-  /// Indicated if a session was established from the HTTP request.
+  /// Indicated if a session was established from a cookie in the HTTP request.
   ///
-  /// The main purpose of this member is so the [Response] can know that it
-  /// needs to explicitly delete a cookie if the session is cleared.
+  /// The only purpose of this member is so the [Response] can know that it
+  /// needs to explicitly delete the session cookie if the session is cleared.
 
-  bool _sessionWasSetInRequest;
+  bool _haveSessionCookie;
 
   //----------------------------------------------------------------
   /// Attempt to restore the session (if there was one).
@@ -495,9 +495,13 @@ class Request {
   /// Using the cookies, query parameters or POST parameters, to restore
   /// a session for the request.
   ///
-  /// If a session was successfully found, the [session] member is set to it
-  /// and [_sessionWasSetInRequest] is set to true. Otherwise, [session] is
-  /// set to null and [_sessionWasSetInRequest] set to false.
+  /// If a session was successfully found and resumed, the [session] member is
+  /// set to it. Otherwise, _session_ is set to null.
+  ///
+  /// Also, [_haveSessionCookie] is set depending on if there was a cookie with
+  /// a session ID. Note: this may be set to true even if the the _session_ is
+  /// set to null. For example, if the value from the cookie is unknown or is
+  /// for a session that has expired (i.e. cannot be resumed).
   ///
   /// Any session query parameter and/or POST parameter are removed. So the
   /// application never sees them. But any session cookie(s) are not removed
@@ -511,106 +515,119 @@ class Request {
   /// [sessionHiddenInputElement] and did not set includeSession to false when
   /// rewriting the URL for the 'action' attribute of the form element).
 
-  Future _sessionRestore() async {
+  Future<void> _sessionRestore() async {
     // Attempt to retrieve a session ID from the request.
+    // Sets [_haveSessionCookie] too.
 
-    String sessionId;
-    bool conflictingSessionId;
+    final ids = <String, String>{}; // key is a sessionId, value is their source
 
-    // First, try finding a session cookie
+    // Try value explicitly set during simulation testing
 
     if (_coreRequest.sessionId != null) {
       // Explicitly passed in sessionId (simulations only)
-      sessionId = _coreRequest.sessionId;
-      conflictingSessionId = false;
-    } else {
-      // Examine cookies for the session cookie
+      ids[_coreRequest.sessionId] = 'S';
+    }
 
-      for (var cookie in _coreRequest.cookies) {
-        if (cookie.name == server.sessionCookieName) {
-          if (sessionId == null) {
-            sessionId = cookie.value;
-            assert(conflictingSessionId == null);
-            conflictingSessionId = false;
-          } else {
-            if (sessionId != cookie.value) {
-              conflictingSessionId = true;
-            }
-          }
-        }
+    // Try cookies for the session cookie
+
+    var foundSessionCookie = false; // assume false unless one is found
+
+    for (var cookie in _coreRequest.cookies) {
+      if (cookie.name == server.sessionCookieName) {
+        ids[cookie.value] = '${ids[cookie.value] ?? ''}C';
+        foundSessionCookie = true;
       }
     }
 
-    // Second, try query parameters (i.e. URL rewriting)
+    _haveSessionCookie = foundSessionCookie;
 
-    for (var value in queryParams.values(server.sessionParamName)) {
-      if (sessionId == null) {
-        sessionId = value;
-        assert(conflictingSessionId == null);
-        conflictingSessionId = false;
-      } else {
-        if (sessionId != value) {
-          conflictingSessionId = true;
-        }
+    if (foundSessionCookie && !_sessionUsingCookies) {
+      // This should never happen!
+      // Since _sessionUsingCookies is true if _coreRequest.cookies.isNotEmpty.
+      //
+      // But in production, this situation has occurred: it is as if the list
+      // of cookies was initially empty and strangely now contains values.
+      // How can that happen? It seems to happen consistently with one user
+      // running FireFox on Ubuntu, so it doesn't appear to be a race condition
+      // on the server side.
+
+      _logSession.shout('[$id] cookies in request changed while processing!');
+      if (!_coreRequest.cookies.isNotEmpty) {
+        // This is the test used to set _sessionUsingCookies.
+        // So why does it indicate the list is empty, but iterating over it
+        // (in the code above) finds values?
+        _logSession.shout('[$id] cookies.isNotEmpty but there were cookies!');
       }
-    }
-    queryParams._removeAll(server.sessionParamName);
 
-    // Finally, try POST parameters (i.e. URL rewriting in a POST request)
+      // Update value, even though it should never change.
+      // If this is not updated, URL rewriting may be used and that causes
+      // future requests to have multiple session IDs, which is a worse
+      // problem.
+      _sessionUsingCookies = true; // fix value since there are now cookies!
+    }
+
+    // Try query parameters (i.e. URL rewriting)
+
+    final _sessionQueryParams = queryParams.values(server.sessionParamName);
+    if (_sessionQueryParams.isNotEmpty) {
+      for (final value in _sessionQueryParams) {
+        ids[value] = '${ids[value] ?? ''}Q';
+      }
+      queryParams._removeAll(server.sessionParamName);
+    }
+
+    // Try POST parameters (i.e. URL rewriting in a POST request)
 
     if (postParams != null) {
-      for (var value in postParams.values(server.sessionParamName)) {
-        if (sessionId == null) {
-          sessionId = value;
-          assert(conflictingSessionId == null);
-          conflictingSessionId = false;
-        } else {
-          if (sessionId != value) {
-            conflictingSessionId = true;
-          }
+      final _sessionPostParams = postParams.values(server.sessionParamName);
+      if (_sessionPostParams.isNotEmpty) {
+        for (var value in _sessionPostParams) {
+          ids[value] = '${ids[value] ?? ''}P';
         }
+        postParams._removeAll(server.sessionParamName);
       }
-      postParams._removeAll(server.sessionParamName);
     }
 
     // Retrieve session (if any)
 
-    if (sessionId != null) {
-      if (!conflictingSessionId) {
-        final candidate = server._sessionFind(sessionId);
+    session = null; // assume no session, unless one is successfully resumed
 
-        if (candidate != null) {
-          if (await candidate.resume(this)) {
-            _logSession.finest('[$id] [session:$sessionId] resumed');
-            candidate._refresh(); // restart timeout timer
-            session = candidate;
-          } else {
-            _logSession.finest("[$id] [sessionL$sessionId] can't resume");
-            await candidate._terminate(SessionTermination.resumeFailed);
-            session = null;
-          }
-          _sessionWasSetInRequest = true;
-          return; // found session (but might not have been restored)
+    if (ids.length == 1) {
+      // Session ID was found: try to find session with that ID and resume it
 
+      final sessionId = ids.keys.first;
+      final candidateSession = server._sessionFind(sessionId);
+
+      if (candidateSession != null) {
+        // Session with matching ID found: try to resume using it
+
+        if (await candidateSession.resume(this)) {
+          _logSession.finest('[$id] [session:$sessionId] resumed');
+          candidateSession._refresh(); // restart timeout timer
+          session = candidateSession; // successfully resumed the session
         } else {
-          _logSession.finest('[$id] [session:$sessionId] not found');
-          // fall through to treat as no session found
+          _logSession.finest("[$id] [session:$sessionId] can't resume");
+          await candidateSession._terminate(SessionTermination.resumeFailed);
         }
       } else {
-        // Multiple session IDs of different values found: this should not happen
-        _logSession.shout(
-            '[$id] multiple different session IDs in request: not restoring any of them');
-        // fall through to treat as no session found
+        _logSession.finest('[$id] [session:$sessionId] not found');
       }
-    } else {
+    } else if (ids.isEmpty) {
       _logSession.finest('[$id] no session ID in request');
-      // fall through to treat as no session found
+    } else if (1 < ids.length) {
+      // Multiple different session IDs found: normally this should not happen!
+      //
+      // Currently, this implementation ignores them all. That is, behave as
+      // if there was no session ID at all. Maybe it should thrown an exception
+      // instead? The problem with ignoring them is it might not fix the
+      // problem (for example, if somehow there are multiple session cookies,
+      // this won't remove them).
+      //
+      // This log message includes the session ID values and where in the
+      // request they are from (C=cookie, Q=query parameter, P=post parameter).
+      final info = ids.keys.map((k) => '$k[${ids[k]}]').join(', ');
+      _logSession.severe('[$id] multiple session IDs: ignoring all: $info');
     }
-
-    // No session found
-
-    session = null;
-    _sessionWasSetInRequest = false;
   }
 
   //----------------------------------------------------------------

@@ -16,7 +16,7 @@ complexity.
 Main features include:
 
 - URL pattern matching inspired by the
-  [Sinatra](http://sinatrarb.com/) Web framework. This allows the
+  [Sinatra](https://github.com/sinatra/sinatra) Web framework. This allows the
   HTTP request paths to be easily specified and different segments of
   the path to be used as parameters.
   
@@ -317,14 +317,14 @@ The response produced by _handleGreeting_ uses `HEsc.text`
 _HEsc.attr_, but does not escape single quotes and double quotes.
 
 If the value wasn't escaped, then this URL would produce the wrong HTML:
-<http://localhost:1024/Hello%20%26%20Goodbye>.
+"http://localhost:1024/Hello%20%26%20Goodbye".
 
 There is also `HEsc.lines`, which is similar to _HEsc.text_ but
 also converts any new-lines into `<br>` tags.
 
 #### 1.9 Exception handler
 
-Visiting a URL like <http://localhost:1024/nosuchpage/foo> and the
+Visiting a URL like "http://localhost:1024/nosuchpage/foo" and the
 basic built-in error page appears. To customize the error page, a
 custom exception handler is used.
 
@@ -532,12 +532,12 @@ void _dumpParam(RequestParams p, ResponseBuffered resp) {
 }
 ```
 
-Here are a few URLs to try:
+Here are a few URLs to try with the above example:
 
-- <http://localhost:1024/demo/variable/aaa/bar/bbb>
-- <http://localhost:1024/demo/variable/aaa/bar/>
-- <http://localhost:1024/demo/variable/aaa/bar/ccc?x=ddd&y=eee&x=fff>
-- <http://localhost:1024/demo/wildcard/a/b/c>
+- http://localhost:1024/demo/variable/aaa/bar/bbb
+- http://localhost:1024/demo/variable/aaa/bar/
+- http://localhost:1024/demo/variable/aaa/bar/ccc?x=ddd&y=eee&x=fff
+- http://localhost:1024/demo/wildcard/a/b/c
 
 
 #### 3.2. Retrieving parameters
