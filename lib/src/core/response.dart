@@ -8,10 +8,31 @@ part of core;
 
 abstract class Response {
   //================================================================
+  /// Constructor
+
+  Response() {
+    // Populate default headers
+    //
+    // This needs to explicitly manage these rather than accept them from
+    // the default values populated in a [HttpResponse]. This is so it can
+    // implement the [Proxy] request handler properly. When proxying requests,
+    // it must respond with the header values from the target response rather
+    // than the defaults from [HttpResponse].
+
+    _headers[_headerCanonicalName('x-content-type-options')] = ['nosniff'];
+    _headers[_headerCanonicalName('x-xss-protection')] = ['1; mode=block'];
+    _headers[_headerCanonicalName('x-frame-options')] = ['SAMEORIGIN'];
+  }
+
+  //================================================================
   // Members
 
   /// Content-type of the response.
   ContentType contentType;
+
+  /// Headers that will be used to populate the response.
+  ///
+  /// Key is the header name as processed by [_headerCanonicalName].
 
   final Map<String, List<String>> _headers = {};
 
@@ -109,10 +130,10 @@ abstract class Response {
   /// HTTP allows for multiple headers with the same name: the new header is
   /// added after any existing headers with the same name.
   ///
-  /// Do not use this method for setting the content type. Use the
+  /// Do not use this method for adding/setting the content type. Use the
   /// [contentType] member instead.
   ///
-  /// Do not use this method for setting cookies. Use the [cookieAdd] and
+  /// Do not use this method for adding/setting cookies. Use the [cookieAdd] and
   /// [cookieDelete] methods. An exception will be raised if the name matches
   /// "set-cookie".
 
@@ -149,6 +170,52 @@ abstract class Response {
   }
 
   //----------------------------------------------------------------
+  /// Sets a HTTP header
+  ///
+  /// Sets a HTTP header to the [name] and String [value] to the HTTP
+  /// response. Any existing header(s) with the same name are removed.
+  ///
+  /// The name is case-insensitive. The name is considered the same, whether it
+  /// is represented using uppercase or lowercase letters.
+  ///
+  /// The value is case sensitive.
+  ///
+  /// Do not use this method for setting the content type. Use the
+  /// [contentType] member instead.
+  ///
+  /// Do not use this method for setting cookies. Use the [cookieAdd] and
+  /// [cookieDelete] methods. An exception will be raised if the name matches
+  /// "set-cookie".
+
+  void headerSet(String name, String value) {
+    if (name == null) {
+      throw ArgumentError.notNull('name');
+    }
+    if (name.isEmpty) {
+      throw ArgumentError.value(name, 'name', 'Empty string');
+    }
+    if (value == null) {
+      throw ArgumentError.notNull('value');
+    }
+    if (_headersOutputted) {
+      throw StateError('Header already outputted');
+    }
+
+    final canonicalName = _headerCanonicalName(name);
+
+    if (canonicalName == _headerCanonicalName('content-type')) {
+      throw ArgumentError.value(
+          canonicalName, 'name', 'use contentType to set Content-Type');
+    }
+    if (canonicalName == _headerCanonicalName('set-cookie')) {
+      throw ArgumentError.value(
+          canonicalName, 'name', 'use cookieAdd to set a cookie');
+    }
+
+    _headers[canonicalName] = [value];
+  }
+
+  //----------------------------------------------------------------
   /// Adds a HTTP header containing a RFC1123 formatted date.
   ///
   /// Adds a HTTP header with the [name] and whose value is the [date] formatted
@@ -172,7 +239,7 @@ abstract class Response {
   }
 
   //----------------------------------------------------------------
-  /// Removes headers
+  /// Removes named header
   ///
   /// If no [value] is provided, removes all headers matching the [name]. That
   /// is, the header's value is ignored; and multiple headers are removed if
@@ -203,6 +270,13 @@ abstract class Response {
       // Name does not exist
       return false;
     }
+  }
+
+  //----------------------------------------------------------------
+  /// Remove all headers.
+
+  void headerRemoveAll() {
+    _headers.clear();
   }
 
   //================================================================

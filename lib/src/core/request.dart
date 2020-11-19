@@ -723,11 +723,18 @@ class Request {
     _coreResponse.status = status;
     _coreResponse.cookies.addAll(cookies);
 
+    // Remove default headers (i.e. x-frame-options, x-xss-protection
+    // and x-content-type-options).
+
+    _coreResponse.headers.clear();
+
     if (ct != null) {
       // Only set the contentType if there is one.
       // Redirection responses don't: they will have the default (text/plain).
       _coreResponse.headers.contentType = ct;
     }
+
+    // Add all other desired ones
 
     for (var name in headers.keys) {
       for (var value in headers[name]) {

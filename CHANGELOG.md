@@ -3,6 +3,7 @@
 ## 5.4.1
 
 - Added session ID to log message when multiple session IDs are encountered.
+- Fixed Proxy work when client requests keep-alive connections.
 
 ## 5.4.0
 

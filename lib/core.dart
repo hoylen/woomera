@@ -147,3 +147,5 @@ Logger _logSession = Logger('woomera.session');
 Logger _logStaticFiles = Logger('woomera.static_file');
 
 Logger _logProxy = Logger('woomera.proxy');
+Logger _logProxyRequest = Logger('woomera.proxy.request');
+Logger _logProxyResponse = Logger('woomera.proxy.response');

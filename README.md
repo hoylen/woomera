@@ -534,10 +534,10 @@ void _dumpParam(RequestParams p, ResponseBuffered resp) {
 
 Here are a few URLs to try with the above example:
 
-- http://localhost:1024/demo/variable/aaa/bar/bbb
-- http://localhost:1024/demo/variable/aaa/bar/
-- http://localhost:1024/demo/variable/aaa/bar/ccc?x=ddd&y=eee&x=fff
-- http://localhost:1024/demo/wildcard/a/b/c
+- `http://localhost:1024/demo/variable/aaa/bar/bbb`
+- `http://localhost:1024/demo/variable/aaa/bar/`
+- `http://localhost:1024/demo/variable/aaa/bar/ccc?x=ddd&y=eee&x=fff`
+- `http://localhost:1024/demo/wildcard/a/b/c`
 
 
 #### 3.2. Retrieving parameters
