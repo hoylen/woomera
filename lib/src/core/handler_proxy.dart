@@ -246,7 +246,8 @@ class Proxy {
     passHeaders['host'] = _newHost;
     _logProxyRequest.finest('[${req.id}] + host=$_newHost');
 
-    // Identify any connection headers that must not be passed through
+    // Identify any link-only headers that must not be passed through.
+    // These are identified in the "Connection" header, if any.
 
     // ignore: prefer_collection_literals
     final requestConnectionExclude = Set<String>();
@@ -260,33 +261,52 @@ class Proxy {
       }
     }
 
+    // Add explicit connection close header to disable _persistent connections_
+    // in HTTP/1.1 (where the absence of the header means persistence desired).
+    // Having an explicit connection close header also disables it with
+    // legacy (but commonly implemented) HTTP/1.0+ _keep-alive connections_
+    // (where the absence of the header means no persistence).
+
+    passHeaders['connection'] = 'close';
+    _logProxyRequest.finest('[${req.id}] + connection=close');
+
     // Headers from incoming request to outgoing request
 
     req.headers.forEach((key, values) {
       final headerName = key.toLowerCase();
 
-      if ((requestHeadersNeverPass.contains(headerName) ||
-              requestConnectionExclude.contains(headerName.toLowerCase()) ||
-              (requestBlockHeaders.contains(headerName))) ||
+      if (requestHeadersNeverPass.contains(headerName) ||
+          requestConnectionExclude.contains(headerName) ||
+          requestBlockHeaders.contains(headerName) ||
           headerName == 'via') {
         // Do not pass through header
+        // Note: any "Via" headers are skipped here, but their values will all
+        // be put back immediately after this loop (see below).
         _logProxyRequest.finest('[${req.id}] - $headerName=${values.first}');
       } else {
         // Pass through header
-        if (values.length == 1) {
-          final value = values.first;
-          _logProxyRequest.finest('[${req.id}]   $headerName=$value');
-          passHeaders[headerName] = value;
-        } else {
-          _logProxyRequest
-              .warning('[${req.id}] header not a single value: $headerName');
-        }
+
+        // The _http.get_ function does not support multiple headers with the
+        // same name, so multiple values are combined together with commas as
+        // permitted by
+        // https://www.w3.org/Protocols/rfc2616/rfc2616-sec4.html#sec4.2
+        final singleValue = values.join(', ');
+
+        // Except Set-Cookies is a special case where commas might not
+        // work: https://tools.ietf.org/html/rfc7230#section-3.2.2
+
+        _logProxyRequest.finest('[${req.id}]   $headerName=$singleValue');
+        passHeaders[headerName] = singleValue;
       }
     });
 
-    /// A "Via" header is _always_ added to forwarded requests.
-    /// It is mandatory according to
-    /// [RFC 7230](https://tools.ietf.org/html/rfc7230#section-5.7.1).
+    // A "Via" header is _always_ added to forwarded requests.
+    // It is mandatory according to
+    // [RFC 7230](https://tools.ietf.org/html/rfc7230#section-5.7.1).
+    //
+    // Again, since _http.get_ does not support multiple headers, if there are
+    // any existing Via header(s), their values are concatenated together
+    // with the new value and separated by a comma.
 
     final _newVia = req.headers['via'] != null
         ? '${req.headers['via'].where((s) => s.isNotEmpty).join(', ')}, $_via'
@@ -319,7 +339,7 @@ class Proxy {
 
     _logProxyResponse.finest('[${req.id}] + content-type=$contentType');
 
-    // Identify any connection headers that must not be passed through
+    // Identify any connection headers that must not be passed back.
 
     // ignore: prefer_collection_literals
     final responseConnectionExclude = Set<String>();
@@ -341,6 +361,13 @@ class Proxy {
       ..status = targetResponse.statusCode
       ..headerRemoveAll();
 
+    assert(resp.headerNames().isEmpty);
+
+    // Add connection close header to indicate connection will not persist
+
+    resp.headerAdd('connection', 'close');
+    _logProxyResponse.finest('[${req.id}] + connection=close');
+
     // Above removes all default headers, since some/all of them might be
     // present in the proxy response. Only the ones from the proxy response will
     // appear in the response.
@@ -357,9 +384,8 @@ class Proxy {
       final headerValue = targetResponse.headers[key];
 
       if (responseHeadersNeverPass.contains(headerName) ||
-          responseConnectionExclude.contains(headerName.toLowerCase()) ||
-          (responseBlockHeaders.contains(headerName)) ||
-          headerName == 'via') {
+          responseConnectionExclude.contains(headerName) ||
+          responseBlockHeaders.contains(headerName)) {
         // Do not pass back header
         _logProxyResponse.finest('[${req.id}] - $headerName=$headerValue');
       } else {
@@ -375,15 +401,17 @@ class Proxy {
     // Via header
 
     if (includeViaHeaderInResponse) {
-      /// A "Via" header is optional in forwarded responses according to
-      /// [RFC 7230](https://tools.ietf.org/html/rfc7230#section-5.7.1).
+      // Add a Via header to the HTTP response.
+      //
+      // A "Via" header is optional in forwarded responses according to
+      // [RFC 7230](https://tools.ietf.org/html/rfc7230#section-5.7.1).
+      //
+      // Important: this must be done _after_ copying the headers from the
+      // proxy response, since this new "Via" header must appear _after_ any
+      // previous ones.
 
-      final _newVia = (targetResponse.headers['via'] != null)
-          ? '${targetResponse.headers['via']}, $_via'
-          : _via;
-
-      resp.headerAdd('via', _newVia);
-      _logProxyResponse.finest('[${req.id}] + via=$_newVia');
+      resp.headerAdd('via', _via);
+      _logProxyResponse.finest('[${req.id}] + via=$_via');
     }
 
     // Create a stream from the bodyBytes, and use it for the response
