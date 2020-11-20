@@ -28,17 +28,22 @@ class Proxy {
   /// made up of the [proxy] with the sub-path appended. The response from that
   /// proxy request is forwarded back as the response.
   ///
-  /// A "Via" header is always added to the proxy request. The value of [via]
-  /// is used, unless it is null or the empty string. Otherwise, a default
-  /// value is used. A "Via" header containing the same value is added to the
-  /// response, unless [includeViaHeaderInResponse] is false.
+  /// A "Via" header is always added to the proxy request, but is optional for
+  /// the proxy response. The value of [receivedBy] is used to generate the
+  /// value of the proxy's Via header. A default value is used if _receivedBy_
+  /// is null or the empty string.
+  ///
+  /// The value of [includeViaHeaderInResponse] controls whether the proxy's
+  /// Via header is added to the proxy response or not. It defaults to true.
 
   Proxy(this.method, String pattern, String proxy,
-      {String via,
+      {String receivedBy,
       this.includeViaHeaderInResponse = true,
       @deprecated Iterable<String> requestBlockHeaders,
       @deprecated Iterable<String> responseBlockHeaders})
-      : _via = (via != null && via.isNotEmpty) ? via : _viaDefault {
+      : _receivedBy = (receivedBy?.isNotEmpty ?? false)
+            ? receivedBy
+            : _receivedByDefault {
     if (method != 'GET' && method != 'HEAD') {
       throw ArgumentError.value(
           method, 'method', 'only GET and HEAD supported');
@@ -101,10 +106,12 @@ class Proxy {
     'proxy-authenticate',
   ];
 
-  // Default value to use for the "Via" header when forwarding the request.
-  // Used when no value of via was provided.
+  // Default value to use for received-by in the "Via" header.
+  //
+  // This is used to identify the proxy when no value for received-by was
+  // provided to the constructor.
 
-  static const String _viaDefault = '1.1 woomera_proxy';
+  static const String _receivedByDefault = 'woomera_proxy';
 
   //================================================================
   // Members
@@ -117,11 +124,14 @@ class Proxy {
 
   String _pathPrefix;
 
-  /// Value for the "Via" header.
+  /// Identifies this proxy in "Via" headers this proxy will add.
 
-  final String _via;
+  final String _receivedBy;
 
   /// Indicates if a Via header is added to the response.
+  ///
+  /// Adding a Via header into the HTTP response is optional. This member
+  /// controls whether it is added or not.
 
   final bool includeViaHeaderInResponse;
 
@@ -308,6 +318,16 @@ class Proxy {
     // any existing Via header(s), their values are concatenated together
     // with the new value and separated by a comma.
 
+    String protocolVersion;
+    final core = req._coreRequest;
+    if (core is _CoreRequestReal) {
+      protocolVersion = core._httpRequest.protocolVersion;
+    } else {
+      protocolVersion = '1.1'; // not a real HTTP request: assume common value
+    }
+
+    final _via = '$protocolVersion $_receivedBy';
+
     final _newVia = req.headers['via'] != null
         ? '${req.headers['via'].where((s) => s.isNotEmpty).join(', ')}, $_via'
         : _via;
@@ -410,6 +430,7 @@ class Proxy {
       // proxy response, since this new "Via" header must appear _after_ any
       // previous ones.
 
+      final _via = '1.1 $_receivedBy'; // assumes _http.get_ uses HTTP 1.1
       resp.headerAdd('via', _via);
       _logProxyResponse.finest('[${req.id}] + via=$_via');
     }
