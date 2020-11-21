@@ -49,17 +49,25 @@ class Proxy {
           method, 'method', 'only GET and HEAD supported');
     }
 
+    // Set _pathPrefix (leading and trailing slashes are removed)
+    // e.g. "~/" -> empty string
+    // "~/foo/bar/*" -> "foo/bar"
+    // "~/strange//*" -> "strange"
+    // "~////very-strange////*" -> "very-strange"
+
     if (!pattern.startsWith('~/')) {
       throw ArgumentError.value(pattern, 'pattern', 'does not start with "~/"');
     }
-
     if (!pattern.endsWith('/*')) {
-      throw ArgumentError.value(pattern, 'pattern', 'does not end with "*"');
+      throw ArgumentError.value(pattern, 'pattern', 'does not end with "/*"');
     }
 
-    _pathPrefix =
-        pattern == '~/*' ? '' : pattern.substring(2, pattern.length - 2);
-    _proxyHost = proxy;
+    _pathPrefix = _removeSlashes(pattern.substring(2, pattern.length - 1));
+
+    // Set _proxyHost (trailing slashes are removed)
+    // e.g. "http://remote.example.com/" -> "http://remove.example.com"
+
+    _proxyHost = _removeSlashes(proxy);
 
     // Store lower case versions of headers to block.
 
@@ -74,6 +82,19 @@ class Proxy {
         this.responseBlockHeaders.add(name.toLowerCase());
       }
     }
+  }
+
+  static String _removeSlashes(String str) {
+    var s = str;
+    while (s.endsWith('/')) {
+      s = s.substring(0, s.length - 1);
+    }
+
+    while (s.startsWith('/')) {
+      s = s.substring(1);
+    }
+
+    return s;
   }
 
   //================================================================
@@ -162,8 +183,11 @@ class Proxy {
   void register(ServerPipeline ws) {
     assert(method == 'GET' || method == 'HEAD',
         'only GET and HEAD is implemented right now');
+
+    final pattern = _pathPrefix.isEmpty ? '~/*' : '~/$_pathPrefix/*';
+
     // ignore: unnecessary_lambdas
-    ws.register(method, '~/$_pathPrefix/*', (req) => handleGetOrHead(req));
+    ws.register(method, pattern, (req) => handleGetOrHead(req));
   }
 
   //----------------------------------------------------------------
