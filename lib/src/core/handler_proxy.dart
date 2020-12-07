@@ -1,17 +1,62 @@
 part of core;
 
 //================================================================
-/// Handler for proxying requests to another server.
+/// Proxy for handling requests to another server.
+///
+/// **This is an experimental implementation.** It is not complete, so it
+/// might not work in all situations.
+///
+/// Create _Proxy_ objects for the requests and then register request handlers
+/// with the server's pipelines.
 ///
 /// Example:
 ///
 /// ```dart
-/// proxy = Proxy('GET', '~/foobar/*', 'http://example.com');
-/// proxy.register(pipeline);
+/// final server = ...
+///
+/// final pipeline = ...
+///
+/// final proxy = Proxy('~/foobar/*', 'http://example.com');
+///
+/// // Register the proxy as the handler for the requests
+///
+/// pipeline.get(proxy.pattern, proxy.handler);
+///
+/// // Register all HTTP methods to be proxied:
+///
+/// pipeline.head(proxy.pattern, proxy.handler);
+/// pipeline.post(proxy.pattern, proxy.handler);
+///
+/// // The above syntax is equivalent to passing in a function that invokes the
+/// // `handler` method on the _proxy_ object. That is,
+/// //     pipeline.put(p.pattern, (r) => p.handler(r));
+///
+/// await server.run();
 /// ```
 ///
-/// GET requests for '~/foobar/abc/def' will return the response from
+/// GET/HEAD/POST requests for '~/foobar/abc/def' will return the response from
 /// sending a request to "http://example.com/abc/def".
+///
+/// The _Proxy_ object constructor takes the pattern for the requests the
+/// proxy will handle, and the URL that proxied requests will be sent to.
+///
+/// When registering request handlers, the _proxy.pattern_ getter should be used
+/// to ensure consistency. If the registered pattern does not match the pattern
+/// used to create the object, it might not work properly. Also, in the above
+/// example, _proxy.handler_ is a tear-off which is equivalent to invoking
+/// the _handler_ method on the _proxy_ object. That is, `p.handler` is
+/// the same as creating a new function `(r) { return p.handler(r); }` that
+/// invokes the method on the object.
+///
+/// ## Debugging client side Dart scripts
+///
+/// This was developed to proxy requests for the Web assets (e.g. images, CSS
+/// and client side scripts) to a running "webdev serve" instance, so client
+/// side Dart can be debugged in conjunction with a Web server running
+/// server side Dart. Currently, this seems to work when `webdev serve`
+/// is run with `--no-injected-client`. But it does not work with "webdev
+/// daemon" (which is what _WebStorm_ uses to debug client side Dart).
+/// So you can set Dart breakpoints in Chrome, but not in WebStorm.
 
 class Proxy {
   //================================================================
@@ -20,8 +65,8 @@ class Proxy {
   //----------------------------------------------------------------
   /// Create a request handler that proxies requests to another URL.
   ///
-  /// This request handler is used to handle requests that match the [method]
-  /// and [pattern]. The pattern must end with a "*" (e.g. "~/*" or
+  /// This request handler is used to handle requests that match the [pattern].
+  /// The pattern must end with a "*" (e.g. "~/*" or
   /// "~/foobar/*"). The path that matches the "*" is the sub-path.
   ///
   /// When handling a request, it will make a proxy request to a URL that is
@@ -36,7 +81,7 @@ class Proxy {
   /// The value of [includeViaHeaderInResponse] controls whether the proxy's
   /// Via header is added to the proxy response or not. It defaults to true.
 
-  Proxy(this.method, String pattern, String proxy,
+  Proxy(String pattern, String proxy,
       {String receivedBy,
       this.includeViaHeaderInResponse = true,
       @deprecated Iterable<String> requestBlockHeaders,
@@ -44,11 +89,6 @@ class Proxy {
       : _receivedBy = (receivedBy?.isNotEmpty ?? false)
             ? receivedBy
             : _receivedByDefault {
-    if (method != 'GET' && method != 'HEAD') {
-      throw ArgumentError.value(
-          method, 'method', 'only GET and HEAD supported');
-    }
-
     // Set _pathPrefix (leading and trailing slashes are removed)
     // e.g. "~/" -> empty string
     // "~/foo/bar/*" -> "foo/bar"
@@ -64,10 +104,10 @@ class Proxy {
 
     _pathPrefix = _removeSlashes(pattern.substring(2, pattern.length - 1));
 
-    // Set _proxyHost (trailing slashes are removed)
+    // Set _targetUriPrefix (trailing slashes are removed)
     // e.g. "http://remote.example.com/" -> "http://remove.example.com"
 
-    _proxyHost = _removeSlashes(proxy);
+    _targetUriPrefix = _removeSlashes(proxy);
 
     // Store lower case versions of headers to block.
 
@@ -137,11 +177,14 @@ class Proxy {
   //================================================================
   // Members
 
-  /// The HTTP method to proxy for.
+  /// The URL of the target.
 
-  final String method;
+  String _targetUriPrefix;
 
-  String _proxyHost;
+  /// Part of the path from the pattern.
+  ///
+  /// For example, if the pattern was "~/foo/*", this value will be "foo".
+  /// Or if the pattern was "~/*", this value will be the empty string.
 
   String _pathPrefix;
 
@@ -174,21 +217,24 @@ class Proxy {
 
   final List<String> responseBlockHeaders = [];
 
+  /// Maximum size of POST contents before it is rejected.
+  ///
+  /// The number of raw bytes in the contents of the request. Change this to
+  /// a different value to proxy larger POST requests.
+
+  int postMaxRequestSize = 10 * 1024 * 1024;
+
   //================================================================
   // Methods
 
   //----------------------------------------------------------------
-  /// Register a proxy with a pipeline.
 
-  void register(ServerPipeline ws) {
-    assert(method == 'GET' || method == 'HEAD',
-        'only GET and HEAD is implemented right now');
+  /// The pattern handled for this proxy.
+  ///
+  /// This is a cleaned up version of the pattern that was passed to the
+  /// constructor.
 
-    final pattern = _pathPrefix.isEmpty ? '~/*' : '~/$_pathPrefix/*';
-
-    // ignore: unnecessary_lambdas
-    ws.register(method, pattern, (req) => handleGetOrHead(req));
-  }
+  String get pattern => _pathPrefix.isEmpty ? '~/*' : '~/$_pathPrefix/*';
 
   //----------------------------------------------------------------
   /// Derive the target URI from the request.
@@ -197,7 +243,7 @@ class Proxy {
     final values = req.pathParams.values('*');
 
     assert(values.isEmpty || values.length == 1,
-        'Proxy registered without exactly one *: $_proxyHost/$_pathPrefix');
+        'Proxy registered without exactly one *: $_targetUriPrefix/$_pathPrefix');
 
     final subPath = (values.isNotEmpty) ? values.first : null;
 
@@ -207,7 +253,7 @@ class Proxy {
 
     // Build the target URL
 
-    final buf = StringBuffer('$_proxyHost/$fullPath');
+    final buf = StringBuffer('$_targetUriPrefix/$fullPath');
 
     if (req.queryParams.isNotEmpty) {
       // Add all the query parameters to the URL
@@ -231,10 +277,13 @@ class Proxy {
   }
 
   //----------------------------------------------------------------
-  /// GET or HEAD request handler.
+  /// Request handler.
   ///
+  /// Invoke this method to handle the request.
 
-  Future<Response> handleGetOrHead(Request req) async {
+  Future<Response> handler(Request req) async {
+    final method = req.method;
+
     _logProxy.fine('[${req.id}] $method ${req.requestPath()}');
 
     // Determine the target URI for the proxy request
@@ -243,29 +292,73 @@ class Proxy {
     _logProxyRequest.finer('[${req.id}] $method $targetUrl');
 
     try {
-      // Determine headers for the proxy request
+      // Determine headers and body for the proxy request
 
-      final _prHeaders = await _proxyRequestHeaders(req, targetUrl);
+      final r = await _proxyRequestHeaders(req, targetUrl);
 
       // Perform the proxy request
 
-      final targetResponse = await http.get(targetUrl, headers: _prHeaders);
+      http.Response targetResponse;
+      switch (method) {
+        case 'GET':
+          targetResponse = await http.get(targetUrl, headers: r.headers);
+          break;
+
+        case 'HEAD':
+          targetResponse = await http.head(targetUrl, headers: r.headers);
+          break;
+
+        case 'POST':
+          targetResponse =
+              await http.post(targetUrl, headers: r.headers, body: r.body);
+          break;
+
+        case 'PUT':
+          targetResponse =
+              await http.put(targetUrl, headers: r.headers, body: r.body);
+          break;
+
+        case 'PATCH':
+          targetResponse =
+              await http.patch(targetUrl, headers: r.headers, body: r.body);
+          break;
+
+        case 'DELETE':
+          targetResponse = await http.delete(targetUrl, headers: r.headers);
+          break;
+
+        default:
+          throw UnimplementedError('proxy unsupported method: $method');
+          break;
+      }
       assert(targetResponse != null);
 
       // Produce the response from the response of the proxy request
 
       return await _produceResponse(req, targetResponse);
     } catch (e) {
-      final proxyException = ProxyHandlerException(targetUrl, e);
-      _logProxy.fine('[${req.id}] $proxyException');
-      throw proxyException;
+      _logProxy.warning('[${req.id}] proxy: $e');
+
+      final errorResponse = http.Response(
+          'An error has occurred.\n', HttpStatus.internalServerError,
+          headers: {
+            'content-type': 'text/text',
+            'date': HttpDate.format(DateTime.now()),
+            'server': _receivedBy
+          });
+      return await _produceResponse(req, errorResponse);
+
+      // final proxyException = ProxyHandlerException(targetUrl, e);
+      // _logProxy.fine('[${req.id}] $proxyException');
+      // throw proxyException;
     }
   }
 
   //----------------
 
-  Future<Map<String, String>> _proxyRequestHeaders(
-      Request req, String targetUrl) async {
+  Future<_HeadBody> _proxyRequestHeaders(Request req, String targetUrl) async {
+    final core = req._coreRequest;
+
     // Determine the request headers to send to the target
     //
     // Note: the 'http' package does not support multiple headers with the
@@ -304,7 +397,22 @@ class Proxy {
     passHeaders['connection'] = 'close';
     _logProxyRequest.finest('[${req.id}] + connection=close');
 
+    // Content-type
+
+    if (core is _CoreRequestReal) {
+      final ct = core._httpRequest.headers.contentType;
+      if (ct != null) {
+        final cSet = ct.charset;
+        final newCt = '${ct.mimeType}${cSet != null ? '; charset=$cSet' : ''}';
+        _logProxyRequest.finest('[${req.id}] + content-type=$newCt');
+        passHeaders['content-type'] = newCt;
+      }
+    }
+
     // Headers from incoming request to outgoing request
+
+    int _contentLength;
+    var _wasCompressed = false;
 
     req.headers.forEach((key, values) {
       final headerName = key.toLowerCase();
@@ -312,11 +420,35 @@ class Proxy {
       if (requestHeadersNeverPass.contains(headerName) ||
           requestConnectionExclude.contains(headerName) ||
           requestBlockHeaders.contains(headerName) ||
+          headerName == 'content-type' ||
           headerName == 'via') {
         // Do not pass through header
         // Note: any "Via" headers are skipped here, but their values will all
         // be put back immediately after this loop (see below).
+        for (final v in values) {
+          _logProxyRequest.finest('[${req.id}] - $headerName=$v');
+        }
+      } else if (headerName == 'content-length') {
+        if (values.length == 1) {
+          final v = values.first;
+          try {
+            _contentLength = int.parse(values.first);
+            _logProxyResponse.finest('[${req.id}] - $headerName=$v');
+          } on FormatException {
+            throw FormatException('bad content-length header: $v');
+          }
+        } else {
+          throw FormatException('bad content-length: ${values.join(',')}');
+        }
         _logProxyRequest.finest('[${req.id}] - $headerName=${values.first}');
+      } else if (headerName == 'content-encoding') {
+        for (final v in values) {
+          if ((v.split(',').map<String>((s) => s.trim()))
+              .any((e) => e != 'identity')) {
+            _wasCompressed = true;
+          }
+          _logProxyResponse.finest('[${req.id}] - $headerName=$v');
+        }
       } else {
         // Pass through header
 
@@ -343,7 +475,6 @@ class Proxy {
     // with the new value and separated by a comma.
 
     String protocolVersion;
-    final core = req._coreRequest;
     if (core is _CoreRequestReal) {
       protocolVersion = core._httpRequest.protocolVersion;
     } else {
@@ -359,7 +490,26 @@ class Proxy {
     passHeaders['via'] = _newVia;
     _logProxyRequest.finest('[${req.id}] + via=$_newVia');
 
-    return passHeaders;
+    // Request body
+
+    final body = await req._coreRequest.bodyBytes(postMaxRequestSize);
+
+    if (_contentLength != null && body.length != _contentLength) {
+      if (!_wasCompressed) {
+        throw FormatException('content-length!=body:'
+            ' $_contentLength!=${body.length}');
+      }
+    }
+
+    if (body.isNotEmpty) {
+      // Set the request content-length
+
+      final realSize = body.length.toString();
+      _logProxyResponse.finest('[${req.id}] + content-length=$realSize');
+      passHeaders['content-length'] = realSize;
+    }
+
+    return _HeadBody(passHeaders, body);
   }
 
   //----------------
@@ -422,7 +572,9 @@ class Proxy {
 
     // Forward headers from proxy response to the response
 
-    int _size;
+    int _contentLength; // null if no "content-length" header
+    var _hasNonIdentityContentEncoding = false;
+
     for (var key in targetResponse.headers.keys) {
       final headerName = key.toLowerCase();
       final headerValue = targetResponse.headers[key];
@@ -432,11 +584,21 @@ class Proxy {
           responseBlockHeaders.contains(headerName)) {
         // Do not pass back header
         _logProxyResponse.finest('[${req.id}] - $headerName=$headerValue');
+      } else if (headerName == 'content-length') {
+        try {
+          _contentLength = int.parse(headerValue);
+          _logProxyResponse.finest('[${req.id}] - $headerName=$headerValue');
+        } on FormatException {
+          throw FormatException('bad content-length header: $headerValue');
+        }
+      } else if (headerName == 'content-encoding') {
+        if ((headerValue.split(',').map<String>((s) => s.trim()))
+            .any((e) => e != 'identity')) {
+          _hasNonIdentityContentEncoding = true;
+        }
+        _logProxyResponse.finest('[${req.id}] - $headerName=$headerValue');
       } else {
         // Pass header back to client
-        if (headerName == 'content-length') {
-          _size = int.parse(headerValue);
-        }
         resp.headerAdd(headerName, headerValue);
         _logProxyResponse.finest('[${req.id}]   $headerName=$headerValue');
       }
@@ -459,14 +621,58 @@ class Proxy {
       _logProxyResponse.finest('[${req.id}] + via=$_via');
     }
 
+    // Get the body of the proxy response
+
+    final body = targetResponse.bodyBytes;
+
+    // Check content-length (if any) matches actual body (if it is supposed to)
+
+    var realSize = body.length.toString();
+
+    if (req.method == 'HEAD' ||
+        targetResponse.statusCode == HttpStatus.noContent ||
+        targetResponse.statusCode == HttpStatus.notModified ||
+        (100 <= targetResponse.statusCode &&
+            targetResponse.statusCode <= 199)) {
+      // Message is not allowed to have a body:
+      // Any content-length is only informational: ignore it
+      if (body.isNotEmpty) {
+        throw FormatException('body forbidden, but got ${body.length} bytes');
+      }
+      realSize = _contentLength?.toString();
+    } else if (!_hasNonIdentityContentEncoding) {
+      // Content-length (if it exists) should be correct
+
+      if (_contentLength != null && _contentLength != body.length) {
+        throw FormatException('content-length!=body:'
+            ' $_contentLength!=${body.length}');
+      }
+    }
+    // Note: content-type is "multipart/byteranges" is another situation
+    // where the content-length might not match.
+
     // Create a stream from the bodyBytes, and use it for the response
+
+    if (realSize != null) {
+      _logProxyResponse.finest('[${req.id}] + content-length=$realSize');
+      resp.headerSet('content-length', realSize);
+    } else {
+      _logProxyResponse.finest('[${req.id}]');
+    }
+
+    final result = await resp.addStream(req, () async* {
+      yield body;
+    }());
 
     _logProxy.finer('[${req.id}] status=${targetResponse.statusCode}');
 
-    return await resp.addStream(req, () async* {
-      final body = targetResponse.bodyBytes;
-      assert(_size == null || _size == body.length);
-      yield body;
-    }());
+    return result;
   }
+}
+
+class _HeadBody {
+  _HeadBody(this.headers, this.body);
+
+  final Map<String, String> headers;
+  final List<int> body;
 }

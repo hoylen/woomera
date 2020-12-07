@@ -1,7 +1,8 @@
 # Changelog
 
-## 5.4.1
+## 6.0.0
 
+- Breaking change: Proxy constructor no longer has HTTP method parameter.
 - Added session ID to log message when multiple session IDs are encountered.
 - Fixed Proxy work when client requests keep-alive connections.
 
