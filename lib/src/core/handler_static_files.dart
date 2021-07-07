@@ -32,41 +32,49 @@ class StaticFiles {
   /// The [defaultFilenames] default to [standardFilenames], if not specified.
 
   StaticFiles(String baseDir,
-      {List<String> defaultFilenames,
+      {this.defaultFilenames = standardFilenames,
       this.allowFilePathsAsDirectories = true,
       this.allowDirectoryListing = false,
-      this.publicServerUrl}) {
-    // Check if provided [baseDir] directory is usable.
+      this.publicServerUrl = ''})
+      : _baseDir = _checkAndFixBaseDir(baseDir);
 
-    if (baseDir == null) {
-      throw ArgumentError.notNull('baseDir');
-    }
-    if (baseDir.isEmpty) {
+  static String _checkAndFixBaseDir(String baseDir) {
+    var x = baseDir.trim();
+
+    // Check if provided [baseDir] directory is usable and canonicalize it
+
+    if (x.isEmpty) {
       throw ArgumentError.value(
-          baseDir, 'baseDir', 'empty string not permitted for StaticFiles');
+          x, 'baseDir', 'empty string not permitted for StaticFiles');
     }
-    while (baseDir.endsWith('/')) {
-      // Remove all trailing slashes
-      baseDir = baseDir.substring(0, baseDir.length - 1);
+
+    // Remove all trailing slashes which are bad (and spaces which might be bad)
+
+    while (x.endsWith('/')) {
+      x = x.substring(0, x.length - 1).trim();
     }
-    if (baseDir.isEmpty) {
+
+    if (x.isEmpty) {
       throw ArgumentError.value(
           '/', 'baseDir', 'not permitted for StaticFiles');
     }
-    if (['/bin', '/etc', '/home', '/lib', '/tmp', '/var'].contains(baseDir)) {
-      throw ArgumentError.value(
-          baseDir, 'baseDir', 'not permitted for StaticFiles');
-    }
-    if (!Directory(baseDir).existsSync()) {
-      throw ArgumentError.value(
-          baseDir, 'baseDir', 'directory does not exist for StaticFiles');
-    }
-    assert(baseDir.isNotEmpty);
 
-    // Save values
+    // Prohibit certain top-level directories
 
-    _baseDir = baseDir;
-    this.defaultFilenames = defaultFilenames ?? standardFilenames;
+    if (['/bin', '/etc', '/home', '/lib', '/tmp', '/var'].contains(x)) {
+      throw ArgumentError.value(x, 'baseDir', 'not permitted for StaticFiles');
+    }
+
+    // Directory must exist
+
+    if (!Directory(x).existsSync()) {
+      throw ArgumentError.value(
+          x, 'baseDir', 'directory does not exist for StaticFiles');
+    }
+
+    // Directory can be used
+
+    return x;
   }
 
   //================================================================
@@ -108,7 +116,11 @@ class StaticFiles {
 
   //================================================================
 
-  String _baseDir;
+  // The directory to look under.
+  //
+  // Note: this is never an empty string.
+
+  final String _baseDir;
 
   /// Names of files to try to find if a directory is requested.
   ///
@@ -117,7 +129,7 @@ class StaticFiles {
   /// files are found, [allowDirectoryListing] determines if a listing is
   /// generated or an error is raised.
 
-  List<String> defaultFilenames;
+  final List<String> defaultFilenames;
 
   /// Permit listing of directory contents.
   ///
@@ -180,8 +192,7 @@ class StaticFiles {
   /// port (i.e. not port 80 for HTTP or not port 443 for HTTPS), that forwards
   /// requests to the server for processing.
   ///
-  /// If not using reverse proxy, this value should be set to null or the
-  /// empty string.
+  /// If not using reverse proxy, this value should be set to the empty string.
   ///
   /// When a request arrives that matches a directory, and the requested URL
   /// did not end with a slash, the response is a HTTP redirection that adds
@@ -190,7 +201,7 @@ class StaticFiles {
   /// contents of a default file from that directory) will not resolve properly.
   /// If a proxy is being used, the redirection URL must be for the proxy rather
   /// than the actual server, otherwise the browser will not be able to get to
-  /// he new URL. This member contains the URL exposed by the proxy.
+  /// the new URL. This member contains the URL exposed by the proxy.
   ///
   /// For example, consider a server running on port 10000, which has been
   /// deployed behind a reverse proxy running on port 8080.
@@ -221,8 +232,7 @@ class StaticFiles {
   /// as the relative path underneath the [baseDir] to find the file or
   /// directory.
 
-  Future<Response> handler(Request req) async {
-    assert(_baseDir != null);
+  Future<Response?> handler(Request req) async {
     assert(_baseDir.isNotEmpty);
 
     // Get the relative path
@@ -288,7 +298,7 @@ class StaticFiles {
           // See [publicUrlPrefix] for details.
 
           String requestedUrl;
-          if (publicServerUrl == null || publicServerUrl.trim().isEmpty) {
+          if (publicServerUrl.isEmpty) {
             // No proxying
             requestedUrl = req.requestPath();
           } else if (publicServerUrl.endsWith('/')) {
@@ -345,7 +355,7 @@ class StaticFiles {
     }
   }
 
-  Future<File> _findDefaultFile(String path) async {
+  Future<File?> _findDefaultFile(String path) async {
     for (var defaultFilename in defaultFilenames) {
       final dfName = '$path$defaultFilename';
       final df = File(dfName);
@@ -355,6 +365,7 @@ class StaticFiles {
     }
     return null;
   }
+
   //----------------------------------------------------------------
   /// Method used to generate a directory listing.
   ///
@@ -369,9 +380,11 @@ class StaticFiles {
   /// Applications can create a subclass of [StaticFiles] and implement their
   /// own directory listing method, if they want to create a custom directory
   /// listings.
+  ///
+  /// **Null-safety breaking change:** _linkToParent_ is required.
 
   Future<Response> directoryListing(Request req, Directory dir,
-      {bool linkToParent}) async {
+      {required bool linkToParent}) async {
     final components = dir.path.split('/');
     String title;
     if (2 <= components.length &&
@@ -440,21 +453,20 @@ class StaticFiles {
   Future<Response> _serveFile(Request req, File file) async {
     // Determine content type
 
-    ContentType contentType;
+    var contentType = ContentType.binary; // default if no suffix
 
     final p = file.path;
     final dotIndex = p.lastIndexOf('.');
     if (0 < dotIndex) {
       final slashIndex = p.lastIndexOf('/');
       if (slashIndex < dotIndex) {
-        // Dot is in the last segment
+        // Dot is in the last segment (i.e. has a file suffix)
         var suffix = p.substring(dotIndex + 1);
         suffix = suffix.toLowerCase();
-        contentType = mimeTypes[suffix] ?? defaultMimeTypes[suffix];
+        contentType =
+            mimeTypes[suffix] ?? defaultMimeTypes[suffix] ?? ContentType.binary;
       }
     }
-
-    contentType = contentType ?? ContentType.binary; // default if not known
 
     // Return contents of file
     // Last-Modified, Date and Content-Length helps browsers cache the contents.

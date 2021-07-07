@@ -21,11 +21,11 @@ class SimulatedHttpHeaders extends HttpHeaders {
     // Dart 2.8 adds the preserveHeaderCase option
     final lcName = name.toLowerCase();
 
-    List<String> values;
-    if (_data.containsKey(lcName)) {
-      values = _data[lcName];
-    } else {
-      values = (_data[lcName] = <String>[]);
+    var values = _data[lcName];
+    if (values == null) {
+      final createdList = <String>[];
+      _data[lcName] = createdList;
+      values = createdList;
     }
     values.add(value.toString());
 
@@ -35,16 +35,16 @@ class SimulatedHttpHeaders extends HttpHeaders {
   //----------------------------------------------------------------
 
   @override
-  List<String> operator [](String name) => _data[name.toLowerCase()];
+  List<String>? operator [](String name) => _data[name.toLowerCase()];
 
   //----------------------------------------------------------------
 
   @override
-  String value(String name) {
+  String? value(String name) {
     final lcName = name.toLowerCase();
 
-    if (_data.containsKey(lcName)) {
-      final values = _data[lcName];
+    final values = _data[lcName];
+    if (values != null) {
       if (values.isEmpty) {
         return null;
       } else if (values.length == 1) {
@@ -100,7 +100,7 @@ class SimulatedHttpHeaders extends HttpHeaders {
   @override
   void forEach(void Function(String name, List<String> values) f) {
     for (var key in _data.keys) {
-      f(_originalHeaderNames[key], _data[key]);
+      f(_originalHeaderNames[key]!, _data[key]!);
     }
   }
 

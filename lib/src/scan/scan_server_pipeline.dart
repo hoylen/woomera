@@ -31,9 +31,10 @@ part of scan;
 /// don't know about.
 
 ServerPipeline serverPipelineFromAnnotations(
-    String pipelineName, Iterable<String> libraries,
+    String pipelineName, Iterable<String>? libraries,
     {bool scanAllFileLibraries = true}) {
-  final pipeline = ServerPipeline(pipelineName ?? ServerPipeline.defaultName);
+  ArgumentError.checkNotNull(pipelineName, 'no pipeline name'); // use default
+  final pipeline = ServerPipeline(pipelineName);
 
   // Make sure annotations from the desired libraries have been scanned
 
@@ -45,8 +46,7 @@ ServerPipeline serverPipelineFromAnnotations(
   var haveRequestHandlers = false;
   for (final arh in _annotations.listRequestHandlers(pipeline.name)) {
     try {
-      pipeline.register(arh.httpMethod, null, arh.handler,
-          pattern: arh.pattern);
+      pipeline.registerPattern(arh.httpMethod, arh.pattern, arh.handler);
     } on DuplicateRule catch (e) {
       // Since Mirrors is available, use the enhanced exception that can
       // show where the existing handler came from

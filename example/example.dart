@@ -5,8 +5,9 @@
 ///
 /// This program runs a single HTTP Web server (on port 1024).
 ///
-/// Copyright (c) 2019, Hoylen Sue. All rights reserved. Use of this source code
-/// is governed by a BSD-style license that can be found in the LICENSE file.
+/// Copyright (c) 2019, 2021, Hoylen Sue. All rights reserved. Use of this
+/// source code is governed by a BSD-style license that can be found in the
+/// LICENSE file.
 //----------------------------------------------------------------
 
 import 'dart:async';
@@ -199,10 +200,10 @@ Future<Response> homePage(Request req) async {
           <a href="${req.ura('$iPathExceptionGenerator?$_qParamProcessedBy=defaultServer')}">
           Case 3</a>:
           Exception thrown by the request handler. It is processed by the
-          pipeline exception hander, but it throws an exception. That second
+          pipeline exception handler, but it throws an exception. That second
           exception is processed by the server exception handler, but it
           throws an exception. That third exception causes the built-in
-          default server exception hander to run.
+          default server exception handler to run.
         </li>
       </ul>
       
@@ -268,41 +269,43 @@ Future<Response> dateCalcPostHandler(Request req) async {
   // HTTP requests with MIME type of "application/x-www-form-urlencoded"
   // (e.g. from a HTTP POST request for a HTML form) will populate the request's
   // postParams member.
-  assert(req.postParams != null);
 
-  // The input values can be retrieved as strings from postParams.
+  final pParams = req.postParams;
 
-  var name = req.postParams[_pParamName];
+  if (pParams != null) {
+    // The input values can be retrieved as strings from postParams.
 
-  // The list access operator on postParams (pathParams and queryParams too)
-  // cleans up values by collapsing multiple whitespaces into a single space,
-  // and trimming whitespace from both ends. It always returns a string value
-  // (i.e. it never returns null), so it returns an empty string if the value
-  // does not exist. To tell the difference between a missing value and a value
-  // that is the empty string (or only contains whitespace), use the
-  // [RequestParams.values] method instead of the list access operator.
-  // That [RequestParams.values] method can also be used to obtain the actual
-  // value without any whitespace processing.
+    var name = pParams[_pParamName];
 
-  assert(req.postParams['np'] == '');
-  assert(req.postParams.values('np', mode: ParamsMode.standard).isEmpty);
-  assert(req.postParams.values('np', mode: ParamsMode.rawLines).isEmpty);
-  assert(req.postParams.values('np', mode: ParamsMode.raw).isEmpty);
+    // The list access operator on postParams (pathParams and queryParams too)
+    // cleans up values by collapsing multiple whitespaces into a single space,
+    // and trimming whitespace from both ends. It always returns a string value
+    // (i.e. it never returns null), so it returns an empty string if the value
+    // does not exist. To tell the difference between a missing value and a value
+    // that is the empty string (or only contains whitespace), use the
+    // [RequestParams.values] method instead of the list access operator.
+    // That [RequestParams.values] method can also be used to obtain the actual
+    // value without any whitespace processing.
 
-  // Produce the response
+    assert(pParams['np'] == '');
+    assert(pParams.values('np', mode: ParamsMode.standard).isEmpty);
+    assert(pParams.values('np', mode: ParamsMode.rawLines).isEmpty);
+    assert(pParams.values('np', mode: ParamsMode.raw).isEmpty);
 
-  if (name.isEmpty) {
-    name = 'world'; // default value if no name was provided
-  }
+    // Produce the response
 
-  // Produce the response
+    if (name.isEmpty) {
+      name = 'world'; // default value if no name was provided
+    }
 
-  // Note: values that cannot be trusted should be escaped, in case they
-  // contain reserved characters or malicious text. Text in HTML content can
-  // be escaped by calling `HEsc.text`. Text in attributes can be escaped by
-  // calling `HEsc.attr` (e.g. "... <a title="${HEsc.attr(value)} href=...").
+    // Produce the response
 
-  final resp = ResponseBuffered(ContentType.html)..write('''
+    // Note: values that cannot be trusted should be escaped, in case they
+    // contain reserved characters or malicious text. Text in HTML content can
+    // be escaped by calling `HEsc.text`. Text in attributes can be escaped by
+    // calling `HEsc.attr` (e.g. "... <a title="${HEsc.attr(value)} href=...").
+
+    final resp = ResponseBuffered(ContentType.html)..write('''
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -321,7 +324,11 @@ Future<Response> dateCalcPostHandler(Request req) async {
 </html>
 ''');
 
-  return resp;
+    return resp;
+  } else {
+    // POST request did not contain POST parameters
+    throw const FormatException('Invalid request');
+  }
 }
 
 //----------------------------------------------------------------
@@ -337,13 +344,10 @@ Future<Response> requestHandlerThatAlwaysThrowsException(Request req) async {
     case '':
     case 'pipeline':
       throw DemoException(HandledBy.pipelineExceptionHandler);
-      break;
     case 'server':
       throw DemoException(HandledBy.serverExceptionHandler);
-      break;
     case 'defaultServer':
       throw DemoException(HandledBy.defaultServerExceptionHandler);
-      break;
     default:
       throw FormatException('unsupported value: $value');
   }
@@ -427,7 +431,7 @@ Future<Response> handleJson(Request req) async {
 
 @Handles.pipelineExceptions()
 Future<Response> pipelineExceptionHandler(
-    Request req, Object exception, StackTrace st) async {
+    Request req, Object exception, StackTrace? st) async {
   log
     ..warning(
         'pipeline exception handler: ${exception.runtimeType}: $exception')
@@ -477,7 +481,7 @@ Future<Response> pipelineExceptionHandler(
 
 @Handles.exceptions()
 Future<Response> serverExceptionHandler(
-    Request req, Object exception, StackTrace st) async {
+    Request req, Object exception, StackTrace? st) async {
   log
     ..warning('server exception handler: ${exception.runtimeType}: $exception')
     ..finest('stack trace: $st');
@@ -561,10 +565,7 @@ Future<void> myLowLevelExceptionHandler(
     HttpRequest rawRequest, String requestId, Object ex, StackTrace st) async {
   simLog.severe('[$requestId] raw exception (${ex.runtimeType}): $ex\n$st');
 
-  final resp = rawRequest.response;
-  assert(resp != null);
-
-  resp
+  final resp = rawRequest.response
     ..statusCode = HttpStatus.internalServerError
     ..headers.contentType = ContentType.html
     ..write('''<!DOCTYPE html>
@@ -637,8 +638,10 @@ Future simulatedRun(Server server) async {
     final req = Request.simulatedPost(iPathFormHandler, postParams);
     final resp = await server.simulate(req);
     assert(resp.status == HttpStatus.ok);
-    simLog.finer('form response body:\n${resp.bodyStr}');
-    assert(resp.bodyStr.contains('Hello test process'));
+
+    final str = resp.bodyStr;
+    simLog.finer('form response body:\n$str');
+    assert(str.contains('Hello test process'));
   }
 
   {
@@ -650,9 +653,10 @@ Future simulatedRun(Server server) async {
 
     final resp = await server.simulate(req);
     assert(resp.status == HttpStatus.internalServerError);
-    simLog.finer('exception body:\n${resp.bodyStr}');
-    assert(
-        resp.bodyStr.contains('<strong>pipeline</strong> exception handler'));
+
+    final str = resp.bodyStr;
+    simLog.finer('exception body:\n$str');
+    assert(str.contains('<strong>pipeline</strong> exception handler'));
   }
 
   {
@@ -665,8 +669,10 @@ Future simulatedRun(Server server) async {
 
     final resp = await server.simulate(req);
     assert(resp.status == HttpStatus.badRequest);
-    simLog.finer('exception body:\n${resp.bodyStr}');
-    assert(resp.bodyStr.contains('<strong>server</strong> exception handler'));
+
+    final str = resp.bodyStr;
+    simLog.finer('exception body:\n$str');
+    assert(str.contains('<strong>server</strong> exception handler'));
   }
 
   {
@@ -703,9 +709,11 @@ Future simulatedRun(Server server) async {
     final resp = await server.simulate(req);
     assert(resp.status == HttpStatus.ok);
     assert(resp.contentType == ContentType.text);
-    simLog.fine('stream body:\n${resp.bodyStr}');
-    assert(resp.bodyStr.contains('Started:'));
-    assert(resp.bodyStr.contains('Finished:'));
+
+    final str = resp.bodyStr;
+    simLog.fine('stream body:\n$str');
+    assert(str.contains('Started:'));
+    assert(str.contains('Finished:'));
   }
 
   {
@@ -717,15 +725,19 @@ Future simulatedRun(Server server) async {
     final resp = await server.simulate(req);
     assert(resp.status == HttpStatus.ok);
     assert(resp.contentType == ContentType.json);
-    simLog.finer('JSON body:\n${resp.bodyStr}');
+
+    final str = resp.bodyStr;
+    simLog.finer('JSON body:\n$str');
     // ignore: avoid_as
-    final j = json.decode(resp.bodyStr) as Object;
-    assert(j is Map<String, Object>);
-    if (j is Map<String, Object>) {
+    final j = json.decode(str) as Object;
+    if (j is Map<String, dynamic>) {
       assert(j.containsKey('name'));
       assert(j.containsKey('number'));
       assert(j['name'] is String);
       assert(j['number'] is int);
+    } else {
+      simLog.severe('JSON body: type is ${j.runtimeType}');
+      assert(false);
     }
   }
 

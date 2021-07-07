@@ -16,16 +16,12 @@ class Request {
   /// request.
 
   Request(HttpRequest hReq, String id, Server server)
-      : assert(hReq != null),
-        assert(id != null),
-        assert(server != null),
-        _id = id,
+      : _id = id,
+        _server = server,
         _coreRequest = _CoreRequestReal(hReq),
         _coreResponse = _CoreResponseReal(hReq.response) {
     _logRequest.fine(
         '[$id] ${_coreRequest.method} ${_coreRequest.internalPath(server._basePath)}');
-
-    _serverSet(server);
 
     _logRequestHeader.finer(() {
       // Log request
@@ -67,10 +63,6 @@ class Request {
 
     queryParams = RequestParams._fromQueryString(hReq.uri.query);
 
-    if (queryParams.isNotEmpty) {
-      _logRequestParam.finer(() => '[$id] query: $queryParams');
-    }
-
     // Determine method used for maintaining (future) sessions
 
     if (_coreRequest.cookies.isNotEmpty) {
@@ -78,102 +70,109 @@ class Request {
     } else {
       _sessionUsingCookies = false; // don't know, so assume browser doesn't
     }
+
+    _constructorCommon();
   }
 
   //----------------------------------------------------------------
   /// Constructor for a simulated request.
 
   Request.simulated(String method, String internalPath,
-      {String sessionId,
-      String id,
-      RequestParams queryParams,
-      SimulatedHttpHeaders headers,
-      List<Cookie> cookies,
-      String bodyStr,
-      List<int> bodyBytes,
+      {String? sessionId,
+      String? id,
+      RequestParams? queryParams,
+      SimulatedHttpHeaders? headers,
+      List<Cookie>? cookies,
+      String? bodyStr,
+      List<int>? bodyBytes,
       this.postParams})
-      : _id = id,
+      : _id = id ?? _defaultSimulatedId,
+        queryParams = queryParams ?? RequestParams._internalConstructor(),
+        _sessionUsingCookies = true,
         _coreRequest = _CoreRequestSimulated(method, internalPath,
-            sessionId: sessionId,
+            sessionId: sessionId ?? '',
             queryParams: queryParams,
-            headers: headers,
-            cookies: cookies,
+            headers: headers ?? SimulatedHttpHeaders(),
+            cookies: cookies ?? <Cookie>[],
             bodyStr: bodyStr,
             bodyBytes: bodyBytes),
         _coreResponse = _CoreResponseSimulated() {
-    _simulatedConstructorCommon(queryParams);
+    _constructorCommon();
   }
+
+  // All simulated requests force the use of cookies to maintain session.
+  //
+  //     _sessionUsingCookies = true
+  //
+  // When the [SimulatedResponse] is produced, the session cookie is
+  // extracted to populate the sessionId.
 
   //----------------
   /// Constructor for a simulated GET request.
 
   Request.simulatedGet(String internalPath,
-      {String sessionId,
-      String id,
-      RequestParams queryParams,
-      SimulatedHttpHeaders headers,
-      List<Cookie> cookies,
-      String bodyStr,
-      List<int> bodyBytes})
-      : _id = id,
+      {String? sessionId,
+      String? id,
+      RequestParams? queryParams,
+      SimulatedHttpHeaders? headers,
+      List<Cookie>? cookies,
+      String? bodyStr,
+      List<int>? bodyBytes})
+      : _id = id ?? _defaultSimulatedId,
+        queryParams = queryParams ?? RequestParams._internalConstructor(),
+        _sessionUsingCookies = true,
         _coreRequest = _CoreRequestSimulated('GET', internalPath,
-            sessionId: sessionId,
+            sessionId: sessionId ?? '',
             queryParams: queryParams,
-            headers: headers,
-            cookies: cookies,
+            headers: headers ?? SimulatedHttpHeaders(),
+            cookies: cookies ?? <Cookie>[],
             bodyStr: bodyStr,
             bodyBytes: bodyBytes),
         _coreResponse = _CoreResponseSimulated() {
-    _simulatedConstructorCommon(queryParams);
+    _constructorCommon();
   }
 
   //----------------
   /// Constructor for a simulated Post request.
 
   Request.simulatedPost(String internalPath, this.postParams,
-      {String sessionId,
-      String id,
-      RequestParams queryParams,
-      SimulatedHttpHeaders headers,
-      List<Cookie> cookies,
-      String bodyStr,
-      List<int> bodyBytes})
-      : _id = id,
+      {String? sessionId,
+      String? id,
+      RequestParams? queryParams,
+      SimulatedHttpHeaders? headers,
+      List<Cookie>? cookies,
+      String? bodyStr,
+      List<int>? bodyBytes})
+      : _id = id ?? _defaultSimulatedId,
+        queryParams = queryParams ?? RequestParams._internalConstructor(),
+        _sessionUsingCookies = true,
         _coreRequest = _CoreRequestSimulated('POST', internalPath,
-            sessionId: sessionId,
+            sessionId: sessionId ?? '',
             queryParams: queryParams,
-            headers: headers,
-            cookies: cookies,
+            headers: headers ?? SimulatedHttpHeaders(),
+            cookies: cookies ?? <Cookie>[],
             bodyStr: bodyStr,
             bodyBytes: bodyBytes),
         _coreResponse = _CoreResponseSimulated() {
-    _simulatedConstructorCommon(queryParams);
+    _constructorCommon();
   }
 
   //----------------
-  // Code common to all simulated request constructors.
-  //
-  // Used by [simulated], [simulatedGet] and [simulatedPost].
+  // Code common to all constructors.
 
-  void _simulatedConstructorCommon(RequestParams queryParams) {
-    _id ??= 'SIM:${++_simulatedRequestCount}';
-
-    this.queryParams = (queryParams ?? RequestParams._internalConstructor());
-    if (this.queryParams.isNotEmpty) {
+  void _constructorCommon() {
+    if (queryParams.isNotEmpty) {
       _logRequestParam.finer(() => '[$id] query: $queryParams');
     }
-
-    // Force the use of cookies to maintain session.
-    //
-    // When the [SimulatedResponse] is produced, the session cookie is
-    // extracted to populate the sessionId.
-
-    _sessionUsingCookies = true;
   }
+
+  //================================================================
 
   // Used to generate a unique ID for simulated requests, if none was set on it.
 
   static int _simulatedRequestCount = 0;
+
+  static String get _defaultSimulatedId => 'SIM:${++_simulatedRequestCount}';
 
   //================================================================
 
@@ -185,9 +184,9 @@ class Request {
     // request where the MIME type is "application/x-www-form-urlencoded".
     // For example, it could be a PUT request.
 
-    if (_coreRequest.headers.contentType != null &&
-        _coreRequest.headers.contentType.mimeType ==
-            'application/x-www-form-urlencoded') {
+    final ct = _coreRequest.headers.contentType;
+
+    if (ct != null && ct.mimeType == 'application/x-www-form-urlencoded') {
       // Read in the contents of the request
 
       // Get the request body into a string
@@ -216,8 +215,10 @@ class Request {
       postParams = RequestParams._fromQueryString(str);
 
       // Logging
+      //
+      // Note: postParams is not null, because it was set in the above statement
 
-      if (postParams.isNotEmpty) {
+      if (postParams!.isNotEmpty) {
         _logRequestParam
             .finer(() => '[$id] ${_coreRequest.method}: $postParams');
       }
@@ -252,9 +253,9 @@ class Request {
 
   @deprecated
   HttpRequest get request {
-    if (_coreRequest is _CoreRequestReal) {
-      // ignore: avoid_as
-      return (_coreRequest as _CoreRequestReal)._httpRequest;
+    final _cr = _coreRequest;
+    if (_cr is _CoreRequestReal) {
+      return _cr._httpRequest;
     } else {
       throw UnsupportedError('request not available on simulated Requests');
     }
@@ -267,14 +268,12 @@ class Request {
   /// This method only works for the Request is for a simulated HTTP request.
 
   SimulatedResponse get _simulatedResponse {
-    SimulatedResponse result;
-    assert(_coreResponse is _CoreResponseSimulated);
-    if (_coreResponse is _CoreResponseSimulated) {
-      // ignore: avoid_as
-      final simCoreResp = _coreResponse as _CoreResponseSimulated;
-      result = SimulatedResponse(simCoreResp, server.sessionCookieName);
+    final _cr = _coreResponse;
+    if (_cr is _CoreResponseSimulated) {
+      return SimulatedResponse(_cr, _server.sessionCookieName);
+    } else {
+      throw StateError('not a SimulatedRequest');
     }
-    return result;
   }
 
   //================================================================
@@ -295,7 +294,7 @@ class Request {
 
   String get id => _id;
 
-  String _id;
+  final String _id;
 
   //----------------------------------------------------------------
   /// The server that received this request.
@@ -304,14 +303,27 @@ class Request {
 
   Server get server => _server;
 
-  Server _server;
+  /// Server the request is from.
+  ///
+  /// In a normal request, the server is initialized by the requests's
+  /// constructor.
+  ///
+  /// In a simulated request, the request is created but the server is only
+  /// assigned when a simulation is performed with it and a server.
+  /// With a simulated request, this value may or may not have a value outside
+  /// a simulated run. Outside a simulated run, any value it may or may not
+  /// have should not be used.
 
-  // The server can only be set by code in the Woomera package.
+  late Server _server;
 
-  void _serverSet(Server s) {
-    assert(_server == null || s == null, '_servertSet invoked incorrectly');
-    _server = s;
+  /*
+  // This is only used by the [Server.simulate] method.
+
+  void _serverClear() {
+    assert(_server != null, '_servertSet invoked incorrectly');
+    _server = null;
   }
+   */
 
   //================================================================
   // Request details
@@ -338,7 +350,7 @@ class Request {
   ///
   /// This is a value that starts with '~/'.
 
-  String requestPath() => _coreRequest.internalPath(server._basePath);
+  String requestPath() => _coreRequest.internalPath(_server._basePath);
 
   //----------------
   /// The request path as a list of segments.
@@ -351,8 +363,8 @@ class Request {
   ///
   /// See [requestPath] for more information.
 
-  List<String> get _pathSegments =>
-      _coreRequest._pathSegments(server._basePath);
+  List<String>? get _pathSegments =>
+      _coreRequest._pathSegments(_server._basePath);
 
   //----------------------------------------------------------------
   /// HTTP request headers.
@@ -409,7 +421,7 @@ class Request {
   ///
   /// The parameters from the URL path.
 
-  RequestParams pathParams;
+  late RequestParams pathParams;
 
   // The [pathParams] will be set by the server when it processes the request.
 
@@ -420,7 +432,7 @@ class Request {
   /// 'application/x-www-form-urlencoded'. Beware that it will be null for
   /// other types of POST requests (e.g. JSON).
 
-  RequestParams postParams;
+  RequestParams? postParams;
 
   // The [postParams] will be set by the server when it processes the request.
   // The code will invoke [_postParamsInit] to do it.
@@ -433,7 +445,7 @@ class Request {
   ///
   /// The parameters from the URL path.
 
-  RequestParams queryParams;
+  late RequestParams queryParams;
 
   // The [queryParams] needs to be set by the subclass constructors.
 
@@ -459,7 +471,7 @@ class Request {
   ///
   /// Note: sessions should be set/cleared before calling rewriteURL.
 
-  Session session;
+  Session? session;
 
   /// Indicates how sessions are indicated to the browser.
   ///
@@ -480,14 +492,16 @@ class Request {
   /// member. It should simply attempt to set a cookie before it tries to
   /// set a session.
 
-  bool _sessionUsingCookies;
+  late bool _sessionUsingCookies;
 
   /// Indicated if a session was established from a cookie in the HTTP request.
   ///
   /// The only purpose of this member is so the [Response] can know that it
   /// needs to explicitly delete the session cookie if the session is cleared.
 
-  bool _haveSessionCookie;
+  bool _haveSessionCookie = false;
+  // Note: this is modified to true in "core_request.dart", so any warnings
+  // about it being a private field that could be final are wrong.
 
   //----------------------------------------------------------------
   /// Attempt to restore the session (if there was one).
@@ -519,84 +533,28 @@ class Request {
     // Attempt to retrieve a session ID from the request.
     // Sets [_haveSessionCookie] too.
 
-    final ids = <String, String>{}; // key is a sessionId, value is their source
-
-    // Try value explicitly set during simulation testing
-
-    if (_coreRequest.sessionId != null) {
-      // Explicitly passed in sessionId (simulations only)
-      ids[_coreRequest.sessionId] = 'S';
-    }
-
-    // Try cookies for the session cookie
-
-    var foundSessionCookie = false; // assume false unless one is found
-
-    for (var cookie in _coreRequest.cookies) {
-      if (cookie.name == server.sessionCookieName) {
-        ids[cookie.value] = '${ids[cookie.value] ?? ''}C';
-        foundSessionCookie = true;
-      }
-    }
-
-    _haveSessionCookie = foundSessionCookie;
-
-    if (foundSessionCookie && !_sessionUsingCookies) {
-      // This should never happen!
-      // Since _sessionUsingCookies is true if _coreRequest.cookies.isNotEmpty.
-      //
-      // But in production, this situation has occurred: it is as if the list
-      // of cookies was initially empty and strangely now contains values.
-      // How can that happen? It seems to happen consistently with one user
-      // running FireFox on Ubuntu, so it doesn't appear to be a race condition
-      // on the server side.
-
-      _logSession.shout('[$id] cookies in request changed while processing!');
-      if (!_coreRequest.cookies.isNotEmpty) {
-        // This is the test used to set _sessionUsingCookies.
-        // So why does it indicate the list is empty, but iterating over it
-        // (in the code above) finds values?
-        _logSession.shout('[$id] cookies.isNotEmpty but there were cookies!');
-      }
-
-      // Update value, even though it should never change.
-      // If this is not updated, URL rewriting may be used and that causes
-      // future requests to have multiple session IDs, which is a worse
-      // problem.
-      _sessionUsingCookies = true; // fix value since there are now cookies!
-    }
-
-    // Try query parameters (i.e. URL rewriting)
-
-    final _sessionQueryParams = queryParams.values(server.sessionParamName);
-    if (_sessionQueryParams.isNotEmpty) {
-      for (final value in _sessionQueryParams) {
-        ids[value] = '${ids[value] ?? ''}Q';
-      }
-      queryParams._removeAll(server.sessionParamName);
-    }
-
-    // Try POST parameters (i.e. URL rewriting in a POST request)
-
-    if (postParams != null) {
-      final _sessionPostParams = postParams.values(server.sessionParamName);
-      if (_sessionPostParams.isNotEmpty) {
-        for (var value in _sessionPostParams) {
-          ids[value] = '${ids[value] ?? ''}P';
-        }
-        postParams._removeAll(server.sessionParamName);
-      }
-    }
+    final sessionId = _coreRequest._extractSessionId(server, this);
 
     // Retrieve session (if any)
 
     session = null; // assume no session, unless one is successfully resumed
 
-    if (ids.length == 1) {
+    if (sessionId.isNotEmpty) {
       // Session ID was found: try to find session with that ID and resume it
 
-      final sessionId = ids.keys.first;
-      final candidateSession = server._sessionFind(sessionId);
+      /*
+      Session? candidateSession;
+      if (_server != null) {
+        // Real request
+        candidateSession = _server._sessionFind(sessionId);
+      } else {
+        // Simulated request
+        candidateSession = null;
+      }
+
+       */
+
+      final candidateSession = _server._sessionFind(sessionId);
 
       if (candidateSession != null) {
         // Session with matching ID found: try to resume using it
@@ -612,22 +570,9 @@ class Request {
       } else {
         _logSession.finest('[$id] [session:$sessionId] not found');
       }
-    } else if (ids.isEmpty) {
-      _logSession.finest('[$id] no session ID in request');
-    } else if (1 < ids.length) {
-      // Multiple different session IDs found: normally this should not happen!
-      //
-      // Currently, this implementation ignores them all. That is, behave as
-      // if there was no session ID at all. Maybe it should thrown an exception
-      // instead? The problem with ignoring them is it might not fix the
-      // problem (for example, if somehow there are multiple session cookies,
-      // this won't remove them).
-      //
-      // This log message includes the session ID values and where in the
-      // request they are from (C=cookie, Q=query parameter, P=post parameter).
-      final info = ids.keys.map((k) => '$k[${ids[k]}]').join(', ');
-      _logSession.severe('[$id] multiple session IDs: ignoring all: $info');
     }
+
+    // At this point [session] has been set or not.
   }
 
   //----------------------------------------------------------------
@@ -637,8 +582,9 @@ class Request {
   // Causes the session's suspend method to be invoked, if there is a session.
 
   Future _sessionSuspend() async {
-    if (session != null) {
-      await session.suspend(this);
+    final _session = session;
+    if (_session != null) {
+      await _session.suspend(this);
     }
   }
 
@@ -701,10 +647,13 @@ class Request {
   /// context.
 
   String sessionHiddenInputElement() {
-    if (session != null && !_sessionUsingCookies) {
+    final _server = server;
+    final _session = session;
+
+    if (_session != null && !_sessionUsingCookies) {
       // Require hidden POST form parameter to preserve session
-      final name = HEsc.attr(server.sessionParamName);
-      final value = HEsc.attr(session.id);
+      final name = HEsc.attr(_server.sessionParamName);
+      final value = HEsc.attr(_session.id);
       return '<input type="hidden" name="$name" value="$value"/>';
     } else {
       return ''; // hidden POST form parameter not required
@@ -718,8 +667,8 @@ class Request {
 
   /// Sets the headers in the response.
 
-  void _produceResponseHeaders(int status, ContentType ct, List<Cookie> cookies,
-      Map<String, List<String>> headers) {
+  void _produceResponseHeaders(int status, ContentType? ct,
+      List<Cookie> cookies, Map<String, List<String>> headers) {
     _coreResponse.status = status;
     _coreResponse.cookies.addAll(cookies);
 
@@ -737,19 +686,22 @@ class Request {
     // Add all other desired ones
 
     for (var name in headers.keys) {
-      for (var value in headers[name]) {
-        _coreResponse.headers.add(name, value);
+      final values = headers[name];
+      if (values != null) {
+        for (var value in values) {
+          _coreResponse.headers.add(name, value);
+        }
       }
     }
   }
 
-  /// Sets the body of the response using a string.
+  /// Sets the body of the response using a sequence of bytes.
   ///
   /// This is used by the [ResponseBuffered._finish] method to produce the
   /// response body.
 
-  void _outputBody(String body, List<int> encodedBody) {
-    _coreResponse._setBody(body, encodedBody);
+  void _outputBodyBytes(List<int> bodyBytes) {
+    _coreResponse.setBodyFromBytes(bodyBytes);
   }
 
   /// Sets the body of the response using a stream.
@@ -762,6 +714,7 @@ class Request {
   Future _streamBody(Stream<List<int>> stream) async {
     await _coreResponse.addStream(stream);
   }
+
   //----------------------------------------------------------------
   /// Release method
   ///
@@ -810,7 +763,7 @@ class Request {
   /// added if there is a session and cookies are not being used. If it is
   /// false, it is never added. There is no good reason to ever use it with true.
   ///
-  /// The [includeSession] should be left as null in all situations, except
+  /// The [includeSession] should be left as true in all situations, except
   /// when used for the "method" attribute of a HTML form element. In that
   /// situation, set it to false and use [Request.sessionHiddenInputElement]
   /// to preserve the session. See [RequestImpl,sessionHiddenInputElement] for
@@ -827,7 +780,7 @@ class Request {
   ///
   /// See also [ura].
 
-  String rewriteUrl(String internalPath, {bool includeSession}) {
+  String rewriteUrl(String internalPath, {bool includeSession = true}) {
     if (!internalPath.startsWith('~/')) {
       throw ArgumentError.value(
           internalPath, 'internalPath', 'rewriteUrl: does not start with "~/"');
@@ -849,7 +802,9 @@ class Request {
 
     // Add state preserving query parameter (if needed)
 
-    if (session == null ||
+    final _session = session;
+
+    if (_session == null ||
         (_sessionUsingCookies && includeSession != true) ||
         includeSession == false) {
       // Don't include the extra query parameter, because:
@@ -862,8 +817,12 @@ class Request {
       // Append extra query parameter to preserve session
       final result = buf.toString();
       final separator = (result.contains('?')) ? '&' : '?';
-      return '$result$separator${server.sessionParamName}=${session.id}';
+      return '$result$separator${_server.sessionParamName}=${_session.id}';
     }
+    //} else {
+    // Simulated request
+    // return internalPath;
+    //}
   }
 
   //----------------------------------------------------------------
@@ -889,6 +848,18 @@ class Request {
   /// [Request.sessionHiddenInputElement] method inside the form element.
   /// See [Request.sessionHiddenInputElement] for more details.
 
-  String ura(String internalPath, {bool includeSession}) =>
-      HEsc.attr(rewriteUrl(internalPath, includeSession: includeSession));
+  String ura(String internalPath, {bool? includeSession}) {
+    // Rewrite
+
+    String r;
+    if (includeSession != null) {
+      r = rewriteUrl(internalPath, includeSession: includeSession);
+    } else {
+      r = rewriteUrl(internalPath);
+    }
+
+    // Escape for use in a HTML attribute
+
+    return HEsc.attr(r);
+  }
 }

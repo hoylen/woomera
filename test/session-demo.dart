@@ -12,7 +12,7 @@ import 'package:woomera/woomera.dart';
 //================================================================
 
 /// The Web server.
-Server ws;
+late final Server ws;
 
 /// Timeout to use.
 const int defaultTimeout = 60; // seconds
@@ -30,8 +30,7 @@ Future main() async {
 
   ws = Server()
     ..bindAddress = InternetAddress.anyIPv6
-    ..bindPort = 1024
-    ..sessionExpiry = const Duration(seconds: defaultTimeout);
+    ..bindPort = 1024;
 
   // Register rules
 
@@ -80,9 +79,11 @@ Future<Response> _handleTopLevel(Request req) async {
     resp.write(
         '<table><tr><th>Session ID</th><th>Created</th><th>Timeout</th><th>Expires</th></tr>\n');
     for (var s in ws.sessions) {
-      final current =
-          (req.session != null && req.session.id == s.id) ? '*' : '';
+      final _session = req.session;
+      final current = (_session != null && _session.id == s.id) ? '*' : '';
+
       final highlight = (s.id == newId) ? 'style="color: green;"' : '';
+
       resp.write('''
       <tr $highlight>
         <td>${s.id}$current</td>
@@ -112,17 +113,23 @@ Future<Response> _handleTopLevel(Request req) async {
 //----------------------------------------------------------------
 
 Future<Response> _handleNewSession(Request req) async {
-  // Determine the timeout for the new session
-  final tStr = req.postParams['timeout'];
-  final secs = (tStr.isNotEmpty) ? int.parse(tStr) : defaultTimeout;
+  final _postParams = req.postParams;
 
-  // Create the session
-  final session = Session(ws, Duration(seconds: secs));
-  _log.fine('session created');
+  if (_postParams != null) {
+    // Determine the timeout for the new session
+    final tStr = _postParams['timeout'];
+    final secs = (tStr.isNotEmpty) ? int.parse(tStr) : defaultTimeout;
 
-  req.session = session;
+    // Create the session
+    final session = Session(ws, Duration(seconds: secs));
+    _log.fine('session created');
 
-  return ResponseRedirect('~/?new=${session.id}');
+    req.session = session;
+
+    return ResponseRedirect('~/?new=${session.id}');
+  } else {
+    throw StateError('not POST request');
+  }
 }
 
 //----------------------------------------------------------------
@@ -157,7 +164,7 @@ Future<Response> _handleStop(Request req) async {
 
 void loggingSetup(
     {Level level = Level.INFO,
-    Map<String, Level> levels,
+    Map<String, Level>? levels,
     int loggerNameWidth = 0}) {
   hierarchicalLoggingEnabled = true;
   Logger.root.level = Level.OFF;
@@ -168,14 +175,14 @@ void loggingSetup(
     final timeStr = r.time.toString().padRight(26, '0');
 
     var name = r.loggerName;
-    if (loggerNameWidth == null) {
-      name = ''; // omit
+    if (loggerNameWidth < 0) {
+      name = ''; // omit the name from the log entry
     } else if (loggerNameWidth == 0) {
-      name = ': $name'; // natural width
+      name = ': $name'; // include name as is (without padding or truncation)
     } else if (loggerNameWidth < name.length) {
       name = ': ${name.substring((name.length - loggerNameWidth))}'; // truncate
     } else {
-      name = ': ${name.padRight(loggerNameWidth)}'; // pad
+      name = ': ${name.padRight(loggerNameWidth)}'; // pad name to desired width
     }
 
     print('$timeStr$name: ${r.message}');

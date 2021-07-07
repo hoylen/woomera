@@ -22,7 +22,7 @@ part of core;
 ///
 /// pipeline.get(proxy.pattern, proxy.handler);
 ///
-/// // Register all HTTP methods to be proxied:
+/// // Register all HTTP methods to proxy:
 ///
 /// pipeline.head(proxy.pattern, proxy.handler);
 /// pipeline.post(proxy.pattern, proxy.handler);
@@ -38,7 +38,7 @@ part of core;
 /// sending a request to "http://example.com/abc/def".
 ///
 /// The _Proxy_ object constructor takes the pattern for the requests the
-/// proxy will handle, and the URL that proxied requests will be sent to.
+/// proxy will handle, and the URL that the requests will be sent to.
 ///
 /// When registering request handlers, the _proxy.pattern_ getter should be used
 /// to ensure consistency. If the registered pattern does not match the pattern
@@ -66,7 +66,7 @@ class Proxy {
   /// Create a request handler that proxies requests to another URL.
   ///
   /// This request handler is used to handle requests that match the [pattern].
-  /// The pattern must end with a "*" (e.g. "~/*" or
+  /// The pattern MUST end with a wildcard segment "*" (e.g. "~/*" or
   /// "~/foobar/*"). The path that matches the "*" is the sub-path.
   ///
   /// When handling a request, it will make a proxy request to a URL that is
@@ -76,19 +76,23 @@ class Proxy {
   /// A "Via" header is always added to the proxy request, but is optional for
   /// the proxy response. The value of [receivedBy] is used to generate the
   /// value of the proxy's Via header. A default value is used if _receivedBy_
-  /// is null or the empty string.
+  /// is a blank or empty string.
   ///
   /// The value of [includeViaHeaderInResponse] controls whether the proxy's
   /// Via header is added to the proxy response or not. It defaults to true.
+  ///
+  /// **Null-safety breaking change:** this deprecated named parameters
+  /// _requestBlockHeaders_ and _responseBlockHeaders_ have been removed.
+  /// If you were using them, please submit an issue in GitHub.
 
   Proxy(String pattern, String proxy,
-      {String receivedBy,
-      this.includeViaHeaderInResponse = true,
-      @deprecated Iterable<String> requestBlockHeaders,
-      @deprecated Iterable<String> responseBlockHeaders})
-      : _receivedBy = (receivedBy?.isNotEmpty ?? false)
-            ? receivedBy
-            : _receivedByDefault {
+      {String receivedBy = _receivedByDefault,
+      this.includeViaHeaderInResponse = true})
+      : _receivedBy = (receivedBy.trim().isNotEmpty)
+            ? receivedBy.trim()
+            : _receivedByDefault,
+        _pathPrefix = _removeSlashes(pattern.substring(2, pattern.length - 1)),
+        _targetUriPrefix = _removeSlashes(proxy) {
     // Set _pathPrefix (leading and trailing slashes are removed)
     // e.g. "~/" -> empty string
     // "~/foo/bar/*" -> "foo/bar"
@@ -102,12 +106,12 @@ class Proxy {
       throw ArgumentError.value(pattern, 'pattern', 'does not end with "/*"');
     }
 
-    _pathPrefix = _removeSlashes(pattern.substring(2, pattern.length - 1));
-
-    // Set _targetUriPrefix (trailing slashes are removed)
+    // _targetUriPrefix is set to a value with any trailing slashes removed
     // e.g. "http://remote.example.com/" -> "http://remove.example.com"
 
-    _targetUriPrefix = _removeSlashes(proxy);
+    /*
+    Previous versions allowed headers to block to be specified.
+    Probably no longer needed.
 
     // Store lower case versions of headers to block.
 
@@ -122,6 +126,7 @@ class Proxy {
         this.responseBlockHeaders.add(name.toLowerCase());
       }
     }
+     */
   }
 
   static String _removeSlashes(String str) {
@@ -179,14 +184,14 @@ class Proxy {
 
   /// The URL of the target.
 
-  String _targetUriPrefix;
+  final String _targetUriPrefix;
 
   /// Part of the path from the pattern.
   ///
   /// For example, if the pattern was "~/foo/*", this value will be "foo".
   /// Or if the pattern was "~/*", this value will be the empty string.
 
-  String _pathPrefix;
+  final String _pathPrefix;
 
   /// Identifies this proxy in "Via" headers this proxy will add.
 
@@ -239,7 +244,7 @@ class Proxy {
   //----------------------------------------------------------------
   /// Derive the target URI from the request.
 
-  String _targetUri(Request req) {
+  Uri _targetUri(Request req) {
     final values = req.pathParams.values('*');
 
     assert(values.isEmpty || values.length == 1,
@@ -247,7 +252,7 @@ class Proxy {
 
     final subPath = (values.isNotEmpty) ? values.first : null;
 
-    final fullPath = (_pathPrefix != null && _pathPrefix.isNotEmpty)
+    final fullPath = (_pathPrefix.isNotEmpty)
         ? ((subPath != null) ? '$_pathPrefix/$subPath' : _pathPrefix)
         : ((subPath != null) ? subPath : '');
 
@@ -273,7 +278,7 @@ class Proxy {
 
     // Return the target URI
 
-    return buf.toString();
+    return Uri.parse(buf.toString());
   }
 
   //----------------------------------------------------------------
@@ -329,9 +334,7 @@ class Proxy {
 
         default:
           throw UnimplementedError('proxy unsupported method: $method');
-          break;
       }
-      assert(targetResponse != null);
 
       // Produce the response from the response of the proxy request
 
@@ -356,7 +359,7 @@ class Proxy {
 
   //----------------
 
-  Future<_HeadBody> _proxyRequestHeaders(Request req, String targetUrl) async {
+  Future<_HeadBody> _proxyRequestHeaders(Request req, Uri uri) async {
     final core = req._coreRequest;
 
     // Determine the request headers to send to the target
@@ -368,8 +371,7 @@ class Proxy {
 
     // New "Host" header for outgoing request
 
-    final u = Uri.parse(targetUrl);
-    final _newHost = (u.hasPort) ? '${u.host}:${u.port}' : u.host;
+    final _newHost = (uri.hasPort) ? '${uri.host}:${uri.port}' : uri.host;
     passHeaders['host'] = _newHost;
     _logProxyRequest.finest('[${req.id}] + host=$_newHost');
 
@@ -411,7 +413,7 @@ class Proxy {
 
     // Headers from incoming request to outgoing request
 
-    int _contentLength;
+    int? _contentLength;
     var _wasCompressed = false;
 
     req.headers.forEach((key, values) {
@@ -483,8 +485,9 @@ class Proxy {
 
     final _via = '$protocolVersion $_receivedBy';
 
-    final _newVia = req.headers['via'] != null
-        ? '${req.headers['via'].where((s) => s.isNotEmpty).join(', ')}, $_via'
+    final viaHeadersInReq = req.headers['via'];
+    final _newVia = viaHeadersInReq != null
+        ? '${viaHeadersInReq.where((s) => s.isNotEmpty).join(', ')}, $_via'
         : _via;
 
     passHeaders['via'] = _newVia;
@@ -527,9 +530,9 @@ class Proxy {
     // If there is no Content-Type header, assume application/binary, since
     // ResponseStream must have a content type.
 
-    final contentType = (targetResponse.headers.containsKey('content-type'))
-        ? ContentType.parse(targetResponse.headers['content-type'])
-        : ContentType.binary;
+    final _ct = targetResponse.headers['content-type'];
+    final contentType =
+        (_ct != null) ? ContentType.parse(_ct) : ContentType.binary;
 
     _logProxyResponse.finest('[${req.id}] + content-type=$contentType');
 
@@ -572,12 +575,12 @@ class Proxy {
 
     // Forward headers from proxy response to the response
 
-    int _contentLength; // null if no "content-length" header
+    int? _contentLength; // null if no "content-length" header
     var _hasNonIdentityContentEncoding = false;
 
     for (var key in targetResponse.headers.keys) {
       final headerName = key.toLowerCase();
-      final headerValue = targetResponse.headers[key];
+      final headerValue = targetResponse.headers[key] ?? '';
 
       if (responseHeadersNeverPass.contains(headerName) ||
           responseConnectionExclude.contains(headerName) ||
@@ -627,7 +630,7 @@ class Proxy {
 
     // Check content-length (if any) matches actual body (if it is supposed to)
 
-    var realSize = body.length.toString();
+    String? realSize = body.length.toString();
 
     if (req.method == 'HEAD' ||
         targetResponse.statusCode == HttpStatus.noContent ||
@@ -639,6 +642,7 @@ class Proxy {
       if (body.isNotEmpty) {
         throw FormatException('body forbidden, but got ${body.length} bytes');
       }
+      // Use the real size from the content-length header provided by the target
       realSize = _contentLength?.toString();
     } else if (!_hasNonIdentityContentEncoding) {
       // Content-length (if it exists) should be correct

@@ -40,7 +40,7 @@ Future<Response> _handleTopLevel(Request req) async {
 }
 
 Future<Response> _myExceptionHandler(
-    Request req, Object ex, StackTrace st) async {
+    Request req, Object ex, StackTrace? st) async {
   int status;
   String message;
 
@@ -58,7 +58,7 @@ Future<Response> _myExceptionHandler(
   final resp = ResponseBuffered(ContentType.html)
     ..status = status
     ..write('''
-<html>
+<html lang="en">
   <head>
     <title>Error</title>
   </head>

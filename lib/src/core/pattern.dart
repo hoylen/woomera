@@ -32,13 +32,20 @@ class Pattern {
   /// Constructor from a string representation of a path pattern.
 
   Pattern(String pattern) : _segments = pattern.split(_pathSeparator) {
+    // Check for some prohibited values
+
     if (_segments.length == 1 && _segments.first.isEmpty) {
+      // i.e. "" is not allowed as a pattern
       throw ArgumentError.value(pattern, 'pattern', 'empty string');
     }
     if (_segments.first != _prefix) {
+      // The string representation of a path pattern must start with "~/".
+      // e.g. "/", "/foo", "bar" or "bar/foo" is not allowed as a pattern
       throw ArgumentError.value(
           pattern, 'pattern', 'does not start with "$_prefix/"');
     }
+
+    // Clean up the segments
 
     _segments.removeAt(0); // remove the leading "~".
 
@@ -49,15 +56,18 @@ class Pattern {
     // Check for invalid combinations of segment types
 
     for (final seg in _segments) {
+      // Check that each segment contains at most one special type
+      // e.g. :foo?, :*, *? or :foo? are not permitted
+
       var numSpecials = 0;
-      String name;
-      if (_isVariable(seg)) {
+      var name = seg;
+      if (_isVariable(name)) {
         numSpecials++;
-        name = _variableName(seg);
+        name = _variableName(name);
       }
-      if (_isOptional(seg)) {
+      if (_isOptional(name)) {
         numSpecials++;
-        name = _optionalName(seg);
+        name = _optionalName(name);
       }
       if (name == wildcard) {
         numSpecials++;
@@ -295,13 +305,13 @@ class Pattern {
   /// value of the key `*` is "abc/def". If the path is "/foo/x/y/z", the
   /// value of the key `*` is "x/y/z".
 
-  RequestParams match(List<String> components) {
+  RequestParams? match(List<String> components) {
     final result = RequestParams._internalConstructor();
 
     var componentIndex = 0;
     var segmentIndex = 0;
     for (var segment in _segments) {
-      String component;
+      String? component;
       if (components.length <= componentIndex) {
         if (wildcard == segment) {
           component = null; // wildcard can match no components
@@ -314,7 +324,7 @@ class Pattern {
 
       if (_isVariable(segment)) {
         // Variable segment
-        result._add(_variableName(segment), component);
+        result._add(_variableName(segment), component!);
         componentIndex++;
       } else if (wildcard == segment) {
         // Wildcard segment

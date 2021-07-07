@@ -13,7 +13,7 @@ part of core;
 ///
 /// Used for in the rules of a [ServerPipeline].
 
-typedef RequestHandler = Future<Response> Function(Request req);
+typedef RequestHandler = Future<Response?> Function(Request req);
 
 //----------------------------------------------------------------
 
@@ -34,11 +34,12 @@ typedef RequestHandler = Future<Response> Function(Request req);
 /// In addition to the exception, the stack trace [stackTrace] can provide
 /// additional information about the problem. But exposing
 /// internal implementation details in the response is not recommended.
+/// The stack trace is optional: sometimes it cannot be provided.
 ///
 /// Example:
 /// ```
 /// Future<Response> myExceptionHandler(Request request,
-///  Object e, StackTrace st) async {
+///  Object e, StackTrace? st) async {
 ///   final r = ResponseBuffered(ContentType.html);
 ///    r.status = HttpStatus.internalServerError;
 ///    r.write('''<!doctype html>
@@ -55,7 +56,7 @@ typedef RequestHandler = Future<Response> Function(Request req);
 /// ```
 
 typedef ExceptionHandler = Future<Response> Function(
-    Request request, Object exception, StackTrace stackTrace);
+    Request request, Object exception, StackTrace? stackTrace);
 
 //----------------------------------------------------------------
 /// Exception handler for low-level situations.
@@ -111,13 +112,13 @@ typedef ExceptionHandlerRaw = Future<void> Function(HttpRequest rawRequest,
 //----------------------------------------------------------------
 
 /// Invoke the request handler making sure all exceptions are captured.
-///
-Future<Response> _invokeRequestHandler(
+
+Future<Response?> _invokeRequestHandler(
     RequestHandler handler, Request req) async {
-  Object thrownObject; // can be any object, not just Exception or Error
+  Object? thrownObject; // can be any object, not just Exception or Error
   // var stacktrace;
 
-  final hCompleter = Completer<Response>();
+  final hCompleter = Completer<Response?>();
 
   // Invoke the handler in its own zone, so all exceptions are captured
   // (both those thrown from async methods and those thrown from methods
@@ -125,10 +126,10 @@ Future<Response> _invokeRequestHandler(
   // would only catch exceptions thrown from async methods.
 
   // ignore: UNUSED_LOCAL_VARIABLE
-  final doNotWaitOnThis = runZoned(() async {
+  final doNotWaitOnThis = runZonedGuarded(() async {
     final result = await handler(req); // call the handler
     hCompleter.complete(result);
-  }, onError: (Object e, StackTrace s) {
+  }, (Object e, StackTrace s) {
     thrownObject = e;
     // stacktrace = s;
     if (!hCompleter.isCompleted) {
@@ -147,7 +148,7 @@ Future<Response> _invokeRequestHandler(
   // Return result or throw the error/exception (which can be of any type)
 
   if (thrownObject != null) {
-    throw thrownObject; // ignore: only_throw_errors
+    throw thrownObject!; // ignore: only_throw_errors
   }
   return resp; // which could be null (i.e. handler could not process request)
 }
@@ -155,13 +156,13 @@ Future<Response> _invokeRequestHandler(
 //----------------------------------------------------------------
 
 /// Invoke the exception handler making sure all exceptions are captured.
-///
-Future<Response> _invokeExceptionHandler(
+
+Future<Response?> _invokeExceptionHandler(
     ExceptionHandler eh, Request req, Object ex, StackTrace st) async {
-  Object thrownObject; // can be any object, not just Exception or Error
+  Object? thrownObject; // can be any object, not just Exception or Error
   // var stacktrace;
 
-  final hCompleter = Completer<Response>();
+  final hCompleter = Completer<Response?>();
 
   // Invoke the handler in its own zone, so all exceptions are captured
   // (both those thrown from async methods and those thrown from methods
@@ -169,10 +170,10 @@ Future<Response> _invokeExceptionHandler(
   // would only catch exceptions thrown from async methods.
 
   // ignore: UNUSED_LOCAL_VARIABLE
-  final doNotWaitOnThis = runZoned(() async {
+  final doNotWaitOnThis = runZonedGuarded(() async {
     final result = await eh(req, ex, st); // call the exception handler
     hCompleter.complete(result);
-  }, onError: (Object e, StackTrace s) {
+  }, (Object e, StackTrace s) {
     thrownObject = e;
     // stacktrace = s;
     hCompleter.complete(null);
@@ -185,7 +186,7 @@ Future<Response> _invokeExceptionHandler(
   // Return result or throw the error/exception (which can be of any type)
 
   if (thrownObject != null) {
-    throw thrownObject; // ignore: only_throw_errors
+    throw thrownObject!; // ignore: only_throw_errors
   }
   return resp; // which could be null
 }

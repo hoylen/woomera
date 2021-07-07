@@ -34,29 +34,27 @@ int portNumber = 2048;
 // Internal
 
 /// The Web server
-Server webServer;
+late final Server webServer;
 
 /// A pipeline
-ServerPipeline pipe1;
+late final ServerPipeline pipe1;
 
 /// Another pipeline
-ServerPipeline pipe2;
+late final ServerPipeline pipe2;
 
 //================================================================
 // Exception handlers
 
 Future<Response> _exceptionHandlerOnServer(
-    Request req, Object exception, StackTrace st) {
-  assert(req != null);
-  return _exceptionHandler(req, exception, st, 'server');
-}
+        Request req, Object exception, StackTrace? st) =>
+    _exceptionHandler(req, exception, st, 'server');
 
 //----------------------------------------------------------------
 
 Future<Response> _exceptionHandlerOnPipe1(
-    Request req, Object exception, StackTrace st) async {
+    Request req, Object exception, StackTrace? st) async {
   if (exception is StateError) {
-    return null;
+    throw NoResponseProduced();
   }
   return _exceptionHandler(req, exception, st, 'pipe1');
 }
@@ -64,9 +62,9 @@ Future<Response> _exceptionHandlerOnPipe1(
 //----------------------------------------------------------------
 
 Future<Response> _exceptionHandlerOnPipe2(
-    Request req, Object exception, StackTrace st) async {
+    Request req, Object exception, StackTrace? st) async {
   if (exception is StateError) {
-    return null;
+    throw NoResponseProduced();
   }
   return _exceptionHandler(req, exception, st, 'pipe2');
 }
@@ -74,7 +72,7 @@ Future<Response> _exceptionHandlerOnPipe2(
 //----------------------------------------------------------------
 
 Future<Response> _exceptionHandler(
-    Request req, Object exception, StackTrace st, String who) async {
+    Request req, Object exception, StackTrace? st, String who) async {
   final resp = ResponseBuffered(ContentType.text)
     ..write('$who exception handler (${exception.runtimeType}) $exception\n');
 
@@ -135,9 +133,10 @@ Future<Response> testHandler(Request req) async {
     }
   }
 
-  if (req.postParams != null) {
-    for (var key in req.postParams.keys) {
-      for (var value in req.postParams.values(key, mode: ParamsMode.raw)) {
+  final _postParams = req.postParams;
+  if (_postParams != null) {
+    for (var key in _postParams.keys) {
+      for (var value in _postParams.values(key, mode: ParamsMode.raw)) {
         buf.write('Post.$key=$value;');
       }
     }
@@ -318,25 +317,11 @@ void _runTests(Future<int> numProcessedFuture) {
 
     final pipeline1 = webServer.pipelines.first;
 
-    test('register with null for method', () {
-      expect(
-          () => pipeline1.register(null, '~/bad', testHandler),
-          throwsA(predicate<dynamic>((Object e) =>
-              e is ArgumentError && e.message == 'Must not be null')));
-    });
-
     test('register with empty string for method', () {
       expect(
           () => pipeline1.register('', '~/bad', testHandler),
-          throwsA(predicate<dynamic>((Object e) =>
-              e is ArgumentError && e.message == 'Empty string')));
-    });
-
-    test('register with null handler', () {
-      expect(
-          () => pipeline1.register('GET', '~/bad', null),
-          throwsA(predicate<dynamic>((Object e) =>
-              e is ArgumentError && e.message == 'Must not be null')));
+          throwsA(predicate<Object>(
+              (e) => e is ArgumentError && e.message == 'Empty string')));
     });
   });
 

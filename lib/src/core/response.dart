@@ -28,7 +28,8 @@ abstract class Response {
   // Members
 
   /// Content-type of the response.
-  ContentType contentType;
+
+  ContentType? contentType;
 
   /// Headers that will be used to populate the response.
   ///
@@ -113,7 +114,7 @@ abstract class Response {
   ///
   /// Returns null if no headers exist with the name.
 
-  Iterable<String> headerValues(String name) =>
+  Iterable<String>? headerValues(String name) =>
       _headers[_headerCanonicalName(name)];
 
   //----------------------------------------------------------------
@@ -138,15 +139,13 @@ abstract class Response {
   /// "set-cookie".
 
   void headerAdd(String name, String value) {
-    if (name == null) {
-      throw ArgumentError.notNull('name');
-    }
+    ArgumentError.checkNotNull(name);
+    ArgumentError.checkNotNull(value);
+
     if (name.isEmpty) {
       throw ArgumentError.value(name, 'name', 'Empty string');
     }
-    if (value == null) {
-      throw ArgumentError.notNull('value');
-    }
+
     if (_headersOutputted) {
       throw StateError('Header already outputted');
     }
@@ -162,10 +161,11 @@ abstract class Response {
           canonicalName, 'name', 'use cookieAdd to set a cookie');
     }
 
-    if (!_headers.containsKey(canonicalName)) {
+    final _values = _headers[canonicalName];
+    if (_values == null) {
       _headers[canonicalName] = <String>[value]; // create new list
     } else {
-      _headers[canonicalName].add(value); // append to existing list
+      _values.add(value); // append to existing list d
     }
   }
 
@@ -188,14 +188,11 @@ abstract class Response {
   /// "set-cookie".
 
   void headerSet(String name, String value) {
-    if (name == null) {
-      throw ArgumentError.notNull('name');
-    }
+    ArgumentError.checkNotNull(name);
+    ArgumentError.checkNotNull(value);
+
     if (name.isEmpty) {
       throw ArgumentError.value(name, 'name', 'Empty string');
-    }
-    if (value == null) {
-      throw ArgumentError.notNull('value');
     }
     if (_headersOutputted) {
       throw StateError('Header already outputted');
@@ -254,17 +251,18 @@ abstract class Response {
   /// The name is case-insensitive. The name is considered the same, whether it
   /// is represented using uppercase or lowercase letters.
 
-  bool headerRemove(String name, [String value]) {
+  bool headerRemove(String name, [String? value]) {
     final canonicalName = _headerCanonicalName(name);
 
-    if (_headers.containsKey(canonicalName)) {
+    final _values = _headers[canonicalName];
+    if (_values != null) {
       if (value == null) {
         // Remove all headers, regardless of their value(s)
         _headers.remove(canonicalName);
         return true;
       } else {
         // Only remove the first header with a matching value, if there is any.
-        return _headers[canonicalName].remove(value);
+        return _values.remove(value);
       }
     } else {
       // Name does not exist
@@ -321,7 +319,7 @@ abstract class Response {
 
   /// Delete a cookie.
   ///
-  void cookieDelete(String name, [String path, String domain]) {
+  void cookieDelete(String name, [String? path, String? domain]) {
     if (_headersOutputted) {
       throw StateError('Header already outputted');
     }
@@ -366,13 +364,13 @@ abstract class Response {
     if (req._sessionUsingCookies) {
       // Set up cookie for session management
 
-      if (req.session != null) {
+      final _session = req.session;
+      if (_session != null) {
         // Need to set the session cookie
-        final c = Cookie(req.server.sessionCookieName, req.session.id)
+        final c = Cookie(req.server.sessionCookieName, _session.id)
           ..path = req.server.basePath
           ..httpOnly = true;
-        if (req.server.sessionCookieForceSecure ||
-            (req.server.isSecure != null && req.server.isSecure)) {
+        if (req.server.sessionCookieForceSecure || req.server.isSecure) {
           c.secure = true; // HTTPS only: better security, but not for testing
         }
         cookieAdd(c);
@@ -491,7 +489,7 @@ class ResponseBuffered extends Response {
   ///
   /// If the content type [ct] has a character set, it must match the encoding.
 
-  ResponseBuffered(ContentType ct, {Encoding encoding})
+  ResponseBuffered(ContentType ct, {Encoding? encoding})
       : _encoding = encoding ?? _defaultEncoding {
     // Check content type's character set is compatible with the encoding
 
@@ -537,9 +535,8 @@ class ResponseBuffered extends Response {
 
   @override
   void _finish(Request req) {
-    if (req == null) {
-      throw ArgumentError.notNull('req');
-    }
+    ArgumentError.checkNotNull(req);
+
     if (_contentOutputted) {
       throw StateError('Content already outputted');
     }
@@ -554,7 +551,7 @@ class ResponseBuffered extends Response {
 
     super._outputHeaders(req);
 
-    req._outputBody(body, encodedBody);
+    req._outputBodyBytes(encodedBody);
 
     _logResponse
         .fine('[${req.id}] status=$_status, size=${encodedBody.length}');
@@ -592,9 +589,8 @@ class ResponseStream extends Response {
 
   Future<ResponseStream> addStream(
       Request req, Stream<List<int>> stream) async {
-    if (req == null) {
-      throw ArgumentError.notNull('req');
-    }
+    ArgumentError.checkNotNull(req);
+
     if (_streamState == 1) {
       throw StateError('addStream invoked when stream not finished');
     }
@@ -616,9 +612,7 @@ class ResponseStream extends Response {
   ///
   @override
   void _finish(Request req) {
-    if (req == null) {
-      throw ArgumentError.notNull('req');
-    }
+    ArgumentError.checkNotNull(req);
 
     if (_streamState == 0) {
       throw StateError('Stream content was never added');
@@ -658,37 +652,30 @@ class ResponseRedirect extends Response {
   /// For more information on HTTP status codes, see
   /// <https://www.w3.org/Protocols/rfc2616/rfc2616-sec10.html#sec10.3>
 
-  ResponseRedirect(String addr, {int status = HttpStatus.seeOther}) : super() {
+  ResponseRedirect(String addr, {int status = HttpStatus.seeOther})
+      : _addr = addr,
+        super() {
     if (status < 300 || 399 < status) {
       throw ArgumentError.value(
           status, 'status', 'ResponseRedirect: not a redirection HTTP status');
     }
-    if (addr == null) {
-      throw ArgumentError.notNull('ResponseRedirect.addr');
-    }
+    this.status = status;
+
     if (addr.isEmpty) {
       throw ArgumentError.value(addr, 'addr', 'ResponseRedirect: empty string');
     }
-
-    _addr = addr;
-
-    this.status = status;
   }
 
   // The address to redirect to.
   //
   // Can be a internal relative-path or an external URL.
 
-  String _addr;
+  final String _addr;
 
   /// Produce the response.
   ///
   @override
   void _finish(Request req) {
-    if (req == null) {
-      throw ArgumentError.notNull('req');
-    }
-
     final url = (_addr.startsWith('~/')) ? req.rewriteUrl(_addr) : _addr;
 
     _logResponse.fine('[${req.id}] status=$_status, redirect=$url');

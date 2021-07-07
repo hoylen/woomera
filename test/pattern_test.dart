@@ -47,7 +47,9 @@ void invalidPatterns() {
     for (final sample in [
       '',
       'foo',
+      '/',
       '/foo',
+      'bar/',
       '~~/bar',
       '~/combined/component/:abc?',
       '~/combined/component/:*',
@@ -75,11 +77,13 @@ void matching() {
       final pattern = Pattern('~/foo/:bar');
 
       final params1 = pattern.match(['foo', 'valueMatchingTheVariable']);
-      expect(params1['bar'], equals('valueMatchingTheVariable'));
+      expect(params1, isNotNull);
+      expect(params1!['bar'], equals('valueMatchingTheVariable'));
       expect(params1.keys.length, equals(1));
 
       final params2 = pattern.match(['foo', 'differentValue']);
-      expect(params2['bar'], equals('differentValue'));
+      expect(params2, isNotNull);
+      expect(params2!['bar'], equals('differentValue'));
       expect(params2.keys.length, equals(1));
 
       expect(pattern.match([]), isNull);
@@ -94,10 +98,12 @@ void matching() {
       final pattern = Pattern('~/foo/bar?/baz');
 
       final params1 = pattern.match(['foo', 'bar', 'baz']);
-      expect(params1.keys.length, equals(0));
+      expect(params1, isNotNull);
+      expect(params1!.keys.length, equals(0));
 
       final params2 = pattern.match(['foo', 'baz']);
-      expect(params2.keys.length, equals(0));
+      expect(params2, isNotNull);
+      expect(params2!.keys.length, equals(0));
 
       expect(pattern.match([]), isNull);
       expect(pattern.match(['foo']), isNull);
@@ -112,19 +118,23 @@ void matching() {
         final pattern = Pattern('~/foo/*');
 
         final params0 = pattern.match(['foo']);
-        expect(params0['*'], equals(''));
+        expect(params0, isNotNull);
+        expect(params0!['*'], equals(''));
         expect(params0.keys.length, equals(1));
 
         final params1 = pattern.match(['foo', 'bar']);
-        expect(params1['*'], equals('bar'));
+        expect(params1, isNotNull);
+        expect(params1!['*'], equals('bar'));
         expect(params1.keys.length, equals(1));
 
         final params2 = pattern.match(['foo', 'bar', 'baz']);
-        expect(params2['*'], equals('bar/baz'));
+        expect(params2, isNotNull);
+        expect(params2!['*'], equals('bar/baz'));
         expect(params2.keys.length, equals(1));
 
         final params3 = pattern.match(['foo', 'bar', 'baz', 'abc']);
-        expect(params3['*'], equals('bar/baz/abc'));
+        expect(params3, isNotNull);
+        expect(params3!['*'], equals('bar/baz/abc'));
         expect(params3.keys.length, equals(1));
 
         expect(pattern.match([]), isNull);
@@ -138,12 +148,14 @@ void matching() {
         final pattern = Pattern('~/foo/*/bar/:baz');
 
         final params1 = pattern.match(['foo', 'bar', 'xyz']);
-        expect(params1[Pattern.wildcard], equals(''));
+        expect(params1, isNotNull);
+        expect(params1![Pattern.wildcard], equals(''));
         expect(params1['baz'], equals('xyz'));
         expect(params1.keys.length, equals(2));
 
         final params2 = pattern.match(['foo', 'a', 'b', 'c', 'bar', 'XYZ']);
-        expect(params2['*'], equals('a/b/c'));
+        expect(params2, isNotNull);
+        expect(params2!['*'], equals('a/b/c'));
         expect(params2['baz'], equals('XYZ'));
         expect(params2.keys.length, equals(2));
 

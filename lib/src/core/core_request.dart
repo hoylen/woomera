@@ -26,7 +26,7 @@ abstract class _CoreRequest {
   /// Returns null if the request path is invalid (e.g. containing invalid
   /// percent encodings or "..").
 
-  List<String> _pathSegments(String serverBasePath);
+  List<String>? _pathSegments(String serverBasePath);
 
   /// The cookies in the request.
   List<Cookie> get cookies;
@@ -37,8 +37,12 @@ abstract class _CoreRequest {
   /// The body of the HTTP request, decoded as UTF-8 into a String.
   Future<String> bodyStr(int maxBytes);
 
-  /// The passed in session (for simulated core requests only) or null.
-  String get sessionId;
+  /// Retrieves the session ID, if any.
+  ///
+  /// Returns the empty string if there is no session ID in the request, or
+  /// there is something wrong with them (i.e. there are multiple different
+  /// session IDs in the request).
+  String _extractSessionId(Server server, Request req);
 }
 
 //================================================================
@@ -85,7 +89,7 @@ class _CoreRequestReal implements _CoreRequest {
   }
 
   @override
-  List<String> _pathSegments(String serverBasePath) {
+  List<String>? _pathSegments(String serverBasePath) {
     try {
       var segments = _httpRequest.uri.pathSegments;
 
@@ -146,25 +150,25 @@ class _CoreRequestReal implements _CoreRequest {
   // Future implementations might need to support other encodings, in which case
   // the encoding for the cached string needs to be kept track of.
 
-  List<int> _bodyBytes; // cache of bytes read in
+  List<int>? _bodyBytes; // cache of bytes read in
 
-  String _bodyStr; // cache of decoded string value
+  String? _bodyStr; // cache of decoded string value
 
   @override
   Future<List<int>> bodyBytes(int maxSize) async {
     if (_bodyBytes == null) {
-      // Bytes not cached: read them in and store them in the bytes cache
+      // Bytes not cached: read them in and Ystore them in the bytes cache
 
       _bodyBytes = <int>[];
       await for (var bytes in _httpRequest) {
-        if (maxSize < _bodyBytes.length + bytes.length) {
+        if (maxSize < _bodyBytes!.length + bytes.length) {
           throw PostTooLongException();
         }
-        _bodyBytes.addAll(bytes);
+        _bodyBytes!.addAll(bytes);
       }
     }
 
-    return _bodyBytes;
+    return _bodyBytes!;
   }
 
   //----------------------------------------------------------------
@@ -178,13 +182,130 @@ class _CoreRequestReal implements _CoreRequest {
 
       _bodyStr = utf8.decode(bytes, allowMalformed: false);
     }
-    return _bodyStr;
+    return _bodyStr!;
   }
 
   //================================================================
 
   @override
-  String get sessionId => null;
+  String _extractSessionId(Server server, Request req) {
+    final id = req.id;
+
+    // The session can be conveyed in three possible mechanisms:
+    //
+    // - session cookie;
+    // - session query parameter (when using URL rewriting); or
+    // - session POST parameter.
+    //
+    // Normally, at most one mechanism will be used. But there can be edge cases
+    // where more than one mechanism is present. These are usually extremely
+    // rare (e.g. the user switches cookies support on/off in their browser
+    // while interacting with the Web application). When that happens, the
+    // different mechanisms should have the same session value. But more rare is
+    // if there are multiple _different_ session values (from different
+    // mechanisms or multiples of the same mechanism).
+    //
+    // This method handles all these situations.
+
+    // First, gather all the session ID values
+
+    final candidates = <String>[];
+
+    // 1. Look for session cookies
+
+    var foundSessionCookie = false; // assume false unless one is found
+
+    // Real requests may have a session cookie: look for it.
+
+    for (var cookie in cookies) {
+      if (cookie.name == server.sessionCookieName) {
+        final value = cookie.value;
+        if (value.isNotEmpty) {
+          candidates.add(cookie.value);
+          foundSessionCookie = true;
+        }
+      }
+    }
+
+    req._haveSessionCookie = foundSessionCookie;
+
+    if (foundSessionCookie && !req._sessionUsingCookies) {
+      // This should never happen!
+      // Since _sessionUsingCookies is true if _coreRequest.cookies.isNotEmpty.
+      //
+      // But in production, this situation has occurred: it is as if the list
+      // of cookies was initially empty and strangely now contains values.
+      // How can that happen? It seems to happen consistently with one user
+      // running FireFox on Ubuntu, so it doesn't appear to be a race condition
+      // on the server side.
+
+      _logSession.shout('[$id] cookies in request changed while processing!');
+      if (!cookies.isNotEmpty) {
+        // This is the test used to set _sessionUsingCookies.
+        // So why does it indicate the list is empty, but iterating over it
+        // (in the code above) finds values?
+        _logSession.shout('[$id] cookies.isNotEmpty but there were cookies!');
+      }
+
+      // Update value, even though it should never change.
+      // If this is not updated, URL rewriting may be used and that causes
+      // future requests to have multiple session IDs, which is a worse
+      // problem.
+      req._sessionUsingCookies = true; // fix value since there are now cookies!
+    }
+
+    // 2. Look for session query parameters (i.e. URL rewriting)
+
+    final _sessionQueryParams = req.queryParams.values(server.sessionParamName);
+    if (_sessionQueryParams.isNotEmpty) {
+      for (final value in _sessionQueryParams) {
+        if (value.isNotEmpty) {
+          candidates.add(value);
+        }
+      }
+      req.queryParams._removeAll(server.sessionParamName);
+    }
+
+    // 2. Look for session POST parameters (i.e. URL rewriting in POST request)
+
+    final _postP = req.postParams;
+    if (_postP != null) {
+      final _sessionPostParams = _postP.values(server.sessionParamName);
+      if (_sessionPostParams.isNotEmpty) {
+        for (var value in _sessionPostParams) {
+          if (value.isNotEmpty) {
+            candidates.add(value);
+          }
+        }
+        _postP._removeAll(server.sessionParamName);
+      }
+    }
+
+    // Secondly, determine the session ID (if any) to use
+
+    var result = ''; // assume no session ID unless set by code below
+
+    if (candidates.isEmpty) {
+      _logSession.finest('[$id] no session ID in request');
+    } else if (candidates.length == 1) {
+      result = candidates.first; // typical case of one session ID
+    } else {
+      // Multiple session IDs found (need to sort it out)
+
+      final firstValue = candidates.first;
+
+      if (candidates.every((value) => value == firstValue)) {
+        // There are multiple copies of the SAME session ID: return it
+        result = firstValue;
+      } else {
+        // There are DIFFERENT session IDs: discard them all and treat the
+        // situation as having no session ID. Something very strange went wrong.
+        _logSession.severe('[$id] multiple session IDs: ignoring them all');
+      }
+    }
+
+    return result;
+  }
 }
 
 //================================================================
@@ -200,15 +321,14 @@ class _CoreRequestSimulated implements _CoreRequest {
   /// Constructor
 
   _CoreRequestSimulated(this._method, this._internalPath,
-      {String sessionId,
+      {required SimulatedHttpHeaders headers,
+      required List<Cookie> cookies,
+      this.sessionId = '',
       this.queryParams,
-      SimulatedHttpHeaders headers,
-      List<Cookie> cookies,
-      String bodyStr,
-      List<int> bodyBytes})
-      : _headers = headers ?? SimulatedHttpHeaders(),
-        _cookies = cookies ?? <Cookie>[],
-        assert(!(bodyStr != null && bodyBytes != null), 'set only one body'),
+      String? bodyStr,
+      List<int>? bodyBytes})
+      : _headers = headers,
+        _cookies = cookies,
         _bodyStr = bodyStr,
         _bodyBytes = bodyBytes {
     if (!_internalPath.startsWith('~/')) {
@@ -216,8 +336,8 @@ class _CoreRequestSimulated implements _CoreRequest {
           _internalPath, 'path', 'does not start with "~/"');
     }
 
-    if (sessionId != null && sessionId.isNotEmpty) {
-      this.sessionId = sessionId;
+    if (bodyStr != null && bodyBytes != null) {
+      throw ArgumentError('do not set body as both a String and bytes');
     }
   }
 
@@ -235,12 +355,30 @@ class _CoreRequestSimulated implements _CoreRequest {
 
   final List<Cookie> _cookies;
 
-  List<int> _bodyBytes;
+  // The body as a series of bytes.
+  //
+  // If the body has not been set, both [_bodyBytes] and [_bodyStr] are null.
+  // Attempts to retrieve either the bytes or string returns an empty
+  // list of bytes or the empty string, respectively.
+  //
+  // If the body has been set as bytes, then [_bodyBytes] is not null.
+  //
+  // If the body has been set as a string, then [_bodyStr] is not null.
+  //
+  // If the body has been set in one form and then retrieved in the other form,
+  // then the other form is also set (i.e. both forms are available/cached).
 
-  String _bodyStr;
+  List<int>? _bodyBytes;
 
-  /// The query parameters, or null
-  final RequestParams queryParams;
+  // The body as a string.
+  //
+  // See [_bodyBytes].
+
+  String? _bodyStr;
+
+  /// The query parameters
+
+  final RequestParams? queryParams;
 
   //================================================================
 
@@ -258,7 +396,7 @@ class _CoreRequestSimulated implements _CoreRequest {
   HttpHeaders get headers => _headers;
 
   @override
-  List<String> _pathSegments(String serverBasePath) {
+  List<String>? _pathSegments(String serverBasePath) {
     // Since this implementation stores the internal path as a string, just
     // split the string, remove the leading "~", and account for the special
     // case of the root path.
@@ -319,25 +457,30 @@ class _CoreRequestSimulated implements _CoreRequest {
 
   @override
   Future<String> bodyStr(int maxBytes) async {
-    if (_bodyStr != null) {
+    final str = _bodyStr;
+    final bytes = _bodyBytes;
+
+    if (str != null) {
       // Have string: return it
 
-      if (maxBytes < _bodyStr.length) {
+      if (maxBytes < str.length) {
         // Note: this is not exact, since the number of bytes needed to encode
         // in UTF-8 may be larger than the number of code points in the string.
         throw PostTooLongException();
       }
 
-      return _bodyStr;
-    } else if (_bodyBytes != null) {
+      return str;
+    } else if (bytes != null) {
       // Have bytes: need to convert it into a string
 
-      if (maxBytes < _bodyBytes.length) {
+      if (maxBytes < bytes.length) {
         throw PostTooLongException();
       }
-      _bodyStr = utf8.decode(_bodyBytes); // cache the string value
-      assert(_bodyStr.length < maxBytes);
-      return _bodyStr;
+
+      final decodedStr = utf8.decode(bytes);
+
+      _bodyStr = decodedStr; // cache the body string value
+      return decodedStr;
     } else {
       // No body
       return '';
@@ -349,31 +492,35 @@ class _CoreRequestSimulated implements _CoreRequest {
 
   @override
   Future<List<int>> bodyBytes(int maxBytes) async {
-    if (_bodyBytes != null) {
+    final str = _bodyStr;
+    final bytes = _bodyBytes;
+
+    if (bytes != null) {
       // Have bytes: return it
 
-      if (maxBytes < _bodyBytes.length) {
+      if (maxBytes < bytes.length) {
         throw PostTooLongException();
       }
 
-      return _bodyBytes;
-    } else if (_bodyStr != null) {
+      return bytes;
+    } else if (str != null) {
       // Have string: need to convert it into bytes
 
-      if (maxBytes < _bodyStr.length) {
+      if (maxBytes < str.length) {
         // Note: this is not exact, since the number of bytes needed to encode
         // in UTF-8 may be larger than the number of code points in the string.
         throw PostTooLongException();
       }
 
-      final _bodyBytes = utf8.encode(_bodyStr); // cache the bytes value
+      final encodedAsBytes = utf8.encode(str);
 
-      if (maxBytes < _bodyBytes.length) {
+      if (maxBytes < encodedAsBytes.length) {
         // Now we have the exact bytes, an exact check can be done
         throw PostTooLongException();
       }
 
-      return _bodyBytes;
+      _bodyBytes = encodedAsBytes; // cache the body bytes value
+      return encodedAsBytes;
     } else {
       // No body
       return <int>[];
@@ -381,10 +528,11 @@ class _CoreRequestSimulated implements _CoreRequest {
   }
 
   //================================================================
-  /// Session ID
-  ///
-  /// Value is null if the simulated request didn't provide a session ID.
+  // Session ID
+
+  String sessionId;
 
   @override
-  String sessionId;
+  String _extractSessionId(Server server, Request req) => sessionId;
+  // The implementation for a simulated request is trivial.
 }

@@ -1,5 +1,9 @@
 # Changelog
 
+## 7.0.0
+
+- Null safety release.
+
 ## 6.0.0
 
 - Breaking change: Proxy constructor no longer has HTTP method parameter.

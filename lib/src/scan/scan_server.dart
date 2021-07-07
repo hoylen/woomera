@@ -31,8 +31,8 @@ part of scan;
 /// or set _ignoreUnusedAnnotations_ to true.
 
 Server serverFromAnnotations(
-    {Iterable<String> pipelines,
-    Iterable<String> libraries,
+    {Iterable<String>? pipelines,
+    Iterable<String>? libraries,
     bool scanAllFileLibraries = true,
     bool ignoreUnusedAnnotations = false}) {
   final server = Server();

@@ -126,8 +126,8 @@ part of scan;
 
 String dumpServer(Server server,
     {String functionName = 'serverBuilder',
-    String libraryName,
-    Iterable<String> importedLibraries,
+    String? libraryName,
+    Iterable<String>? importedLibraries,
     bool timestamp = true,
     bool locations = true,
     bool includeDumpServerStub = true}) {
@@ -141,7 +141,10 @@ String dumpServer(Server server,
     buf.write('part of $libraryName;\n\n');
   }
 
-  final libraryPrefixes = [libraryName];
+  final libraryPrefixes = <String>[];
+  if (libraryName != null) {
+    libraryPrefixes.add(libraryName);
+  }
   if (importedLibraries != null) {
     libraryPrefixes.addAll(importedLibraries);
   }
@@ -155,10 +158,12 @@ Server $functionName({Iterable<String> pipelines,
 
   // Wrapper
 
-  String wName;
-  if (Handles.handlerWrapper != null) {
-    wName = _functionName(Handles.handlerWrapper, libraryPrefixes);
-    final wLoc = _functionLocation(Handles.handlerWrapper);
+  String? wName;
+
+  final _hw = Handles.handlerWrapper;
+  if (_hw != null) {
+    wName = _functionName(_hw, libraryPrefixes);
+    final wLoc = _functionLocation(_hw);
     buf.write('  // Handles.handlerWrapper\n'
         '  // Warning: annotations are not preserved for the wrapper.\n'
         '  //          The first argument to the handlerWrapper is null\n'
@@ -179,18 +184,22 @@ Server $functionName({Iterable<String> pipelines,
     final pipelineVariable = 'p${++num}';
     pipelineVariables.add(pipelineVariable);
 
-    final nameStr = p.name != null
-        ? p.name == ServerPipeline.defaultName
-            ? 'ServerPipeline.defaultName'
-            : "'${p.name}'"
-        : '';
+    // This is the string displayed to represent the default pipeline name
+    // value. It is actually the name of the constant itself, from the
+    // [ServerPipeline] class, since this is generating code to reference it.
+
+    const _def = 'ServerPipeline.defaultName';
+
+    final nameStr = p.name != ServerPipeline.defaultName ? "'${p.name}'" : _def;
+
     buf.write('  final $pipelineVariable = ServerPipeline($nameStr)');
 
     // Pipeline's exception handler
 
-    if (p.exceptionHandler != null) {
-      final loc = _functionLocation(p.exceptionHandler);
-      final fName = _functionName(p.exceptionHandler, libraryPrefixes);
+    final _eh = p.exceptionHandler;
+    if (_eh != null) {
+      final loc = _functionLocation(_eh);
+      final fName = _functionName(_eh, libraryPrefixes);
 
       buf.write('\n    ..exceptionHandler = $fName');
       if (locations) {
@@ -204,8 +213,9 @@ Server $functionName({Iterable<String> pipelines,
       for (final rule in p.rules(method)) {
         // Find the annotation that created it (before any handlerWrapper)
 
-        final entry = _annotations._found.containsKey(p.name)
-            ? _annotations._found[p.name].singleWhere(
+        final e = _annotations._found[p.name];
+        final entry = e != null
+            ? e.singleWhere(
                 (a) => a.httpMethod == method && a.pattern == rule.pattern)
             : null;
 
@@ -243,9 +253,10 @@ Server $functionName({Iterable<String> pipelines,
 
   // Server exception handler
 
-  if (server.exceptionHandler != null) {
-    final loc = _functionLocation(server.exceptionHandler);
-    final fName = _functionName(server.exceptionHandler, libraryPrefixes);
+  final _seh = server.exceptionHandler;
+  if (_seh != null) {
+    final loc = _functionLocation(_seh);
+    final fName = _functionName(_seh, libraryPrefixes);
 
     buf.write('\n    ..exceptionHandler = $fName');
     if (locations) {
@@ -255,7 +266,9 @@ Server $functionName({Iterable<String> pipelines,
 
   // Server raw exception handler
 
-  if (server.exceptionHandlerRaw != null) {
+  if (server.isCustomRawExceptionHandler) {
+    // Dump code to set the raw exception handler
+
     final loc = _functionLocation(server.exceptionHandlerRaw);
     final fName = _functionName(server.exceptionHandlerRaw, libraryPrefixes);
 
@@ -326,7 +339,12 @@ String _functionName(Function f, Iterable<String> libraryPrefixes) {
 SourceLocation _functionLocation(Function f) {
   final r1 = reflect(f);
   if (r1 is ClosureMirror) {
-    return r1.function.location;
+    final loc = r1.function.location;
+    if (loc != null) {
+      return loc;
+    } else {
+      throw StateError('no location');
+    }
   } else {
     throw StateError('not a function');
   }

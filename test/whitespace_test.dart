@@ -34,7 +34,7 @@ int portNumber = 2048;
 // Internal
 
 /// The Web server
-Server webServer;
+late final Server webServer;
 
 //================================================================
 // Test server
@@ -84,9 +84,10 @@ Future<Response> _valuesHandler(Request req, ParamsMode mode) async {
     }
   }
 
-  if (req.postParams != null) {
-    for (var key in req.postParams.keys) {
-      for (var value in req.postParams.values(key, mode: mode)) {
+  final _postParams = req.postParams;
+  if (_postParams != null) {
+    for (var key in _postParams.keys) {
+      for (var value in _postParams.values(key, mode: mode)) {
         buf.write('Post.$key=$value;');
       }
     }

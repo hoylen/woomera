@@ -27,12 +27,13 @@ class _AnnotatedHandlerBase {
   _AnnotatedHandlerBase(MethodMirror methodMirror) {
     // Information about the request handler
 
-    location = methodMirror.location;
+    final _loc = methodMirror.location;
+    ArgumentError.checkNotNull(_loc, 'no location');
+    location = _loc!;
 
-    name = MirrorSystem.getName(methodMirror.qualifiedName);
-    if (name.startsWith('.')) {
-      name = name.substring(1); // strip off "."
-    }
+    final qn = MirrorSystem.getName(methodMirror.qualifiedName);
+    // Set the name to the qualified name with any leading "." stripped off.
+    name = (qn.startsWith('.')) ? qn.substring(1) : qn;
   }
 
   //================================================================
@@ -40,11 +41,11 @@ class _AnnotatedHandlerBase {
 
   /// Source location of the request handler
 
-  SourceLocation location;
+  late final SourceLocation location;
 
   /// Name of the handler function
 
-  String name;
+  late final String name;
 }
 
 //################################################################
@@ -75,32 +76,38 @@ class _AnnotatedRequestHandler extends _AnnotatedHandlerBase {
     // null. This is to reduce the amount of possible errors. The only value
     // that can't be null is the pattern.
 
-    if (annotation.httpMethod == null) {
-      throw ArgumentError.notNull('httpMethod');
-    }
-    if (annotation.pattern == null) {
-      throw ArgumentError.notNull('pattern');
-    }
-
     pipelineName = annotation.pipeline ?? ServerPipeline.defaultName;
-    httpMethod = annotation.httpMethod;
+
+    ArgumentError.checkNotNull(annotation.httpMethod, 'httpMethod');
+    httpMethod = annotation.httpMethod!;
+
     priority = annotation.priority ?? 0;
-    pattern = Pattern(annotation.pattern);
+
+    ArgumentError.checkNotNull(annotation.pattern, 'pattern');
+    pattern = Pattern(annotation.pattern!);
 
     // Convert the function into a request handler (if necessary)
 
-    if (Handles.handlerWrapper != null) {
+    var gotHandler = false;
+
+    final _hw = Handles.handlerWrapper;
+    if (_hw != null) {
       // A handler wrapper was defined. Use it to process the object that
       // was annotated (even if it is already a RequestHandler).
-      handler = Handles.handlerWrapper(annotation, annotatedFunction);
+      handler = _hw(annotation, annotatedFunction);
+      gotHandler = true;
       // Warning: above handlerWrapper could return null
-    } else if (annotatedFunction is RequestHandler) {
-      // Function can be used as a handler
-      // ignore: avoid_as
-      handler = annotatedFunction as RequestHandler;
+    } else {
+      final af = annotatedFunction;
+      if (af is RequestHandler) {
+        // Function can be used as a handler
+        // ignore: avoid_as
+        handler = af;
+        gotHandler = true;
+      }
     }
 
-    if (handler == null) {
+    if (!gotHandler) {
       // Cannot use the annotated object.
       // Either: there was no handler wrapper (or it strangely returned
       // null) or the object was not a RequestHandler.
@@ -120,10 +127,10 @@ class _AnnotatedRequestHandler extends _AnnotatedHandlerBase {
   // the pattern is a string in the _Handles_, and we want to covert it into
   // a [Pattern] object. The conversion will detect bad patterns.
 
-  String pipelineName;
-  String httpMethod;
-  int priority;
-  Pattern pattern;
+  late String pipelineName;
+  late String httpMethod;
+  late int priority;
+  late Pattern pattern;
 
   /// The function the annotation was on (before applying any `handlerWrapper`)
 
@@ -131,7 +138,7 @@ class _AnnotatedRequestHandler extends _AnnotatedHandlerBase {
 
   /// The request handler function the annotation was on.
 
-  RequestHandler handler;
+  late RequestHandler handler;
 
   //================================================================
   // Methods
@@ -222,15 +229,12 @@ class _AnnotatedExceptionHandler extends _AnnotatedHandlerBase {
     // Get the request handler to use
 
     if (theFunction is ExceptionHandler) {
-      // Function cannot be used as a handler
+      // The function is suitable
       handler = theFunction;
-    }
-
-    if (handler == null) {
+    } else {
       // Cannot use the annotated object.
       // Either: there was no handler wrapper (or it strangely returned
       // null) or the object was not a ExceptionHandler.
-
       throw NotExceptionHandler(location, name, annotation);
     }
   }
@@ -239,13 +243,15 @@ class _AnnotatedExceptionHandler extends _AnnotatedHandlerBase {
   // Members
 
   /// Name of the pipeline for pipeline exception handlers
-  /// Null for server exception handler.
+  ///
+  /// Null is used for server exception handler (i.e. it does not belong to
+  /// any pipeline).
 
-  String pipelineName;
+  late final String? pipelineName;
 
   /// The exception handler function the annotation was on.
 
-  ExceptionHandler handler;
+  late final ExceptionHandler handler;
 
   //================================================================
   // Methods
@@ -283,14 +289,17 @@ class _AnnotatedRawExceptionHandler extends _AnnotatedHandlerBase {
       Handles annotation, MethodMirror methodMirror, Function theFunction)
       : assert(!annotation.isRequestHandler),
         super(methodMirror) {
+    var gotHandler = false;
+
     // Get the request handler to use
 
     if (theFunction is ExceptionHandlerRaw) {
       // Function cannot be used as a handler
       handler = theFunction;
+      gotHandler = true;
     }
 
-    if (handler == null) {
+    if (!gotHandler) {
       // Cannot use the annotated object.
       throw NotExceptionHandler(location, name, annotation);
     }
@@ -301,7 +310,7 @@ class _AnnotatedRawExceptionHandler extends _AnnotatedHandlerBase {
 
   /// The exception handler function the annotation was on.
 
-  ExceptionHandlerRaw handler;
+  late ExceptionHandlerRaw handler;
 
   //================================================================
   // Methods
@@ -337,13 +346,13 @@ class _AnnotationScanner {
   ///
   /// These have been populated from the [_librariesScanned] libraries.
 
-  final Map<String, _AnnotatedExceptionHandler> _foundExceptionHandlers = {};
+  final Map<String?, _AnnotatedExceptionHandler> _foundExceptionHandlers = {};
 
   /// Cache of the found raw exception handler.
   ///
   /// There can only be at most one such handler for the program.
 
-  _AnnotatedRawExceptionHandler _foundRawExceptionHandler;
+  _AnnotatedRawExceptionHandler? _foundRawExceptionHandler;
 
   //----------------
   // What was scanned to find them
@@ -382,23 +391,18 @@ class _AnnotationScanner {
   /// Only those where the [Handles] annotation's pipeline name is
   /// [pipelineName] are returned.
 
-  Iterable<_AnnotatedRequestHandler> listRequestHandlers(String pipelineName) {
-    assert(pipelineName != null);
-
-    // Pick the registrations with the desired pipeline name
-
-    return _found[pipelineName] ?? <_AnnotatedRequestHandler>[];
-  }
+  Iterable<_AnnotatedRequestHandler> listRequestHandlers(String pipelineName) =>
+      _found[pipelineName] ?? <_AnnotatedRequestHandler>[];
 
   //----------------------------------------------------------------
   /// Retrieve an annotated exception handler for a pipeline.
   ///
   /// Returns null if there is none
 
-  _AnnotatedExceptionHandler findPipelineExceptionHandler(String pipelineName) {
-    if (pipelineName == null) {
-      throw ArgumentError.notNull('pipelineName');
-    }
+  _AnnotatedExceptionHandler? findPipelineExceptionHandler(
+      String pipelineName) {
+    ArgumentError.checkNotNull(pipelineName);
+
     return _foundExceptionHandlers[pipelineName];
   }
 
@@ -407,7 +411,7 @@ class _AnnotationScanner {
   ///
   /// Returns null if there is none.
 
-  _AnnotatedExceptionHandler findServerExceptionHandler() =>
+  _AnnotatedExceptionHandler? findServerExceptionHandler() =>
       _foundExceptionHandlers[null];
 
   //----------------------------------------------------------------
@@ -415,7 +419,7 @@ class _AnnotationScanner {
   ///
   /// Returns null if there is none.
 
-  _AnnotatedRawExceptionHandler findServerRawExceptionHandler() =>
+  _AnnotatedRawExceptionHandler? findServerRawExceptionHandler() =>
       _foundRawExceptionHandler;
 
   //================================================================
@@ -427,11 +431,8 @@ class _AnnotationScanner {
   void markAsUsed(String pipelineName) {
     // Record the name has been used
 
-    if (!_pipelineNamesUsed.containsKey(pipelineName)) {
-      _pipelineNamesUsed[pipelineName] = 1;
-    } else {
-      _pipelineNamesUsed[pipelineName]++;
-    }
+    final existing = _pipelineNamesUsed[pipelineName];
+    _pipelineNamesUsed[pipelineName] = existing == null ? 1 : existing + 1;
   }
 
   //----------------------------------------------------------------
@@ -445,18 +446,18 @@ class _AnnotationScanner {
   List<String> checkForUnusedAnnotations() {
     final notUsed = <String>[];
 
-    for (final name in _found.keys) {
-      if (!_pipelineNamesUsed.containsKey(name)) {
-        for (final arh in _found[name]) {
+    for (final entry in _found.entries) {
+      if (!_pipelineNamesUsed.containsKey(entry.key)) {
+        for (final arh in entry.value) {
           notUsed.add('$arh');
         }
       }
     }
 
-    for (final name in _foundExceptionHandlers.keys) {
+    for (final entry in _foundExceptionHandlers.entries) {
       // Note: null is the key for the server exception handler: ignore it
-      if (name != null && !_pipelineNamesUsed.containsKey(name)) {
-        notUsed.add('${_foundExceptionHandlers[name]}');
+      if (entry.key != null && !_pipelineNamesUsed.containsKey(entry.key)) {
+        notUsed.add('${entry.value}');
       }
     }
 
@@ -508,7 +509,7 @@ class _AnnotationScanner {
 
       for (final pipelineName in List<String>.from(_found.keys)..sort()) {
         // Above sorting is just so the logging is stable/consistent
-        final regosWithHandlers = _found[pipelineName];
+        final regosWithHandlers = _found[pipelineName]!;
 
         final p = (pipelineName != ServerPipeline.defaultName)
             ? '"$pipelineName" pipeline'
@@ -533,8 +534,8 @@ class _AnnotationScanner {
 
       var numEH = 0;
 
-      final pipelinesWithEP = List<String>.from(_foundExceptionHandlers.keys)
-        ..remove(null); // null is the server exception handler
+      final pipelinesWithEP = List<String?>.from(_foundExceptionHandlers.keys)
+        ..remove(null); // null represents the server exception handler
 
       for (final pipelineName in pipelinesWithEP..sort()) {
         // Above sorting is just so the logging is stable/consistent
@@ -597,7 +598,7 @@ class _AnnotationScanner {
   /// Throws a [LibraryNotFound] if any of the libraries listed in
   /// [librariesToScan] does not exist.
 
-  void _scanSystem(Iterable<String> librariesToScan, {bool doFiles}) {
+  void _scanSystem(Iterable<String> librariesToScan, {required bool doFiles}) {
     // Track packages which were encountered
 
     final seenPackages = <String, bool>{};
@@ -605,10 +606,8 @@ class _AnnotationScanner {
     // Scan all the libraries for registrations
 
     final mirrorSys = currentMirrorSystem();
-
-    if (mirrorSys == null) {
-      throw UnimplementedError('cannot scan for annotations: no mirror system');
-    }
+    ArgumentError.checkNotNull(
+        mirrorSys, 'cannot scan for annotations: no mirror system');
 
     for (final entry in mirrorSys.libraries.entries) {
       final libUrl = entry.key;
@@ -617,7 +616,7 @@ class _AnnotationScanner {
       if (libUrl.scheme != 'dart') {
         // Not a core library, so might be ok (core libraries are never scanned)
 
-        if (!_librariesScanned.contains(library)) {
+        if (!_librariesScanned.contains(libUrl.toString())) {
           // Hasn't been previously scanned
 
           if (librariesToScan.contains(libUrl.toString()) ||
@@ -758,10 +757,12 @@ class _AnnotationScanner {
       // annotation.pipelineName was null.
       final goodName = entry.pipelineName;
 
-      if (!_found.containsKey(goodName)) {
-        _found[goodName] = []; // new pipeline name: start a new list
+      final existing = _found[goodName];
+      if (existing == null) {
+        _found[goodName] = [entry]; // new pipeline name: start a new list
+      } else {
+        existing.add(entry); // add the entry to the named list
       }
-      _found[goodName].add(entry); // add the entry to the named list
 
       // ignore: avoid_catching_errors
     } on ArgumentError catch (e) {
@@ -805,14 +806,15 @@ class _AnnotationScanner {
 
       assert(annotation.isServerRawExceptionHandler);
 
-      if (_foundRawExceptionHandler != null) {
+      final found = _foundRawExceptionHandler;
+      if (found != null) {
         var name = MirrorSystem.getName(methodMirror.qualifiedName);
         if (name.startsWith('.')) {
           name = name.substring(1); // strip off "."
         }
 
         throw DuplicateExceptionHandler(methodMirror.location, name, annotation,
-            _foundRawExceptionHandler.location, _foundRawExceptionHandler.name);
+            found.location, found.name);
       }
 
       _foundRawExceptionHandler =

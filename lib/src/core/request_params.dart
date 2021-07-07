@@ -26,11 +26,11 @@ part of core;
 /// vertical tabs (U+000B), line separators (U+2028) and
 /// paragraph separators (U+2029).
 ///
-/// Line terminators are defined as the _ECMAscript line
+/// Line terminators are defined as the _ECMA script line
 /// terminator code points_
 /// ([line terminator](https://ecma-international.org/ecma-262/9.0/#table-33))
 /// and
-/// whitespace defined as the _ECMAscript whitespace code points_
+/// whitespace defined as the _ECMA script whitespace code points_
 /// ([whitespace](https://ecma-international.org/ecma-262/9.0/#table-32)).
 
 enum ParamsMode {
@@ -252,8 +252,6 @@ class RequestParams {
   /// If the key matches multiple values: in production mode,
   /// the empty string is returned; in checked mode, an assertion error is
   /// raised. Use the [values] method for keys with multiple values.
-  ///
-  /// This operator never returns null.
 
   String operator [](String key) {
     final values = _data[key];
@@ -261,7 +259,7 @@ class RequestParams {
       return ''; // no value for key
     } else if (values.length == 1) {
       // Single value
-      return _sanitize(values[0] ?? '', ParamsMode.standard);
+      return _sanitize(values[0], ParamsMode.standard);
     } else {
       assert(values.length == 1, 'multi-valued: do not use [] with "$key"');
       return ''; // error value
@@ -290,8 +288,6 @@ class RequestParams {
 
   List<String> values(String key,
       {@deprecated bool raw = false, ParamsMode mode = ParamsMode.standard}) {
-    assert(key != null);
-
     // When the deprecated "raw" parameter is removed, delete the next few lines
     // and just use the "mode".
     assert(
@@ -332,8 +328,6 @@ class RequestParams {
   /// See the documentation of [ParamsMode] for details.
 
   static String _sanitize(String str, ParamsMode mode) {
-    assert(str != null);
-
     String x;
 
     switch (mode) {
@@ -370,15 +364,19 @@ class RequestParams {
       }
       buf.write('$key=[');
 
-      var first = true;
-      for (var value in _data[key]) {
-        if (first) {
-          first = false;
-        } else {
-          buf.write(', ');
+      final allValues = _data[key];
+      if (allValues != null) {
+        var first = true;
+        for (var value in allValues) {
+          if (first) {
+            first = false;
+          } else {
+            buf.write(', ');
+          }
+          buf.write('"$value"');
         }
-        buf.write('"$value"');
       }
+
       buf.write(']');
     }
 

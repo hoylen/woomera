@@ -43,7 +43,7 @@ abstract class HEsc {
   ///
   /// If [value] is null, the empty string is returned.
 
-  static String attr(Object value) {
+  static String attr(Object? value) {
     if (value != null) {
       var s = value.toString().replaceAll('&', '&amp;');
       s = s.replaceAll('<', '&lt;');
@@ -65,7 +65,7 @@ abstract class HEsc {
   ///
   /// If [value] is null, the empty string is returned.
 
-  static String text(Object value) {
+  static String text(Object? value) {
     if (value != null) {
       var s = value.toString().replaceAll('&', '&amp;');
       s = s.replaceAll('<', '&lt;');
@@ -87,7 +87,7 @@ abstract class HEsc {
   ///
   /// If [value] is null, the empty string is returned.
 
-  static String lines(Object value) {
+  static String lines(Object? value) {
     if (value != null) {
       final buf = StringBuffer();
       var started = false;

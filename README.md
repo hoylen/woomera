@@ -340,7 +340,7 @@ Here is an example of a server exception handler:
 ```dart
 @Handles.exceptions()
 Future<Response> myExceptionHandler(
-    Request req, Object ex, StackTrace st) async {
+    Request req, Object ex, [StackTrace? st]) async {
   int status;
   String message;
 
@@ -496,8 +496,11 @@ Future<Response> handleParams(Request req) async {
   resp.write('<h2>Query parameters</h2>');
   _dumpParam(req.queryParams, resp);
 
-  resp.write('<h2>POST parameters</h2>');
-  _dumpParam(req.postParams, resp);
+  final _postParams = req.postParams;
+  if (_postParams != null) {
+    resp.write('<h2>POST parameters</h2>');
+    _dumpParam(_postParams, resp);
+  }
 
   resp.write('''
   </body>
@@ -508,26 +511,22 @@ Future<Response> handleParams(Request req) async {
 }
 
 void _dumpParam(RequestParams p, ResponseBuffered resp) {
-  if (p != null) {
-    final keys = p.keys;
+  final keys = p.keys;
 
-    if (keys.isNotEmpty) {
-      resp.write('<p>Number of keys: ${keys.length}</p>\n<dl>');
+  if (keys.isNotEmpty) {
+    resp.write('<p>Number of keys: ${keys.length}</p>\n<dl>');
 
-      for (var k in keys) {
-        resp.write('<dt><code>${HEsc.text(k)}</code></dt><dd><ul>');
-        for (var v in p.values(k, raw: true)) {
-          resp.write('<li><code>${HEsc.text(v)}</code></li>');
-        }
-        resp.write('</ul></dd>');
+    for (var k in keys) {
+      resp.write('<dt><code>${HEsc.text(k)}</code></dt><dd><ul>');
+      for (var v in p.values(k, raw: true)) {
+        resp.write('<li><code>${HEsc.text(v)}</code></li>');
       }
-
-      resp.write('</dl>');
-    } else {
-      resp.write('<p>No parameters.</p>');
+      resp.write('</ul></dd>');
     }
+
+    resp.write('</dl>');
   } else {
-    resp.write('<p>Not available.</p>');
+    resp.write('<p>No parameters.</p>');
   }
 }
 ```
@@ -746,7 +745,7 @@ provide one, because it is used to indicate a page is not found.
 ```dart
 @Handles.exceptions()
 Future<Response> myExceptionHandler(Request req
-    Object exception, StackTrace st) async {
+    Object exception, [StackTrace? st]) async {
   var resp = ResponseBuffered(ContentType.html);
   resp.write('''
 <!DOCTYPE html>
@@ -772,13 +771,13 @@ Each pipeline can also have its own exception handler.
 ``` dart
 @Handles.pipelineExceptions()
 Future<Response> myExceptionHandler(Request req
-    Object exception, StackTrace st) async {
+    Object exception, [StackTrace? st]) async {
 	// for the default pipeline
 }
 
 @Handles.pipelineExceptions(pipeline: 'myCustomPipeline')
 Future<Response> myExceptionHandler(Request req
-    Object exception, StackTrace st) async {
+    Object exception, [StackTrace? st]) async {
 	// for the pipeline named "myCustomPipeline"
 }
 ```

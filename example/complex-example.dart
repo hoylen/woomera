@@ -41,15 +41,15 @@ Logger mainLog = Logger('main');
 
 /// Web server
 ///
-Server webServer;
+late Server webServer;
 
 /// First pipeline
 ///
-ServerPipeline p1;
+late ServerPipeline p1;
 
 /// Second pipeline
 ///
-ServerPipeline p2;
+late ServerPipeline p2;
 
 //================================================================
 /// Session for login.
@@ -71,7 +71,7 @@ class LoginSession extends Session {
   ///
   /// Can be null.
 
-  String name;
+  String? name;
 }
 
 //================================================================
@@ -404,7 +404,6 @@ Future<Response> homePage(Request req) async {
   ''');
   } else if (requestSession is LoginSession) {
     // Logged in
-    assert(requestSession != null);
     resp.write('''
   <ul>
     <li><a href="${req.rewriteUrl("~/session/info")}">Session information page</a></li>
@@ -484,18 +483,33 @@ Future<Response> handleTestPost(Request req) async {
 /// Exception handler
 ///
 Future<Response> handleExceptionHandlers(Request req) async {
-  final eh0 = req.postParams['eh0'] == 'on';
-  final eh1 = req.postParams['eh1'] == 'on';
-  final eh2 = req.postParams['eh2'] == 'on';
+  var eh0 = true;
+  var eh1 = true;
+  var eh2 = true;
 
-  webServer.exceptionHandler = (eh0) ? exceptionHandlerOnServer : null;
-  p1.exceptionHandler = (eh1) ? exceptionHandlerOnPipe1 : null;
-  p2.exceptionHandler = (eh2) ? exceptionHandlerOnPipe2 : null;
+  final _postParams = req.postParams;
+  if (_postParams != null) {
+    eh0 = _postParams['eh0'] == 'on';
+    eh1 = _postParams['eh1'] == 'on';
+    eh2 = _postParams['eh2'] == 'on';
+  }
+
+  if (eh0) {
+    webServer.exceptionHandler = exceptionHandlerOnServer;
+  }
+  if (eh1) {
+    p1.exceptionHandler = exceptionHandlerOnPipe1;
+  }
+  if (eh2) {
+    p2.exceptionHandler = exceptionHandlerOnPipe2;
+  }
 
   mainLog.fine('[${req.id}] setting exception handlers');
   final resp = ResponseBuffered(ContentType.html)..write('''
-<html>
-<head></head>
+<html lang="en">
+<head>
+  <title>Setup</title>
+</head>
 <body>
 <h1>System setup: Exception handlers</h1>
 
@@ -677,10 +691,8 @@ Future<Response> handleJson(Request req) async {
 /// raised inside their context).
 
 Future<Response> exceptionHandlerOnServer(
-    Request req, Object exception, StackTrace st) {
-  assert(req != null);
-  return _exceptionHandler(req, exception, st, 'server');
-}
+        Request req, Object exception, StackTrace? st) =>
+    _exceptionHandler(req, exception, st, 'server');
 
 //----------------------------------------------------------------
 /// Exception handler for pipeline1.
@@ -688,9 +700,9 @@ Future<Response> exceptionHandlerOnServer(
 /// This exception handler is attached to the first pipeline.
 
 Future<Response> exceptionHandlerOnPipe1(
-    Request req, Object exception, StackTrace st) async {
+    Request req, Object exception, StackTrace? st) async {
   if (exception is StateError) {
-    return null;
+    throw NoResponseProduced();
   }
   return _exceptionHandler(req, exception, st, 'pipeline1');
 }
@@ -701,9 +713,9 @@ Future<Response> exceptionHandlerOnPipe1(
 /// This exception handler is attached to the second pipeline.
 
 Future<Response> exceptionHandlerOnPipe2(
-    Request req, Object exception, StackTrace st) async {
+    Request req, Object exception, StackTrace? st) async {
   if (exception is StateError) {
-    return null;
+    throw NoResponseProduced();
   }
   return _exceptionHandler(req, exception, st, 'pipeline2');
 }
@@ -712,7 +724,7 @@ Future<Response> exceptionHandlerOnPipe2(
 // Common method used to implement the above exception handlers.
 
 Future<Response> _exceptionHandler(
-    Request req, Object exception, StackTrace st, String who) async {
+    Request req, Object exception, StackTrace? st, String who) async {
   // Create a response
 
   final resp = ResponseBuffered(ContentType.html);
@@ -730,7 +742,7 @@ Future<Response> _exceptionHandler(
   // The body of the response
 
   resp.write('''
-<html>
+<html lang="en">
 <head>
   <title>Exception</title>
 </head>
@@ -839,8 +851,9 @@ Future<Response> _handleLogout(Request req) async {
 <h1>Session: logout</h1>
 ''');
 
-  if (req.session != null) {
-    await req.session
+  final _session = req.session;
+  if (_session != null) {
+    await _session
         .terminate(); // terminate the session (also removes the timer)
     req.session = null; // clear the session so it is no longer preserved
 
@@ -869,8 +882,6 @@ Future<Response> _handleSessionInfoPage(Request req) async {
 
   final requestSession = req.session;
   if (requestSession is LoginSession) {
-    assert(requestSession != null);
-
     final duration = DateTime.now().difference(requestSession.when);
 
     if (requestSession.name != null) {
@@ -952,21 +963,23 @@ ${homeButton(req)}
 
 Future<Response> _handleSessionSetName(Request req) async {
   final resp = ResponseBuffered(ContentType.html)..write('''
-<html>
-<head></head>
+<html lang="en">
+<head>
+  <title>Session: name set</title>
+</head>
 <body>
 <h1>Session: name set</h1>
 ''');
 
   final requestSession = req.session;
   if (requestSession is LoginSession) {
-    assert(requestSession != null);
-    requestSession.name = req.postParams['name'];
+    final newName = req.postParams!['name'];
 
-    if (requestSession.name.isNotEmpty) {
-      resp.write(
-          '<p>Your name has been set to "${HEsc.text(requestSession.name)}".</p>');
+    if (newName.isNotEmpty) {
+      requestSession.name = newName;
+      resp.write('<p>Your name has been set to "${HEsc.text(newName)}".</p>');
     } else {
+      requestSession.name = '';
       resp.write('<p>Your name has been cleared.</p>');
     }
     resp.write(

@@ -36,9 +36,13 @@ Future<Response> debugHandler(Request req) async {
   }
 
   hasParams = false;
-  if (req.postParams != null) {
-    for (var key in req.postParams.keys) {
-      for (var value in req.postParams.values(key, mode: ParamsMode.raw)) {
+
+  final pParams = req.postParams;
+  if (pParams != null) {
+    // POST parameters exist
+
+    for (var key in pParams.keys) {
+      for (var value in pParams.values(key, mode: ParamsMode.raw)) {
         buf.write('POST parameter: $key = "$value"\n');
         hasParams = true;
       }

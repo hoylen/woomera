@@ -84,6 +84,15 @@ class Server {
   }
 
   //================================================================
+  // Constants
+
+  /// Minimum allowed TCP/IP port number to listen on.
+  static const _minPort = 0;
+
+  /// Maximum allowed TCP/IP port number to listen on.
+  static const _maxPort = 65535;
+
+  //================================================================
   /// Maximum size of a URL path and query before it is rejected.
   ///
   /// Although HTTP (RFC 2616) does not specify any length limits for URLs,
@@ -166,8 +175,12 @@ class Server {
 
   /// Port number for the server.
   ///
-  /// Set this to the port the server will listen on. The default value of null
-  /// means uses 80 for HTTP and 443 for HTTPS. HTTPS or HTTP is used depending
+  /// Set this to the port the server will listen on.
+  ///
+  /// If this value is not explicitly set, or is set to an value that is not
+  /// valid for a TCP/IP port (i.e. outside of the range 0 to 65353), [run]
+  /// change it to the default port 80 for HTTP and port 443 for HTTPS,
+  /// depending
   /// on if [run] is invoked with a private key and certificate, or not.
   ///
   /// Since port numbers below 1024 are reserved, normally the port will have to
@@ -175,7 +188,7 @@ class Server {
   /// a "permission denied" [SocketException] will be thrown when trying to
   /// start the server and it is not running with with root privileges.
 
-  int bindPort;
+  int bindPort = -1; // invalid initial value will force [run] to use 80 or 443
 
   /// The handler pipelines.
   ///
@@ -226,7 +239,7 @@ class Server {
   /// This server exception handler can also be set using a
   /// `@Handles.exceptions()` annotation.
 
-  ExceptionHandler exceptionHandler;
+  ExceptionHandler? exceptionHandler;
 
   /// Server exception/error handler (low-level)
   ///
@@ -244,8 +257,7 @@ class Server {
   /// This low-level exception handler is recommended if the application
   /// uses a custom _requestCreator_ and it may raise exceptions.
   ///
-  /// If this exception handler is not set (i.e. null) then a default low-level
-  /// exception handler is used. That default exception handler just produces
+  /// The default is a built-in low-level exception handler that just produces
   /// a "text/plain" HTTP response with a one line message. That is functional,
   /// but not something a polished application would want its users to see.
   /// Therefore, an application should provide a low-level and/or a high-level
@@ -257,9 +269,22 @@ class Server {
   /// This server raw exception handler can also be set using a
   /// `@Handles.rawExceptions()` annotation.
 
-  ExceptionHandlerRaw exceptionHandlerRaw;
+  ExceptionHandlerRaw exceptionHandlerRaw = _defaultRawExceptionHandler;
 
-  bool _isSecure;
+  /// Indicates if a custom raw exception handler has been set.
+  ///
+  /// True if [exceptionHandlerRaw] has been set to an custom function.
+  /// False if it is the default function implemented by the library.
+
+  bool get isCustomRawExceptionHandler =>
+      exceptionHandlerRaw == _defaultRawExceptionHandler;
+
+  /// Indicates if the server is serving HTTP or HTTPS.
+  ///
+  /// This is only correct when [run] being executed. The value is undefined
+  /// before and after the server is running.
+
+  bool _isSecure = false;
 
   /// Function used to create a [Request] object for each HTTP request.
   ///
@@ -269,14 +294,15 @@ class Server {
   /// perform custom cleanup at the end of request processing (by overriding the
   /// the [Request.release] method).
   ///
-  /// The default is null, which means the server will create a normal [Request]
-  /// object.
+  /// If this is not set by the application, the default simply creates
+  /// a [Request] object.
 
-  RequestCreator requestCreator;
+  RequestCreator requestCreator = _defaultRequestCreator;
 
   // Set when the server is running (i.e. is listening for requests).
+  // Null if the server is not running.
 
-  HttpServer _svr;
+  HttpServer? _svr;
 
   //================================================================
   // Getters and setters
@@ -301,19 +327,9 @@ class Server {
       pipelines.firstWhere((p) => p.name == name);
 
   //----------------------------------------------------------------
-  /// Starts the Web server.
+  /// Starts the Web server with HTTP.
   ///
-  /// By default a HTTP server is started.
-  ///
-  ///     s.run();
-  ///
-  /// To create a secure HTTPS server, initialize the [SecureSocket] database
-  /// and invoke this method with [privateKeyFilename], [certificateName] and
-  /// [certChainFilename].
-  ///
-  ///     var certDb = Platform.script.resolve('pkcert').toFilePath();
-  ///     SecureSocket.initialize(databse: certDb, password: "p@ssw0rd");
-  ///     s.run(privateKeyFilename: "a.pvt", certificateName: "mycert", certChainFilename: "a.crt");
+  /// For a secure HTTPS server, use [runTLS] instead.
   ///
   /// This method will return a Future whose value is the total number of
   /// requests processed by the server. This value is only available if/when the
@@ -322,46 +338,98 @@ class Server {
   ///
   /// Throws a [StateError] if the server is already running.
 
-  Future<int> run(
-      {String privateKeyFilename,
-      String certificateName,
-      String certChainFilename}) async {
+  Future<int> run() async {
     if (_svr != null) {
       throw StateError('server already running');
     }
 
     // Start the server
 
-    if (certificateName == null || certificateName.isEmpty) {
-      // Normal HTTP bind
-      _isSecure = false;
-      _svr = await HttpServer.bind(bindAddress, bindPort ?? 80, v6Only: v6Only);
-    } else {
-      // Secure HTTPS bind
-      //
-      // Note: this uses the TLS libraries in Dart 1.13 or later.
-      // https://dart-lang.github.io/server/tls-ssl.html
-      _isSecure = true;
-      final securityContext = SecurityContext()
-        ..useCertificateChain(certChainFilename)
-        ..usePrivateKey(privateKeyFilename);
-      _svr = await HttpServer.bindSecure(
-          bindAddress, bindPort ?? 443, securityContext,
-          v6Only: v6Only, backlog: 5);
+    // Normal HTTP bind
+
+    if (bindPort < _minPort || _maxPort < bindPort) {
+      bindPort = 80; // default HTTP port
     }
+
+    final httpServer =
+        await HttpServer.bind(bindAddress, bindPort, v6Only: v6Only);
+
+    return _run(httpServer, isSecure: false);
+  }
+
+  //----------------------------------------------------------------
+  /// Starts the Web server with HTTPS.
+  ///
+  /// For an insecure HTTP server, use [run] instead.
+  ///
+  /// This is a secure HTTPS server. First initialize the [SecureSocket]
+  /// database
+  /// and invoke this method with [privateKeyFilename], [certificateName] and
+  /// [certChainFilename].
+  ///
+  ///     var certDb = Platform.script.resolve('pkCert').toFilePath();
+  ///     SecureSocket.initialize(database: certDb, password: "p@ssw0rd");
+  ///     s.run(privateKeyFilename: "a.pvt",
+  ///           certificateName: "myCert",
+  ///           certChainFilename: "a.crt");
+  ///
+  /// This method will return a Future whose value is the total number of
+  /// requests processed by the server. This value is only available if/when the
+  /// server is cleanly stopped. But normally a server listens for requests
+  /// "forever" and never stops.
+  ///
+  /// Throws a [StateError] if the server is already running.
+
+  Future<int> runTLS(
+      {required String privateKeyFilename,
+      required String certificateName,
+      required String certChainFilename}) async {
+    if (_svr != null) {
+      throw StateError('server already running');
+    }
+
+    // Start the server
+
+    // Secure HTTPS bind
+    //
+    // Note: this uses the TLS libraries in Dart 1.13 or later.
+    // https://dart-lang.github.io/server/tls-ssl.html
+    _isSecure = true;
+
+    if (bindPort < _minPort || _maxPort < bindPort) {
+      bindPort = 443; // default HTTPS port
+    }
+
+    final securityContext = SecurityContext()
+      ..useCertificateChain(certChainFilename)
+      ..usePrivateKey(privateKeyFilename);
+
+    final httpServer = await HttpServer.bindSecure(
+        bindAddress, bindPort, securityContext,
+        v6Only: v6Only, backlog: 5);
+
+    return _run(httpServer, isSecure: true);
+  }
+
+  //----------------------------------------------------------------
+  /// Common processing for [run] and [runTLS] after the HttpServer is created.
+
+  Future<int> _run(HttpServer httpServer, {required bool isSecure}) async {
+    _isSecure = isSecure;
+    _svr = httpServer;
 
     // Log that it started
 
-    final buf = StringBuffer()
-      ..write((_isSecure) ? 'https://' : 'http://')
-      ..write((_svr.address.isLoopback) ? 'localhost' : _svr.address.host);
-    if (_svr.port != null) {
-      buf.write(':${_svr.port}');
-    }
-    final url = buf.toString();
+    final scheme = _isSecure ? 'https' : 'http';
+    final host =
+        httpServer.address.isLoopback ? 'localhost' : httpServer.address.host;
+    final p = httpServer.port;
+    final optionalPort =
+        (_isSecure && p == 443) || (!_isSecure && p == 80) ? '' : ':$p';
 
-    _logServer.fine(
-        '${(_isSecure) ? 'HTTPS' : 'HTTP'} server started: ${_svr.address} port ${_svr.port} <$url>');
+    final url = '$scheme://$host$optionalPort';
+
+    _logServer.fine('${scheme.toUpperCase()} server started: <$url>');
 
     // Listen for and process HTTP requests
 
@@ -370,10 +438,10 @@ class Server {
     final requestLoopCompleter = Completer<int>();
 
     // ignore: UNUSED_LOCAL_VARIABLE
-    final doNotWaitOnThis = runZoned(() async {
+    final doNotWaitOnThis = runZonedGuarded(() async {
       // The request processing loop
 
-      await for (var request in _svr) {
+      await for (var request in httpServer) {
         try {
           // Note: although _handleRequest returns a Future that completes when
           // the request is fully processed, this does NOT wait for it to
@@ -382,7 +450,18 @@ class Server {
           //_logServer.info("HTTP Request: [$id${requestNo + 1}] starting handler");
 
           final doNotWait = _handleRawRequest(request, '$id${++requestNo}');
-          assert(doNotWait != null);
+
+          // The Future returned by [_handleRawRequest] is deliberately not
+          // awaited for, so the server can process multiple HTTP requests in
+          // parallel.
+          //
+          // To avoid having a dependency on the pedantic package, and to
+          // silence various warnings, the Future is assigned to a variable
+          // and the code below "uses" it.
+
+          if (doNotWait is Object) {
+            // This should silence warnings about "doNotWait" is not used.
+          }
 
           //_logServer.info("HTTP Request: [$id$requestNo] handler started");
 
@@ -393,7 +472,7 @@ class Server {
       }
 
       requestLoopCompleter.complete(0);
-    }, onError: (Object e, StackTrace s) {
+    }, (Object e, StackTrace s) {
       // The event processing code uses async try/catch, so something very wrong
       // must have happened for an exception to have been thrown outside that.
       _logServer.shout('uncaught onError (${e.runtimeType}): $e', e, s);
@@ -415,7 +494,6 @@ class Server {
     _logServer.fine(
         '${(_isSecure) ? 'HTTPS' : 'HTTP'} server stopped: $requestNo requests');
     _svr = null;
-    _isSecure = null;
 
     return requestNo;
   }
@@ -447,9 +525,9 @@ class Server {
       }
     }
 
-    if (_svr != null) {
-      // Stop the HTTP server
-      await _svr.close(force: force);
+    final s = _svr;
+    if (s != null) {
+      await s.close(force: force); // stop the HttpServer
     }
 
     _logServer.finer('stop: closed');
@@ -461,24 +539,13 @@ class Server {
   Future _handleRawRequest(HttpRequest httpRequest, String requestId) async {
     try {
       // Create the context representing the HTTP request (i.e. a Woomera
-      // Request object) using the application supplied [requestCreator]
-      // function or simply by creating a new [Request].
+      // Request object) using the [requestCreator] function (which could be
+      // a custom function provided by the application, or the built-in
+      // default [_defaultRequestCreator] function, which simply calls the
+      // constructor for a [Request] object.
 
-      Request req;
-
-      if (requestCreator != null) {
-        // Application uses a custom request: invoke it for the request object
-        _logRequest.finest('_handleRequest: creating custom request object');
-
-        final x = requestCreator(httpRequest, requestId, this);
-        req = (x is Request) ? x : await x; // await if it is a Future
-      } else {
-        // No custom request: create a [Request] object
-        _logRequest.finest('_handleRequest: creating standard request object');
-
-        req = Request(httpRequest, requestId, this);
-      }
-      assert(req != null);
+      final x = requestCreator(httpRequest, requestId, this);
+      final req = (x is Request) ? x : await x; // await if it is a Future
 
       // Process the request using the Request object (or a subtype of it).
       // Note: _processRequest will always invoke release on the Request.
@@ -511,17 +578,12 @@ class Server {
       } else {
         // In this situation there is no Woomera [Request], so any high-level
         // exceptionHandler provided by the application cannot be invoked to
-        // generate an error page. So use the low-level exception handler,
-        // if there is one. Otherwise, use the default.
+        // generate an error page. So use the low-level exception handler to
+        // produce the response.
+        //
+        // Note: the above raw handler is expected to close the response
 
-        if (exceptionHandlerRaw != null) {
-          // Application has provided a low-level exception handler: use it
-          await exceptionHandlerRaw(httpRequest, requestId, e, s);
-        } else {
-          await _defaultRawExceptionHandler(httpRequest, requestId, e, s);
-        }
-
-        // Note: the above raw handlers are expected to close the response
+        await exceptionHandlerRaw(httpRequest, requestId, e, s);
       }
     }
 
@@ -555,7 +617,7 @@ class Server {
   Future _handleRequestWithContext(Request req) async {
     var methodFound = false;
     var handlerFound = false;
-    Response response;
+    Response? response;
 
     final pathSegments = req._pathSegments; // can be null
 
@@ -572,7 +634,7 @@ class Server {
 
       for (var pipe in pipelines) {
         final rules = pipe.rules(req.method);
-        if (rules == null) {
+        if (rules.isEmpty) {
           // This pipe does not support the method
           continue; // skip to next pipe in the pipeline
         }
@@ -607,16 +669,17 @@ class Server {
 
               assert(response == null);
 
+              // ignore: omit_local_variable_types
               Object e = initialObjectThrown; // not necessarily an Exception
               var st = initialStackTrace;
 
               // Try the pipe's exception handler
 
-              if (pipe.exceptionHandler != null) {
+              final _pipeEH = pipe.exceptionHandler;
+              if (_pipeEH != null) {
                 // This pipe has an exception handler: pass exception to it
                 try {
-                  response = await _invokeExceptionHandler(
-                      pipe.exceptionHandler, req, e, st);
+                  response = await _invokeExceptionHandler(_pipeEH, req, e, st);
                 } catch (pipeEx, pipeSt) {
                   // The pipe exception handler threw an exception
                   e = ExceptionHandlerException(e, pipeEx);
@@ -631,12 +694,12 @@ class Server {
 
                 // Try the server's exception handler
 
-                if (exceptionHandler != null) {
+                final _eh = exceptionHandler;
+                if (_eh != null) {
                   // The server has an exception handler: pass exception to it
                   try {
                     //response = await this.exceptionHandler(req, e, st);
-                    response = await _invokeExceptionHandler(
-                        exceptionHandler, req, e, st);
+                    response = await _invokeExceptionHandler(_eh, req, e, st);
                   } catch (es) {
                     e = ExceptionHandlerException(e, es);
                   }
@@ -705,28 +768,23 @@ class Server {
 
         // Try reporting this through the server's exception handler
 
-        if (exceptionHandler != null) {
+        final _eh = exceptionHandler;
+        if (_eh != null) {
           try {
-            response = await exceptionHandler(req, e, null);
+            response = await _eh(req, e, null);
           } catch (es) {
             e = ExceptionHandlerException(e, es);
           }
         }
 
-        if (response == null) {
-          // Server exception handler returned null, or it threw an exception
-          // Resort to using the internal default exception handler.
-          response = await _defaultExceptionHandler(req, e, null);
-          assert(response != null);
-        }
+        // If the server exception handler returned null, or it threw exception,
+        // Resort to using the internal default exception handler.
+        response ??= await _defaultExceptionHandler(req, e);
       }
     } else {
       // Path segments raised FormatException: malformed request
-      response =
-          await _defaultExceptionHandler(req, MalformedPathException(), null);
+      response = await _defaultExceptionHandler(req, MalformedPathException());
     }
-
-    assert(response != null);
 
     // Finish the HTTP response from the "response" by invoking its
     // application-visible finish method.
@@ -750,6 +808,16 @@ class Server {
   //resp.encoding = ContentType.UTF8;
 
   //----------------------------------------------------------------
+  /// Default request creator.
+  ///
+  /// This is used to create a [Request] if the application did not supply a
+  /// request creator function to use.
+
+  static FutureOr<Request> _defaultRequestCreator(
+          HttpRequest request, String id, Server server) =>
+      Request(request, id, server);
+
+  //----------------------------------------------------------------
   // Internal default exception handler.
   //
   // This is the exception handler that is invoked if the application did not
@@ -757,7 +825,8 @@ class Server {
   // handler threw an exception. It generates a "last resort" error page.
 
   static Future<Response> _defaultExceptionHandler(
-      Request req, Object thrownObject, StackTrace st) async {
+      Request req, Object thrownObject,
+      [StackTrace? st]) async {
     var status = HttpStatus.internalServerError;
     String title;
     String message;
@@ -827,7 +896,7 @@ class Server {
   //----------------------------------------------------------------
   /// Default internal low-level exception handler.
 
-  Future _defaultRawExceptionHandler(
+  static Future<void> _defaultRawExceptionHandler(
       HttpRequest httpRequest, String requestId, Object e, StackTrace s) async {
     int status;
     String message;
@@ -868,7 +937,7 @@ class Server {
     // Set the server for the request. This is done here, so a simulated
     // request doesn't need to have its server set when it is constructed.
 
-    req._serverSet(this);
+    req._server = this;
 
     // Get the server to process the request
 
@@ -880,8 +949,10 @@ class Server {
 
     final result = req._simulatedResponse;
 
-    // Clear server in the simulated request, so it can be set in the future
-    req._serverSet(null); // must do this AFTER calling req._simulatedResponse.
+    // Once the simuation has finished, the [req._server] becomes meaningless.
+    // Previously, this code reset it back to null. But with null safty,
+    // it cannot be null, so the value of the request's [_server] remains set.
+    // Just don't use it outside of a simulated run.
 
     return result;
   }
@@ -926,7 +997,7 @@ class Server {
   /// base path to "/".
 
   set basePath(String value) {
-    if (value == null || value.isEmpty) {
+    if (value.isEmpty) {
       _basePath = '/';
     } else if (value.startsWith('/')) {
       if (value == '/' || !value.endsWith('/')) {
@@ -952,7 +1023,7 @@ class Server {
   /// If the external path contains query parameters, they are removed.
 
   String internalPath(String externalPath) {
-    if (externalPath != null && externalPath.startsWith(_basePath)) {
+    if (externalPath.startsWith(_basePath)) {
       // Strip off any query parameters
       final q = externalPath.indexOf('?');
       final noQueryParams =
@@ -967,16 +1038,6 @@ class Server {
 
   //================================================================
   // Session management
-
-  /// The default expiry time for sessions in this server.
-  ///
-  /// The [Session._refresh] method refreshes the session to expire in
-  /// this amount of time, if no explicit value was passed to it. If this value
-  /// is not set (null), an internal default expiry time is used.
-  ///
-  /// When a [Server] is created this is initially not set.
-
-  Duration sessionExpiry;
 
   /// The name of the cookie used to track sessions.
   ///
@@ -1047,5 +1108,5 @@ class Server {
   /// Returns null if the session does not exist. This would be the case if
   /// a session with that id never existed, was terminated or timed-out.
 
-  Session _sessionFind(String id) => _allSessions[id];
+  Session? _sessionFind(String id) => _allSessions[id];
 }

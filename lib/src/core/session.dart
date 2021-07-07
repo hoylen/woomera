@@ -165,16 +165,8 @@ class Session {
 
   Session(Server server, Duration timeout)
       : _server = server,
-        _created = DateTime.now() {
-    if (server == null) {
-      throw ArgumentError.notNull('server');
-    }
-    if (timeout == null) {
-      throw ArgumentError.notNull('timeout');
-    }
-
-    _timeout = timeout;
-
+        _created = DateTime.now(),
+        _timeout = timeout {
     // Set up expiry timer to expire this session if it
     // becomes inactive (i.e. is not used after some time).
 
@@ -193,7 +185,7 @@ class Session {
 
   /// UUID source used for the session identifiers.
 
-  static final Uuid _sessionIdUuid = Uuid();
+  static const _sessionIdUuid = Uuid();
 
   /// Generates a new identifier for the session.
   ///
@@ -225,11 +217,11 @@ class Session {
 
   final DateTime _created; // When the session was created
 
-  DateTime _expires; // When the session is expected to expire
+  late DateTime _expires; // When the session is expected to expire
 
   /// Timer that expires the session after inactivity.
 
-  Timer _expiryTimer;
+  Timer? _expiryTimer;
 
   /// Timer duration. For resetting the timer when a HTTP request is received
   /// and the session is restored to it.
@@ -276,9 +268,8 @@ class Session {
   /// expire otherwise the server could run out of memory.
 
   set timeout(Duration newTimeout) {
-    if (newTimeout == null) {
-      throw ArgumentError.notNull('timeout');
-    }
+    ArgumentError.checkNotNull(newTimeout);
+
     _timeout = newTimeout;
     _refresh();
   }
@@ -298,8 +289,9 @@ class Session {
   /// before the request handler returns.
 
   Future terminate() async {
-    if (_expiryTimer != null) {
-      _expiryTimer.cancel();
+    final _existingTimer = _expiryTimer;
+    if (_existingTimer != null) {
+      _existingTimer.cancel();
       _expiryTimer = null;
     }
     await _terminate(SessionTermination.terminated);
@@ -311,20 +303,19 @@ class Session {
   /// The session is set to expire in [_timeout].
 
   void _refresh() {
-    if (_expiryTimer != null) {
+    final _existingTimer = _expiryTimer;
+    if (_existingTimer != null) {
       // Cancel the old timer. This always happens except when this method is
       // invoked for the very first time by the session constructor.
-      _expiryTimer.cancel();
+      _existingTimer.cancel();
       _expiryTimer = null;
     }
 
     // Create a new timer
 
-    if (_timeout != null) {
-      _expiryTimer =
-          Timer(_timeout, () => _terminate(SessionTermination.timeout));
-      _expires = DateTime.now().add(_timeout);
-    }
+    _expiryTimer =
+        Timer(_timeout, () => _terminate(SessionTermination.timeout));
+    _expires = DateTime.now().add(_timeout);
   }
 
   //----------------------------------------------------------------

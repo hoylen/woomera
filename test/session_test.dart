@@ -37,7 +37,7 @@ const Duration defaultSessionTimeout = const Duration(minutes: 1);
 // Internal
 
 /// The Web server
-Server webServer;
+late final Server webServer;
 
 Logger _log = Logger('main');
 
@@ -111,7 +111,7 @@ Future<Response> _sessionStart(Request req) async {
   final resp = ResponseBuffered(ContentType.html)..write(_htmlHeader);
 
   if (req.session == null) {
-    // Create a new sesson object and associate it with the user's browser.
+    // Create a new session object and associate it with the user's browser.
     // This is done by setting the `req.session` member on the Request
     // even though the actual mechanism of maintaining the session is done
     // by the HTTP response (either with cookies or URL rewriting of links
@@ -139,9 +139,10 @@ Future<Response> _sessionStart(Request req) async {
 Future<Response> _sessionStop(Request req) async {
   final resp = ResponseBuffered(ContentType.html)..write(_htmlHeader);
 
-  if (req.session != null) {
+  final _session = req.session;
+  if (_session != null) {
     // Terminate the session
-    await req.session.terminate();
+    await _session.terminate();
     req.session = null;
     resp.write('<p>Done</p>');
   } else {

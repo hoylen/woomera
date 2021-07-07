@@ -247,11 +247,9 @@ class Handles {
   /// the order in which the rule is added to the pipeline.
 
   const Handles.request(this.httpMethod, this.pattern,
-      {String pipeline, this.priority = 0})
+      {String? pipeline, int? priority})
       : pipeline = pipeline ?? ServerPipeline.defaultName,
-        assert(httpMethod != null),
-        assert(pattern != null),
-        assert(priority != null);
+        priority = priority ?? 0;
 
   //----------------
   /// Constructor with the HTTP GET method.
@@ -260,9 +258,10 @@ class Handles {
   /// The optional [pipeline] name identifies the pipeline the rule is for, and
   /// [priority] controls the order in which the rule is added to the pipeline.
 
-  const Handles.get(this.pattern,
-      {this.priority = 0, this.pipeline = ServerPipeline.defaultName})
-      : httpMethod = 'GET';
+  const Handles.get(this.pattern, {String? pipeline, int? priority})
+      : httpMethod = 'GET',
+        pipeline = pipeline ?? ServerPipeline.defaultName,
+        priority = priority ?? 0;
 
   //----------------
   /// Constructor with the HTTP POST method.
@@ -271,37 +270,42 @@ class Handles {
   /// The optional [pipeline] name identifies the pipeline the rule is for, and
   /// [priority] controls the order in which the rule is added to the pipeline.
 
-  const Handles.post(this.pattern,
-      {this.priority = 0, this.pipeline = ServerPipeline.defaultName})
-      : httpMethod = 'POST';
+  const Handles.post(this.pattern, {String? pipeline, int? priority})
+      : httpMethod = 'POST',
+        pipeline = pipeline ?? ServerPipeline.defaultName,
+        priority = priority ?? 0;
 
   //----------------
   /// Constructor with the HTTP PUT method.
 
-  const Handles.put(this.pattern,
-      {this.priority = 0, this.pipeline = ServerPipeline.defaultName})
-      : httpMethod = 'PUT';
+  const Handles.put(this.pattern, {String? pipeline, int? priority})
+      : httpMethod = 'PUT',
+        pipeline = pipeline ?? ServerPipeline.defaultName,
+        priority = priority ?? 0;
 
   //----------------
   /// Constructor with the HTTP PATCH method.
 
-  const Handles.patch(this.pattern,
-      {this.priority = 0, this.pipeline = ServerPipeline.defaultName})
-      : httpMethod = 'PATCH';
+  const Handles.patch(this.pattern, {String? pipeline, int? priority})
+      : httpMethod = 'PATCH',
+        pipeline = pipeline ?? ServerPipeline.defaultName,
+        priority = priority ?? 0;
 
   //----------------
   /// Constructor with the HTTP DELETE method.
 
-  const Handles.delete(this.pattern,
-      {this.priority = 0, this.pipeline = ServerPipeline.defaultName})
-      : httpMethod = 'DELETE';
+  const Handles.delete(this.pattern, {String? pipeline, int? priority})
+      : httpMethod = 'DELETE',
+        pipeline = pipeline ?? ServerPipeline.defaultName,
+        priority = priority ?? 0;
 
   //----------------
   /// Constructor with the HTTP HEAD method.
 
-  const Handles.head(this.pattern,
-      {this.priority = 0, this.pipeline = ServerPipeline.defaultName})
-      : httpMethod = 'HEAD';
+  const Handles.head(this.pattern, {String? pipeline, int? priority})
+      : httpMethod = 'HEAD',
+        pipeline = pipeline ?? ServerPipeline.defaultName,
+        priority = priority ?? 0;
 
   //----------------------------------------------------------------
   /// Constructor for pipeline exception handler annotations.
@@ -315,7 +319,7 @@ class Handles {
   /// have a `@Handles.exceptions()` annotation before annotating additional
   /// exception handlers with this pipeline exception annotation.
 
-  const Handles.pipelineExceptions({String pipeline})
+  const Handles.pipelineExceptions({String? pipeline})
       : pipeline = pipeline ?? ServerPipeline.defaultName,
         httpMethod = null,
         pattern = null,
@@ -386,7 +390,7 @@ class Handles {
   /// If set, this handler wrapper is always invoked -- even if the annotated
   /// object is already a _RequestHandler_.
 
-  static HandlerWrapper handlerWrapper;
+  static HandlerWrapper? handlerWrapper;
 
   //================================================================
   // Members
@@ -397,7 +401,7 @@ class Handles {
   /// handler. Null means this annotates a server exception handler or
   /// server raw exception handler.
 
-  final String pipeline;
+  final String? pipeline;
 
   /// The HTTP method for the server rule.
   ///
@@ -408,7 +412,7 @@ class Handles {
   /// an exception handler, server exception handler or server raw exception
   /// handler.
 
-  final String httpMethod;
+  final String? httpMethod;
 
   /// The priority for the rule within the pipeline.
   ///
@@ -428,7 +432,7 @@ class Handles {
   /// this value is set to either [_serverHighLevel] or [_serverLowLevel],
   /// respectively.
 
-  final int priority;
+  final int? priority;
 
   /// The string representation of the pattern for the server rule.
   ///
@@ -440,7 +444,7 @@ class Handles {
   /// an exception handler, server exception handler or server raw exception
   /// handler.
 
-  final String pattern;
+  final String? pattern;
 
   //================================================================
   // Methods

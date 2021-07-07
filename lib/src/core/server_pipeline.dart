@@ -33,7 +33,7 @@ class ServerPipeline {
   /// To create a pipeline and populate the rules from annotations, use
   /// `serverPipelineFromAnnotations` instead.
 
-  ServerPipeline([this.name]);
+  ServerPipeline([this.name = defaultName]);
 
   //================================================================
   // Constants
@@ -51,9 +51,6 @@ class ServerPipeline {
   // Members
 
   /// Name of the pipeline.
-  ///
-  /// This is null if the pipeline was not initialized with a name. That is,
-  /// if it was created without using automatic registration for its rules.
 
   final String name;
 
@@ -66,7 +63,7 @@ class ServerPipeline {
   /// `@Handles.exception()` annotation, providing it the name of the
   /// pipeline if it is not the default pipeline.
 
-  ExceptionHandler exceptionHandler;
+  ExceptionHandler? exceptionHandler;
 
   // The rules that have been registered with the pipeline
 
@@ -130,38 +127,52 @@ class ServerPipeline {
   }
 
   //----------------------------------------------------------------
-  /// Registration of a request handler for any HTTP method.
+  /// Register a request handler for any HTTP method with a pattern string.
   ///
   /// Register a request [handler] to match a HTTP [method] and pattern.
-  /// The pattern can be provided as a string [patternStr] or a [Pattern]
-  /// object. If the [pattern] object is provided, the _patternStr_ is ignored.
   ///
   /// Convenience methods for common HTTP methods exist: [get], [post], [put],
   /// [patch], [delete]. They simply invoke this method with corresponding
   /// values for the HTTP method.
   ///
-  /// Throws an [ArgumentError] if the values are invalid (in particular, if
+  /// This method is a convenience method that just converts the string
+  /// representation of a pattern into a _Pattern_ and then passes that object
+  /// into [registerPattern].
+  ///
+  /// Throws an [ArgumentError] if the values are invalid (i.e. if
   /// the pattern string is not a valid pattern).
+  ///
+  /// Throws a [DuplicateRule] if there is a conflict with an existing rule.
+  /// A conflict is if [Pattern.matchesSamePaths] is true for the two patterns.
+  ///
+  /// **Null-safety breaking change:** this method used to have a named
+  /// parameter to use a _Pattern_ instead of the string representation of a
+  /// pattern. To register a rule using a [Pattern] object, use the
+  /// [registerPattern] method instead.
 
-  void register(String method, String patternStr, RequestHandler handler,
-      {Pattern pattern}) {
-    if (method == null) {
-      throw ArgumentError.notNull('method');
-    }
+  void register(String method, String pattern, RequestHandler handler) {
+    final patternObj = Pattern(pattern); // can throw an ArgumentError
+
+    registerPattern(method, patternObj, handler);
+  }
+
+  //----------------------------------------------------------------
+  /// Register a request handler for any HTTP method with a Pattern.
+  ///
+  /// This method is used if the caller already has a [Pattern] object.
+  /// Usually, an application will have the pattern as a _String_, in which
+  /// case it can use the [register] method instead, which simply converts that
+  /// string into a _Pattern_ object and then invokes this method.
+  ///
+  /// Throws a [DuplicateRule] if there is a conflict with an existing rule.
+  /// A conflict is if [Pattern.matchesSamePaths] is true for the two patterns.
+
+  void registerPattern(String method, Pattern pattern, RequestHandler handler) {
     if (method.isEmpty) {
       throw ArgumentError.value(method, 'method', 'Empty string');
     }
-    if (handler == null) {
-      throw ArgumentError.notNull('handler');
-    }
 
-    if (pattern == null && patternStr == null) {
-      throw ArgumentError.notNull('patternStr');
-    }
-
-    final patternObj = pattern ?? Pattern(patternStr); // throws ArgumentError
-
-    _logServer.config('register: $method $patternObj');
+    _logServer.config('register: $method $pattern');
 
     // Get the list of rules for the HTTP method
 
@@ -183,18 +194,20 @@ class ServerPipeline {
     // not match one and match the other. So one of them is redundant. If it
     // was allowed, one of them will never get used.
 
-    final newRule = ServerRule(patternObj.toString(), handler);
-    final existingRule = methodRules.firstWhere(
-        (sr) => sr.pattern.matchesSamePaths(newRule.pattern),
-        orElse: () => null);
+    final newRule = ServerRule(pattern.toString(), handler);
 
-    if (existingRule != null) {
-      throw DuplicateRule(method, patternObj, handler, existingRule.handler);
+    try {
+      final existingRule = methodRules
+          .firstWhere((sr) => sr.pattern.matchesSamePaths(newRule.pattern));
+
+      // A rule with the "same" pattern already exists: cannot add it
+      throw DuplicateRule(method, pattern, handler, existingRule.handler);
+
+      // ignore: avoid_catching_errors
+    } on StateError {
+      // A rule with the "same" pattern does not exist: success: record the rule
+      methodRules.add(newRule);
     }
-
-    // Record the rule
-
-    methodRules.add(newRule);
   }
 
   //================================================================
@@ -209,6 +222,8 @@ class ServerPipeline {
 
   //----------------------------------------------------------------
   /// Returns the rules in the pipeline for a given [method].
+  ///
+  /// Returns the empty list if there are no rules for that method.
 
-  List<ServerRule> rules(String method) => _rulesByMethod[method];
+  List<ServerRule> rules(String method) => _rulesByMethod[method] ?? [];
 }

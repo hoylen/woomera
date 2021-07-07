@@ -114,13 +114,14 @@ class TestException implements Exception {
 /// This exception handler is attached to the first pipeline.
 
 Future<Response> exceptionHandlerOnPipe1(
-    Request req, Object exception, StackTrace st) async {
+    Request req, Object exception, StackTrace? st) async {
   // Simulate the absence of an exception handler, or what happens if this
   // exception handler doesn't handle the exception.
 
   if (exception is TestException) {
     if (exception.ignoredByPipelineExceptionHandler) {
-      return null; // not handled: let a higher up exception handler handle it
+      // not handled: let a higher-up exception handler handle it
+      throw NoResponseProduced();
     }
   }
 
@@ -148,13 +149,14 @@ Future<Response> exceptionHandlerOnPipe1(
 /// representation of the error, respectively.
 
 Future<Response> exceptionHandlerOnPipe2(
-    Request req, Object exception, StackTrace st) async {
+    Request req, Object exception, StackTrace? st) async {
   // Simulate the absence of an exception handler, or what happens if this
   // exception handler doesn't handle the exception.
 
   if (exception is TestException) {
     if (exception.ignoredByPipelineExceptionHandler) {
-      return null; // not handled: let a higher up exception handler handle it
+      // not handled: let a higher-up exception handler handle it
+      throw NoResponseProduced();
     }
   }
 
@@ -176,13 +178,14 @@ Future<Response> exceptionHandlerOnPipe2(
 /// raised inside their context).
 
 Future<Response> exceptionHandlerOnServer(
-    Request req, Object exception, StackTrace st) async {
+    Request req, Object exception, StackTrace? st) async {
   // Simulate the absence of an exception handler, or what happens if this
   // exception handler doesn't handle the exception.
 
   if (exception is TestException) {
     if (exception.ignoredByServerExceptionHandler) {
-      return null; // not handled: let a higher up exception handler handle it
+      // not handled: let a higher-up exception handler handle it
+      throw NoResponseProduced();
     }
   }
 
@@ -227,9 +230,9 @@ Future<void> lowLevelExceptionHandler(
 //----------------------------------------------------------------
 // Common method used to generate the HTML contents of all error pages.
 
-String _htmlShowingException(String who, Object exception, StackTrace st) {
+String _htmlShowingException(String who, Object exception, StackTrace? st) {
   final buf = StringBuffer('''
-<html>
+<html lang="en">
 <head>
   <title>Error</title>
 </head>
@@ -290,7 +293,7 @@ Future<Response> exceptionThrowingPage(Request req) async {
     final resp = ResponseBuffered(ContentType.html)
       ..status = HttpStatus.ok
       ..write('''
-<html>
+<html lang="en">
 <head>
 <title>Exception thrower</title>
 </head>
@@ -490,7 +493,6 @@ class Options {
         default:
           stderr.write('Usage error: unknown option: $arg\n');
           exit(2);
-          break;
       }
     }
 

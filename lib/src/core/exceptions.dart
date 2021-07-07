@@ -148,6 +148,28 @@ class NotFoundException extends WoomeraException {
 }
 
 //================================================================
+// No response
+
+//----------------------------------------------------------------
+/// Indicates a handler cannot produce a response.
+///
+/// This is not necessarily an error: it just means that particular handler
+/// function expects some other function to produce the response.
+///
+/// For request handlers, the function expects another handler in the pipeline,
+/// or a subsequent pipeline, to further process the request.
+///
+/// Note: before _null safety_ handlers used to return _null_ to indicate a
+/// response was not produced. With _null safety_ the handlers cannot return
+/// null, so they throw this exception instead.
+
+class NoResponseProduced extends WoomeraException {
+  /// Constructor.
+
+  NoResponseProduced();
+}
+
+//================================================================
 // Exception handling exception
 
 //----------------------------------------------------------------
@@ -202,14 +224,17 @@ class ProxyHandlerException extends WoomeraException {
 
     final e = exception;
     if (e is SocketException) {
-      if (e.message == '' &&
-          e.osError != null &&
-          e.osError.errorCode == 61 &&
-          e.osError.message == 'Connection refused') {
-        // Known situation: more compact error message
-        message = 'cannot connect';
+      if (e.message.isEmpty) {
+        final ose = e.osError;
+        if (ose != null) {
+          if (ose.errorCode == 61 && ose.message == 'Connection refused') {
+            // Known situation: use a more compact error message
+            message = 'cannot connect';
+          }
+        }
       }
     }
+
     return 'proxy: $message: $targetUri';
   }
 }

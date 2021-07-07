@@ -19,8 +19,8 @@ class DuplicateRuleWithExistingHandler extends DuplicateRule {
   String toString() {
     String describeExisting;
     try {
-      String n;
-      SourceLocation loc;
+      String? n;
+      SourceLocation? loc;
 
       final r1 = reflect(existingHandler);
       if (r1 is ClosureMirror) {
@@ -90,10 +90,10 @@ class BadHandlesPattern extends WoomeraException {
   }
 
   /// Name of method
-  String name;
+  late String name;
 
   /// The location of the object.
-  SourceLocation location;
+  late final SourceLocation? location;
 
   /// The error message indicating why the pattern was invalid.
   final ArgumentError error;
@@ -150,7 +150,7 @@ class NotExceptionHandler extends WoomeraException {
 
   @override
   String toString() =>
-      'function is not a ExceptionHandler: $annotation: $name ($location)';
+      'function is not a null-safe ExceptionHandler: $annotation: $name ($location)';
 }
 
 //----------------------------------------------------------------
@@ -167,7 +167,7 @@ class DuplicateExceptionHandler extends WoomeraException {
   );
 
   /// Library where the function was defined.
-  final SourceLocation location;
+  final SourceLocation? location;
 
   /// Name of the function
   final String name;

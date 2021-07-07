@@ -20,12 +20,10 @@ class ServerRule {
   //----------------------------------------------------------------
   /// Constructor.
   ///
-  /// The [pathPattern] determines if a HTTP request matches this rule or not.
-  /// It is a path made up of segments separated by slashes "/".
+  /// The [pathPattern] is the string representation of a [Pattern] and it
+  /// determines if a HTTP request matches this rule or not.
 
-  ServerRule(String pathPattern, this.handler)
-      : assert(pathPattern != null),
-        pattern = Pattern(pathPattern);
+  ServerRule(String pathPattern, this.handler) : pattern = Pattern(pathPattern);
 
   //================================================================
   // Members
