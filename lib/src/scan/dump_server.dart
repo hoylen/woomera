@@ -128,6 +128,7 @@ String dumpServer(Server server,
     {String functionName = 'serverBuilder',
     String? libraryName,
     Iterable<String>? importedLibraries,
+    bool includeDartVersionComment = false,
     bool timestamp = true,
     bool locations = true,
     bool includeDumpServerStub = true}) {
@@ -135,6 +136,10 @@ String dumpServer(Server server,
 
   if (timestamp) {
     buf.write('// Generated: ${DateTime.now().toUtc()}\n\n');
+  }
+
+  if (includeDartVersionComment) {
+    buf.write('// @dart=2.9\n\n');
   }
 
   if (libraryName != null) {
@@ -253,10 +258,11 @@ Server $functionName({Iterable<String> pipelines,
 
   // Server exception handler
 
-  final _seh = server.exceptionHandler;
-  if (_seh != null) {
-    final loc = _functionLocation(_seh);
-    final fName = _functionName(_seh, libraryPrefixes);
+  if (server.isCustomExceptionHandler) {
+    // Dump code to set the exception handler
+
+    final loc = _functionLocation(server.exceptionHandler);
+    final fName = _functionName(server.exceptionHandler, libraryPrefixes);
 
     buf.write('\n    ..exceptionHandler = $fName');
     if (locations) {

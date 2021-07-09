@@ -39,7 +39,7 @@ typedef RequestHandler = Future<Response?> Function(Request req);
 /// Example:
 /// ```
 /// Future<Response> myExceptionHandler(Request request,
-///  Object e, StackTrace? st) async {
+///  Object e, StackTrace st) async {
 ///   final r = ResponseBuffered(ContentType.html);
 ///    r.status = HttpStatus.internalServerError;
 ///    r.write('''<!doctype html>
@@ -56,7 +56,7 @@ typedef RequestHandler = Future<Response?> Function(Request req);
 /// ```
 
 typedef ExceptionHandler = Future<Response> Function(
-    Request request, Object exception, StackTrace? stackTrace);
+    Request request, Object exception, StackTrace stackTrace);
 
 //----------------------------------------------------------------
 /// Exception handler for low-level situations.

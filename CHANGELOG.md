@@ -3,6 +3,8 @@
 ## 7.0.0
 
 - Null safety release.
+- Added additional body methods to the SimulatedResponse class.
+- Reverted StackTrace parameter to be mandatory in exception handlers.
 
 ## 6.0.0
 

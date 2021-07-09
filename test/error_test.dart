@@ -56,7 +56,7 @@ const String _caseExceptionHandlerToFail = 'please throw an exception';
 /// Handler to test exception handling.
 ///
 Future<Response> serverExceptionHandler(
-    Request req, Object exception, StackTrace? st) async {
+    Request req, Object exception, StackTrace st) async {
   if (exception is MyException) {
     if (exception.message == _caseExceptionHandlerToFail) {
       throw StateError('exception inside exception handler');
@@ -71,7 +71,7 @@ Future<Response> serverExceptionHandler(
 /// Handler to test exception handling.
 ///
 Future<Response> pipelineExceptionHandler(
-    Request req, Object exception, StackTrace? st) async {
+    Request req, Object exception, StackTrace st) async {
   if (exception is MyException) {
     if (exception.message == _caseExceptionHandlerToFail) {
       throw StateError('exception inside exception handler');

@@ -352,7 +352,7 @@ Future<Response> homePage(Request req) async {
   // Exception handling
 
   final eh1checked =
-      (webServer.exceptionHandler != null) ? 'checked="checked"' : '';
+      (webServer.exceptionHandler != noExceptionHandler) ? 'checked="checked"' : '';
   final eh2checked = (p1.exceptionHandler != null) ? 'checked="checked"' : '';
   final eh3checked = (p2.exceptionHandler != null) ? 'checked="checked"' : '';
 
@@ -524,6 +524,17 @@ ${homeButton(req)}
   return resp;
 }
 
+/// No custom exception handler
+///
+/// This exception handler is used to represent the situation when the
+/// [Server.exceptionHandler] is not set to a custom exception handler.
+
+Future<Response> noExceptionHandler(Request req, Object thrownObject,
+StackTrace st) async {
+throw NoResponseProduced();
+}
+
+
 //----------------------------------------------------------------
 /// Handler to stop the Web server.
 ///
@@ -691,7 +702,7 @@ Future<Response> handleJson(Request req) async {
 /// raised inside their context).
 
 Future<Response> exceptionHandlerOnServer(
-        Request req, Object exception, StackTrace? st) =>
+        Request req, Object exception, StackTrace st) =>
     _exceptionHandler(req, exception, st, 'server');
 
 //----------------------------------------------------------------
@@ -700,7 +711,7 @@ Future<Response> exceptionHandlerOnServer(
 /// This exception handler is attached to the first pipeline.
 
 Future<Response> exceptionHandlerOnPipe1(
-    Request req, Object exception, StackTrace? st) async {
+    Request req, Object exception, StackTrace st) async {
   if (exception is StateError) {
     throw NoResponseProduced();
   }
@@ -713,7 +724,7 @@ Future<Response> exceptionHandlerOnPipe1(
 /// This exception handler is attached to the second pipeline.
 
 Future<Response> exceptionHandlerOnPipe2(
-    Request req, Object exception, StackTrace? st) async {
+    Request req, Object exception, StackTrace st) async {
   if (exception is StateError) {
     throw NoResponseProduced();
   }
@@ -724,7 +735,7 @@ Future<Response> exceptionHandlerOnPipe2(
 // Common method used to implement the above exception handlers.
 
 Future<Response> _exceptionHandler(
-    Request req, Object exception, StackTrace? st, String who) async {
+    Request req, Object exception, StackTrace st, String who) async {
   // Create a response
 
   final resp = ResponseBuffered(ContentType.html);
@@ -755,17 +766,12 @@ An exception was thrown and was handled by the <strong>$who</strong> exception h
 
 <p>Exception object type: <code>${exception.runtimeType}</code></p>
 <p>String representation of object: <strong>$exception</strong></p>
-''');
 
-  if (st != null) {
-    resp.write('''
 <h2>Stack trace</h2>
 <pre>
 $st
 </pre>
-    ''');
-  }
-  resp.write('''
+
 ${homeButton(req)}
 </body>
 </html>

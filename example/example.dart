@@ -431,7 +431,7 @@ Future<Response> handleJson(Request req) async {
 
 @Handles.pipelineExceptions()
 Future<Response> pipelineExceptionHandler(
-    Request req, Object exception, StackTrace? st) async {
+    Request req, Object exception, StackTrace st) async {
   log
     ..warning(
         'pipeline exception handler: ${exception.runtimeType}: $exception')
@@ -481,7 +481,7 @@ Future<Response> pipelineExceptionHandler(
 
 @Handles.exceptions()
 Future<Response> serverExceptionHandler(
-    Request req, Object exception, StackTrace? st) async {
+    Request req, Object exception, StackTrace st) async {
   log
     ..warning('server exception handler: ${exception.runtimeType}: $exception')
     ..finest('stack trace: $st');

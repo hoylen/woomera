@@ -340,7 +340,7 @@ Here is an example of a server exception handler:
 ```dart
 @Handles.exceptions()
 Future<Response> myExceptionHandler(
-    Request req, Object ex, [StackTrace? st]) async {
+    Request req, Object ex, StackTrace st) async {
   int status;
   String message;
 
@@ -745,7 +745,7 @@ provide one, because it is used to indicate a page is not found.
 ```dart
 @Handles.exceptions()
 Future<Response> myExceptionHandler(Request req
-    Object exception, [StackTrace? st]) async {
+    Object exception, StackTrace st) async {
   var resp = ResponseBuffered(ContentType.html);
   resp.write('''
 <!DOCTYPE html>
@@ -771,13 +771,13 @@ Each pipeline can also have its own exception handler.
 ``` dart
 @Handles.pipelineExceptions()
 Future<Response> myExceptionHandler(Request req
-    Object exception, [StackTrace? st]) async {
+    Object exception, StackTrace st) async {
 	// for the default pipeline
 }
 
 @Handles.pipelineExceptions(pipeline: 'myCustomPipeline')
 Future<Response> myExceptionHandler(Request req
-    Object exception, [StackTrace? st]) async {
+    Object exception, StackTrace st) async {
 	// for the pipeline named "myCustomPipeline"
 }
 ```

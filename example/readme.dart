@@ -73,8 +73,7 @@ Future<Response> handleGreeting(Request req) async {
   return resp;
 }
 
-Future<Response> myExceptionHandler(Request req, Object ex,
-    [StackTrace? st]) async {
+Future<Response> myExceptionHandler(Request req, Object ex, StackTrace st) async {
   int status;
   String message;
 

@@ -114,7 +114,7 @@ class TestException implements Exception {
 /// This exception handler is attached to the first pipeline.
 
 Future<Response> exceptionHandlerOnPipe1(
-    Request req, Object exception, StackTrace? st) async {
+    Request req, Object exception, StackTrace st) async {
   // Simulate the absence of an exception handler, or what happens if this
   // exception handler doesn't handle the exception.
 
@@ -149,7 +149,7 @@ Future<Response> exceptionHandlerOnPipe1(
 /// representation of the error, respectively.
 
 Future<Response> exceptionHandlerOnPipe2(
-    Request req, Object exception, StackTrace? st) async {
+    Request req, Object exception, StackTrace st) async {
   // Simulate the absence of an exception handler, or what happens if this
   // exception handler doesn't handle the exception.
 
@@ -178,7 +178,7 @@ Future<Response> exceptionHandlerOnPipe2(
 /// raised inside their context).
 
 Future<Response> exceptionHandlerOnServer(
-    Request req, Object exception, StackTrace? st) async {
+    Request req, Object exception, StackTrace st) async {
   // Simulate the absence of an exception handler, or what happens if this
   // exception handler doesn't handle the exception.
 
@@ -230,7 +230,7 @@ Future<void> lowLevelExceptionHandler(
 //----------------------------------------------------------------
 // Common method used to generate the HTML contents of all error pages.
 
-String _htmlShowingException(String who, Object exception, StackTrace? st) {
+String _htmlShowingException(String who, Object exception, StackTrace st) {
   final buf = StringBuffer('''
 <html lang="en">
 <head>
@@ -251,10 +251,7 @@ to the user.</p>
 
 <p>Exception object type: <code>${exception.runtimeType}</code></p>
 <p>String representation of object: <strong>$exception</strong></p>
-''');
 
-  if (st != null) {
-    buf.write('''
 <h3>Stack trace</h3>
 <pre>
 $st
@@ -265,7 +262,6 @@ $st
 </body>
 </html>
 ''');
-  }
 
   return buf.toString();
 }

@@ -230,7 +230,7 @@ class Server {
   /// individual exception handlers on some/all of them. An application may
   /// also set a low-level exception handler (using [exceptionHandlerRaw]).
   ///
-  /// If this exception handler is not set (i.e. null) or cannot be invoked,
+  /// If this exception handler is not changed or cannot be invoked,
   /// the low-level exception handler is used.
   ///
   /// Ideally, this exception handler should not thrown an exception.  But if it
@@ -239,7 +239,17 @@ class Server {
   /// This server exception handler can also be set using a
   /// `@Handles.exceptions()` annotation.
 
-  ExceptionHandler? exceptionHandler;
+  ExceptionHandler exceptionHandler = _noExceptionHandler;
+
+  /// Indicates if a custom exception handler has been set.
+  ///
+  /// True if [exceptionHandler] has been set to an custom function.
+  /// False if it is the default function implemented by the library.
+
+  bool get isCustomExceptionHandler =>
+      exceptionHandler == _noExceptionHandler;
+
+  //----------------
 
   /// Server exception/error handler (low-level)
   ///
@@ -694,15 +704,20 @@ class Server {
 
                 // Try the server's exception handler
 
-                final _eh = exceptionHandler;
-                if (_eh != null) {
-                  // The server has an exception handler: pass exception to it
-                  try {
-                    //response = await this.exceptionHandler(req, e, st);
-                    response = await _invokeExceptionHandler(_eh, req, e, st);
-                  } catch (es) {
-                    e = ExceptionHandlerException(e, es);
-                  }
+                // The server has an exception handler: pass exception to it
+                try {
+                  //response = await this.exceptionHandler(req, e, st);
+                  response = await _invokeExceptionHandler(
+                      exceptionHandler, req, e, st);
+                } on NoResponseProduced {
+                  // Ignore
+                  //
+                  // This exception will always be thrown by the
+                  // [Server._noExceptionHandler] function, so it will always
+                  // happen if the application did not set
+                  // [Server.exceptionHandler] to its own exception handler.
+                } catch (es) {
+                  e = ExceptionHandlerException(e, es);
                 }
               }
 
@@ -768,22 +783,39 @@ class Server {
 
         // Try reporting this through the server's exception handler
 
-        final _eh = exceptionHandler;
-        if (_eh != null) {
-          try {
-            response = await _eh(req, e, null);
-          } catch (es) {
-            e = ExceptionHandlerException(e, es);
-          }
+        try {
+          // Invoke the exceptionHandler.
+          //
+          // Note: the empty stack trace passed in because it cannot be null
+          // and there is no meaningful stack trace to use.
+          response = await exceptionHandler(req, e, StackTrace.empty);
+        } on NoResponseProduced {
+          // Ignore and let the default exception handler be invoked below.
+          //
+          // This exception will always be thrown by the
+          // [Server._noExceptionHandler] function, so it will always happen if
+          // the application did not set [Server.exceptionHandler] to its own
+          // exception handler.
+          assert(response == null);
+        } catch (es) {
+          // The application's exception handler threw an exception.
+          //
+          // Change the exception to indicate that the exception handler
+          // threw an exception. This allows the [_defaultExceptionHandler]
+          // (invoked below) to produce a different response.
+
+          e = ExceptionHandlerException(e, es);
+          assert(response == null);
         }
 
         // If the server exception handler returned null, or it threw exception,
         // Resort to using the internal default exception handler.
-        response ??= await _defaultExceptionHandler(req, e);
+
+        response ??= await _defaultExceptionHandler(req, e, StackTrace.empty);
       }
     } else {
       // Path segments raised FormatException: malformed request
-      response = await _defaultExceptionHandler(req, MalformedPathException());
+      response = await _defaultExceptionHandler(req, MalformedPathException(), StackTrace.empty);
     }
 
     // Finish the HTTP response from the "response" by invoking its
@@ -818,6 +850,21 @@ class Server {
       Request(request, id, server);
 
   //----------------------------------------------------------------
+  /// No exception handler.
+  ///
+  /// The [Server.exceptionHandler] is initialized to this function.
+  ///
+  /// This function throws the [NoResponseProduced] exception, which causes
+  /// the server to then try and use the raw exception handler. So, unless
+  /// the application has set the exception handler, this will cause the
+  /// server to then generate use a raw exception handler.
+
+  static Future<Response> _noExceptionHandler(Request req, Object thrownObject,
+      StackTrace st) async {
+    throw NoResponseProduced();
+  }
+
+  //----------------------------------------------------------------
   // Internal default exception handler.
   //
   // This is the exception handler that is invoked if the application did not
@@ -826,7 +873,7 @@ class Server {
 
   static Future<Response> _defaultExceptionHandler(
       Request req, Object thrownObject,
-      [StackTrace? st]) async {
+      StackTrace st) async {
     var status = HttpStatus.internalServerError;
     String title;
     String message;
@@ -836,7 +883,7 @@ class Server {
 
       _logRequest
           .severe('[${req.id}] not found: ${req.method} ${req.requestPath()}');
-      assert(st == null);
+      assert(st == StackTrace.empty);
 
       status = (thrownObject.found == NotFoundException.foundNothing)
           ? HttpStatus.methodNotAllowed
@@ -848,7 +895,7 @@ class Server {
 
       _logRequest.finest(
           '[${req.id}] bad request: ${req.method} ${req.requestPath()}');
-      assert(st == null);
+      assert(st == StackTrace.empty);
 
       status = HttpStatus.badRequest;
       title = 'Error: bad request';
@@ -866,7 +913,7 @@ class Server {
         _logResponse.severe(
             '[${req.id}] exception thrown (${thrownObject.runtimeType}): $thrownObject');
       }
-      if (st != null) {
+      if (st != StackTrace.empty) {
         _logResponse.finest('[${req.id}] stack trace:\n$st');
       }
 

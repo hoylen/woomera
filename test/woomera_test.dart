@@ -46,13 +46,13 @@ late final ServerPipeline pipe2;
 // Exception handlers
 
 Future<Response> _exceptionHandlerOnServer(
-        Request req, Object exception, StackTrace? st) =>
+        Request req, Object exception, StackTrace st) =>
     _exceptionHandler(req, exception, st, 'server');
 
 //----------------------------------------------------------------
 
 Future<Response> _exceptionHandlerOnPipe1(
-    Request req, Object exception, StackTrace? st) async {
+    Request req, Object exception, StackTrace st) async {
   if (exception is StateError) {
     throw NoResponseProduced();
   }
@@ -62,7 +62,7 @@ Future<Response> _exceptionHandlerOnPipe1(
 //----------------------------------------------------------------
 
 Future<Response> _exceptionHandlerOnPipe2(
-    Request req, Object exception, StackTrace? st) async {
+    Request req, Object exception, StackTrace st) async {
   if (exception is StateError) {
     throw NoResponseProduced();
   }
@@ -72,11 +72,11 @@ Future<Response> _exceptionHandlerOnPipe2(
 //----------------------------------------------------------------
 
 Future<Response> _exceptionHandler(
-    Request req, Object exception, StackTrace? st, String who) async {
+    Request req, Object exception, StackTrace st, String who) async {
   final resp = ResponseBuffered(ContentType.text)
     ..write('$who exception handler (${exception.runtimeType}) $exception\n');
 
-  if (st != null) {
+  if (st != StackTrace.empty) {
     resp.write('Stack trace:\n$st\n');
   }
 
