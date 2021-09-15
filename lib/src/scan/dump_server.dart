@@ -27,6 +27,10 @@ part of scan;
 /// If [locations] is false, no "from" comments are generated. The default
 /// is true.
 ///
+/// if [includeDartVersionComment] is set to true, a "@dart=2.9" version comment
+/// is generated. This is needed for code that runs with a version of Dart
+/// that is 2.12 or greater, but it has not been updated for null safety.
+///
 /// By default, a stub for _dumpServer_ is included in the generated code.
 /// It is needed because that function is defined when "woomera/woomera.dart" is
 /// imported, but is not defined in "woomera/core.dart". To not include the
@@ -140,6 +144,8 @@ String dumpServer(Server server,
 
   if (includeDartVersionComment) {
     buf.write('// @dart=2.9\n\n');
+  } else {
+    buf.write('// To add dart=2.9 comment, invoke dumpServer with includeDartVersionComment=true\n\n');
   }
 
   if (libraryName != null) {
@@ -306,6 +312,7 @@ String dumpServer(Server server,
     {String functionName = 'serverBuilder',
     String libraryName,
     Iterable<String> importedLibraries,
+    bool includeDartVersionComment = false,
     bool timestamp = true,
     bool locations = true,
     bool includeDumpServerStub = true}) =>

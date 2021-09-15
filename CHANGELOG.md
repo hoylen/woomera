@@ -5,6 +5,7 @@
 - Null safety release.
 - Added additional body methods to the SimulatedResponse class.
 - Reverted StackTrace parameter to be mandatory in exception handlers.
+- Added use of includeDartVersionComment in dump_server.dart.
 
 ## 6.0.0
 
