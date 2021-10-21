@@ -278,7 +278,9 @@ class SimulatedResponse extends Response {
       buf.write('COOKIE: $c\n');
     }
 
-    buf..write('\n')..write(bodyStr);
+    buf
+      ..write('\n')
+      ..write(bodyStr);
 
     return buf.toString();
   }

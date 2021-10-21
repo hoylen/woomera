@@ -270,7 +270,6 @@ Future<Response> homePage(Request req) async {
   """)
 
     // Static files and directories
-
     ..write('''
         <tr>
           <td colspan="3"><a name="staticFiles"><h3>Static files and directories from disk</h3></a></td>
@@ -351,8 +350,9 @@ Future<Response> homePage(Request req) async {
 
   // Exception handling
 
-  final eh1checked =
-      (webServer.exceptionHandler != noExceptionHandler) ? 'checked="checked"' : '';
+  final eh1checked = (webServer.exceptionHandler != noExceptionHandler)
+      ? 'checked="checked"'
+      : '';
   final eh2checked = (p1.exceptionHandler != null) ? 'checked="checked"' : '';
   final eh3checked = (p2.exceptionHandler != null) ? 'checked="checked"' : '';
 
@@ -384,7 +384,6 @@ Future<Response> homePage(Request req) async {
 ''')
 
     // Sessions
-
     ..write('''
   <div class="section">
     <h2>Sessions</h2>
@@ -435,7 +434,6 @@ Future<Response> homePage(Request req) async {
   ''')
 
     // End of content div, and footer
-
     ..write('''</div>
 
   </div>
@@ -529,11 +527,10 @@ ${homeButton(req)}
 /// This exception handler is used to represent the situation when the
 /// [Server.exceptionHandler] is not set to a custom exception handler.
 
-Future<Response> noExceptionHandler(Request req, Object thrownObject,
-StackTrace st) async {
-throw NoResponseProduced();
+Future<Response> noExceptionHandler(
+    Request req, Object thrownObject, StackTrace st) async {
+  throw NoResponseProduced();
 }
-
 
 //----------------------------------------------------------------
 /// Handler to stop the Web server.

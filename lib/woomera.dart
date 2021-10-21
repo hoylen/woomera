@@ -3,8 +3,8 @@
 /// This is the library that is normally imported when using Woomera. It
 /// includes features from both the `core` library and the `scan` library.
 ///
-/// If the Dart Mirrors package is not usable (e.g. if compiling with
-/// _dart2native_), then use the _core_ library instead.
+/// If the Dart Mirrors package is not usable (e.g. if using _dart compile_),
+/// then use the _core_ library instead.
 ///
 /// ## Usage
 ///

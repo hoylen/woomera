@@ -246,8 +246,7 @@ class Server {
   /// True if [exceptionHandler] has been set to an custom function.
   /// False if it is the default function implemented by the library.
 
-  bool get isCustomExceptionHandler =>
-      exceptionHandler == _noExceptionHandler;
+  bool get isCustomExceptionHandler => exceptionHandler == _noExceptionHandler;
 
   //----------------
 
@@ -815,7 +814,8 @@ class Server {
       }
     } else {
       // Path segments raised FormatException: malformed request
-      response = await _defaultExceptionHandler(req, MalformedPathException(), StackTrace.empty);
+      response = await _defaultExceptionHandler(
+          req, MalformedPathException(), StackTrace.empty);
     }
 
     // Finish the HTTP response from the "response" by invoking its
@@ -859,8 +859,8 @@ class Server {
   /// the application has set the exception handler, this will cause the
   /// server to then generate use a raw exception handler.
 
-  static Future<Response> _noExceptionHandler(Request req, Object thrownObject,
-      StackTrace st) async {
+  static Future<Response> _noExceptionHandler(
+      Request req, Object thrownObject, StackTrace st) async {
     throw NoResponseProduced();
   }
 
@@ -872,8 +872,7 @@ class Server {
   // handler threw an exception. It generates a "last resort" error page.
 
   static Future<Response> _defaultExceptionHandler(
-      Request req, Object thrownObject,
-      StackTrace st) async {
+      Request req, Object thrownObject, StackTrace st) async {
     var status = HttpStatus.internalServerError;
     String title;
     String message;

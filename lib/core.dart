@@ -3,8 +3,8 @@
 /// This library contains the core features of Woomera, but without the
 /// scanning for annotation functions.
 ///
-/// Normally, use the full `woomera` library instead. But if Dart Mirrors cannot
-/// be used (e.g. when the program needs to be compiled using _dart2native_),
+/// Normally, use the full `woomera` library instead. But if Dart Mirrors
+/// cannot be used (e.g. when the program is compiled using _dart compile_),
 /// then this `core` library can be used by itself.
 ///
 /// Listens for HTTP requests and invokes the appropriate request handler,

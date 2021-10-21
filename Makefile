@@ -31,23 +31,25 @@ help:
 	@echo "Targets for ${APP_NAME} (version ${APP_VERSION}):"
 	@if [ -e "test" ]; then \
 	  echo "Development targets:"; \
-	  echo "  dartfmt     - format Dart files"; \
-	  echo "  dartdoc     - generate API documentation"; \
-	  echo "  dartdocview - view generated API documentation"; \
-	  echo "  build       - creates tar distributable"; \
-	  echo "  clean       - deletes build directory"; \
-	  echo "Deployment targets:"; \
+	  echo "  format   format Dart files"; \
+	  echo "  dartdoc  generate API documentation"; \
+	  echo "  clean    deletes build directory"; \
 	fi
-	@echo "  coverage-suite - updates the files in coverage-suite"
-	@echo "  install        - install service and init.d script"
-	@echo "  uninstall      - uninstalls service and init.d script"
-	@echo "  purge          - uninstall and deletes config and logs"
-	@echo
-	@echo "Deployment settings: (change by editing the Makefile)"
-	@echo "  Installation directory: ${INSTDIR}"
-	@echo "  Config directory: ${CONFIGDIR}"
-	@echo "  Log directory: ${LOGDIR}"
-	@echo "  Dart directory: ${DARTDIR}"
+
+# Not relevant, since this is a package and not a program+service
+#	  echo "  build    creates tar distributable"; \
+#	  echo "Deployment targets:"; \
+#       fi
+#       @echo "  coverage-suite  updates the files in coverage-suite"
+#	@echo "  install         install service and init.d script"
+#	@echo "  uninstall       uninstalls service and init.d script"
+#	@echo "  purge           uninstall and deletes config and logs"
+#	@echo
+#	@echo "Deployment settings: (change by editing the Makefile)"
+#	@echo "  Installation directory: ${INSTDIR}"
+#	@echo "  Config directory: ${CONFIGDIR}"
+#	@echo "  Log directory: ${LOGDIR}"
+#	@echo "  Dart directory: ${DARTDIR}"
 
 # Deployment targets
 
@@ -94,14 +96,11 @@ purge: uninstall
 
 # Development targets
 
-dartfmt:
-	@dartfmt -w lib test example | grep -v ^Unchanged
+format:
+	@dart format lib test example
 
 dartdoc:
 	@dartdoc
-
-dartdocview:
-	@open doc/api/index.html
 
 coverage-suite:
 	@if [ ! -d coverage-suite ]; then \

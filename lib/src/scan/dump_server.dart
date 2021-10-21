@@ -10,7 +10,7 @@ part of scan;
 /// using this function to produce code with explicit registrations for use in
 /// production. That way, the convenience of annotations can be used during
 /// development, but the production code doesn't need to use those annotations
-/// This allows the production code to be compiled using _dart2native_, which
+/// This allows the production code to be compiled using _dart compile_, which
 /// cannot be used with the mirrors package (which is needed to find the
 /// annotations).
 ///
@@ -81,7 +81,7 @@ part of scan;
 /// 3. Change the program's import from `package:woomera/woomera.dart` to
 ///    `package:woomera/core.dart`.
 ///
-/// The program can then be compiled with _dart2native_, because it no longer
+/// The program can then be compiled with _dart comiple_, because it no longer
 /// needs the Dart Mirrors package.
 ///
 /// To return to development mode, restore the program to the way it was:
@@ -145,7 +145,8 @@ String dumpServer(Server server,
   if (includeDartVersionComment) {
     buf.write('// @dart=2.9\n\n');
   } else {
-    buf.write('// To add dart=2.9 comment, invoke dumpServer with includeDartVersionComment=true\n\n');
+    buf.write(
+        '// To add dart=2.9 comment, invoke dumpServer with includeDartVersionComment=true\n\n');
   }
 
   if (libraryName != null) {
