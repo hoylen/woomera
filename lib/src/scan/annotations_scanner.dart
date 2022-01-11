@@ -691,7 +691,6 @@ class _AnnotationScanner {
     // Class: process its static methods
 
     for (final staticMember in classMirror.staticMembers.values) {
-      if (staticMember is MethodMirror) {
         if (!(staticMember.isGetter ||
             staticMember.isSetter ||
             staticMember.isOperator)) {
@@ -706,7 +705,6 @@ class _AnnotationScanner {
           }
         }
       }
-    }
   }
 
   //----------------------------------------------------------------

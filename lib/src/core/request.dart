@@ -499,9 +499,11 @@ class Request {
   /// The only purpose of this member is so the [Response] can know that it
   /// needs to explicitly delete the session cookie if the session is cleared.
 
+  // Note: this is modified to true in "core_request.dart", so it is
+  // deliberately not a final member.
+  //
+  // ignore: prefer_final_fields
   bool _haveSessionCookie = false;
-  // Note: this is modified to true in "core_request.dart", so any warnings
-  // about it being a private field that could be final are wrong.
 
   //----------------------------------------------------------------
   /// Attempt to restore the session (if there was one).

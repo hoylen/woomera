@@ -1,6 +1,7 @@
 part of core;
 
 //----------------------------------------------------------------
+// ignore: avoid_classes_with_only_static_members
 /// HTML escaping methods for escaping values for output in HTML.
 ///
 /// These methods are provided to help generate HTML from arbitrary strings

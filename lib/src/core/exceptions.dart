@@ -81,7 +81,17 @@ class PostTooLongException extends WoomeraException {}
 /// Usually a sign of an attacker trying to exploit vulnerabilities in a Web
 /// server.
 
-class MalformedPathException extends WoomeraException {}
+class MalformedPathException extends WoomeraException {
+  /// Constructor
+  ///
+  /// The [message] is optional.
+
+  MalformedPathException([this.message]);
+
+  /// Details of the exception.
+
+  final String? message;
+}
 
 //----------------------------------------------------------------
 /// Exception indicating a response could not be created.

@@ -1,5 +1,9 @@
 # Changelog
 
+## 7.0.1
+
+- Added optional message to MalformedPathException.
+
 ## 7.0.0
 
 - Null safety release.

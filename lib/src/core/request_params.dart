@@ -157,7 +157,7 @@ class RequestParams {
       // ignore: avoid_catching_errors
     } on ArgumentError catch (e) {
       if (e.message == 'Illegal percent encoding in URI') {
-        throw MalformedPathException();
+        throw MalformedPathException(e.message.toString());
       } else {
         rethrow;
       }

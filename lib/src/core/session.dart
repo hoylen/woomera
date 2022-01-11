@@ -193,14 +193,7 @@ class Session {
 
   static String _generateSessionId() {
     final s = _sessionIdUuid.v4();
-    if (s is String) {
-      return s.replaceAll('-', '');
-    } else {
-      throw TypeError(); // this should never happen
-      // Above "is String" is only to deal with uuid v1.0.3 which returns a
-      // dynamic instead of a String. But uuid v2.0.1 returns a String, so
-      // casting it would produce an "unnecessary cast" warning.
-    }
+    return s.replaceAll('-', '');
   }
 
   //================================================================

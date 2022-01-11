@@ -458,6 +458,7 @@ class Server {
 
           //_logServer.info("HTTP Request: [$id${requestNo + 1}] starting handler");
 
+          // ignore: unused_local_variable
           final doNotWait = _handleRawRequest(request, '$id${++requestNo}');
 
           // The Future returned by [_handleRawRequest] is deliberately not
@@ -467,10 +468,6 @@ class Server {
           // To avoid having a dependency on the pedantic package, and to
           // silence various warnings, the Future is assigned to a variable
           // and the code below "uses" it.
-
-          if (doNotWait is Object) {
-            // This should silence warnings about "doNotWait" is not used.
-          }
 
           //_logServer.info("HTTP Request: [$id$requestNo] handler started");
 
@@ -815,7 +812,7 @@ class Server {
     } else {
       // Path segments raised FormatException: malformed request
       response = await _defaultExceptionHandler(
-          req, MalformedPathException(), StackTrace.empty);
+          req, MalformedPathException('bad path'), StackTrace.empty);
     }
 
     // Finish the HTTP response from the "response" by invoking its
