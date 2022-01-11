@@ -691,20 +691,20 @@ class _AnnotationScanner {
     // Class: process its static methods
 
     for (final staticMember in classMirror.staticMembers.values) {
-        if (!(staticMember.isGetter ||
-            staticMember.isSetter ||
-            staticMember.isOperator)) {
-          final cm = classMirror.getField(staticMember.simpleName);
-          final dynamic item = cm.hasReflectee ? cm.reflectee : null;
+      if (!(staticMember.isGetter ||
+          staticMember.isSetter ||
+          staticMember.isOperator)) {
+        final cm = classMirror.getField(staticMember.simpleName);
+        final dynamic item = cm.hasReflectee ? cm.reflectee : null;
 
-          if (item is Function) {
-            _scanFunction(library, staticMember, item);
-          } else {
-            _logHandles.severe(
-                'not a function: $library ${staticMember.qualifiedName}');
-          }
+        if (item is Function) {
+          _scanFunction(library, staticMember, item);
+        } else {
+          _logHandles
+              .severe('not a function: $library ${staticMember.qualifiedName}');
         }
       }
+    }
   }
 
   //----------------------------------------------------------------

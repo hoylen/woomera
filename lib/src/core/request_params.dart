@@ -129,8 +129,6 @@ class RequestParams {
   /// Any existing parameters are retained.
 
   void _populateFromQueryString(String queryStr, {Encoding encoding = utf8}) {
-    assert(!queryStr.contains('?'));
-
     try {
       for (var pair in queryStr.split('&')) {
         if (pair.isNotEmpty) {

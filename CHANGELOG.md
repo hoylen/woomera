@@ -3,6 +3,7 @@
 ## 7.0.1
 
 - Added optional message to MalformedPathException.
+- Fixed bug preventing query strings from containing question marks in values.
 
 ## 7.0.0
 
