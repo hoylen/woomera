@@ -1,5 +1,9 @@
 # Changelog
 
+## 7.0.2
+
+- Fixed bug that forces session query parameters to always be used.
+
 ## 7.0.1
 
 - Added optional message to MalformedPathException.

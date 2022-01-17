@@ -782,7 +782,7 @@ class Request {
   ///
   /// See also [ura].
 
-  String rewriteUrl(String internalPath, {bool includeSession = true}) {
+  String rewriteUrl(String internalPath, {bool? includeSession}) {
     if (!internalPath.startsWith('~/')) {
       throw ArgumentError.value(
           internalPath, 'internalPath', 'rewriteUrl: does not start with "~/"');
