@@ -12,6 +12,11 @@ part of core;
 /// continues for another matching rule.
 ///
 /// Used for in the rules of a [ServerPipeline].
+///
+/// **Note**: this will be changed to return a Future<Response> instead of
+/// a Future<Response?>. To prepare for that breaking change, define response
+/// handlers as `Future<Response> Function(Request req)` and throw a
+/// [NoResponseFromHandler] instead of returning null.
 
 typedef RequestHandler = Future<Response?> Function(Request req);
 

@@ -158,6 +158,22 @@ class NotFoundException extends WoomeraException {
 }
 
 //================================================================
+/// Exception to indicate a [RequestHandler] did not produce a response.
+///
+/// This exception should be thrown by a handler when it deliberately does not
+/// produce a [Response], but expects a subsequent rule in the pipeline (or a
+/// rule in a subsequent pipeline) to produce the response.
+///
+/// Currently, the [RequestHandler] is defined to return a Future<Response?>,
+/// and it completes with a null to indicate the handler did not produce any
+/// response. In a future release, the _RequestHandler_ will be redefined as
+/// `Future<Response>`. To prepare for that breaking change, define
+/// response handlers as returning a _Future<Response>_ and throw this
+/// exception instead of returning a Future that completes with a null.
+
+class NoResponseFromHandler extends WoomeraException {}
+
+//================================================================
 // No response
 
 //----------------------------------------------------------------
@@ -192,7 +208,7 @@ class NoResponseProduced extends WoomeraException {
 /// [previousException]. Note: it could be an instance of
 /// [ExceptionHandlerException] when multiple exception handlers are invoked
 /// in processing an exception.
-///
+
 class ExceptionHandlerException extends WoomeraException {
   /// Constructor.
 

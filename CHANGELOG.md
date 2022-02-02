@@ -1,4 +1,9 @@
-# Changelog
+## 7.1.0
+
+- Added NoResponseFromHandler exception.
+  A future release is planning to change the handler return type from
+  Future<Response?> to Future<Response>, and this exception must be
+  thrown instead of the Future completing with null.
 
 ## 7.0.2
 

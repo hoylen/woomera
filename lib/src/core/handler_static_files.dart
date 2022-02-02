@@ -232,7 +232,7 @@ class StaticFiles {
   /// as the relative path underneath the [baseDir] to find the file or
   /// directory.
 
-  Future<Response?> handler(Request req) async {
+  Future<Response> handler(Request req) async {
     assert(_baseDir.isNotEmpty);
 
     // Get the relative path
@@ -256,7 +256,7 @@ class StaticFiles {
             // tried to climb above base directory
             throw NotFoundException(NotFoundException.foundStaticHandler);
           } else {
-            return null;
+            throw NoResponseFromHandler();
           }
         }
       } else if (c == '.') {
@@ -351,7 +351,7 @@ class StaticFiles {
     if (throwNotFoundExceptions) {
       throw NotFoundException(NotFoundException.foundStaticHandler);
     } else {
-      return null;
+      throw NoResponseFromHandler();
     }
   }
 

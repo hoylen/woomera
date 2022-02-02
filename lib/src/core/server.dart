@@ -669,6 +669,16 @@ class Server {
 
             try {
               response = await _invokeRequestHandler(rule.handler, req);
+            } on NoResponseFromHandler {
+              // New method for a [RequestHandler] to indicate it deliberately
+              // did not produce a response.
+              // The original library defined a request handler as:
+              //     Future<Response> Function(Request req);
+              // But we want to migrate to:
+              //    Future<Response> Function(Request req);
+              // and use this exception instead of null to indicate it did
+              // not produce a response
+              response = null;
             } catch (initialObjectThrown, initialStackTrace) {
               // The request handler threw an exception (or returned null which
               // caused the InvalidUsage exception to be thrown above).
