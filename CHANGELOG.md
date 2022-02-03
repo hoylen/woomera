@@ -5,6 +5,7 @@
   Future<Response?> to Future<Response>, and this exception must be
   thrown instead of the Future completing with null.
 - Fixed _dumpServer_ generated code to work with null safety.
+- Stack trace passed to exception handlers now indicates the correct source.
 
 ## 7.0.2
 

@@ -118,44 +118,30 @@ typedef ExceptionHandlerRaw = Future<void> Function(HttpRequest rawRequest,
 
 /// Invoke the request handler making sure all exceptions are captured.
 
-Future<Response?> _invokeRequestHandler(
-    RequestHandler handler, Request req) async {
-  Object? thrownObject; // can be any object, not just Exception or Error
-  // var stacktrace;
+Future<Response?> _invokeRequestHandler(RequestHandler handler, Request req) {
+  // Invoke the handler inside its own zone to ensure all exceptions
+  // are captured. With a try/catch block, exceptions from asynchronous
+  // code are not caught and would cause the program to exit.
 
   final hCompleter = Completer<Response?>();
-
-  // Invoke the handler in its own zone, so all exceptions are captured
-  // (both those thrown from async methods and those thrown from methods
-  // that don't use async). Must use zones, since a simple try/catch
-  // would only catch exceptions thrown from async methods.
 
   // ignore: UNUSED_LOCAL_VARIABLE
   final doNotWaitOnThis = runZonedGuarded(() async {
     final result = await handler(req); // call the handler
     hCompleter.complete(result);
   }, (Object e, StackTrace s) {
-    thrownObject = e;
-    // stacktrace = s;
     if (!hCompleter.isCompleted) {
-      _logRequest.finest('[${req.id}] handler onError (${e.runtimeType}): $e');
-      hCompleter.complete(null);
+      // Pass exception back to the onError (see further below)
+      _logRequest.finest('[${req.id}] handler onError: (${e.runtimeType}): $e');
+      hCompleter.completeError(e, s);
     } else {
-      _logRequest
-          .finest('[${req.id}] handler onError ignored (${e.runtimeType}): $e');
+      // This should not happen, but if it does log it.
+      _logRequest.finest('[${req.id}] handler onError ignored'
+          ': (${e.runtimeType}): $e\n$s');
     }
   });
 
-  // Wait for invocation to finish
-
-  final resp = await hCompleter.future;
-
-  // Return result or throw the error/exception (which can be of any type)
-
-  if (thrownObject != null) {
-    throw thrownObject!; // ignore: only_throw_errors
-  }
-  return resp; // which could be null (i.e. handler could not process request)
+  return hCompleter.future;
 }
 
 //----------------------------------------------------------------
