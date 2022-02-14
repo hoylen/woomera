@@ -292,7 +292,7 @@ Server $functionName(
   // Server exception handler
 
   if (server.isCustomExceptionHandler) {
-    // Dump code to set the exception handler
+    // Dump code to set the server exception handler
 
     final loc = _functionLocation(server.exceptionHandler);
     final fName = _functionName(server.exceptionHandler, libraryPrefixes);
@@ -345,7 +345,7 @@ String dumpServer(Server server,
         bool includeDumpServerStub = true}) =>
     throw StateError('dumpServer in dumpServer generated code cannot be used');
 
-/// EOF
+// EOF
 ''');
   }
 

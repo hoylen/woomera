@@ -246,7 +246,7 @@ class Server {
   /// True if [exceptionHandler] has been set to an custom function.
   /// False if it is the default function implemented by the library.
 
-  bool get isCustomExceptionHandler => exceptionHandler == _noExceptionHandler;
+  bool get isCustomExceptionHandler => exceptionHandler != _noExceptionHandler;
 
   //----------------
 
@@ -286,7 +286,7 @@ class Server {
   /// False if it is the default function implemented by the library.
 
   bool get isCustomRawExceptionHandler =>
-      exceptionHandlerRaw == _defaultRawExceptionHandler;
+      exceptionHandlerRaw != _defaultRawExceptionHandler;
 
   /// Indicates if the server is serving HTTP or HTTPS.
   ///

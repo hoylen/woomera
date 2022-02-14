@@ -100,7 +100,7 @@ format:
 	@dart format lib test example
 
 dartdoc:
-	@dartdoc
+	@dart doc "$$(pwd)"
 
 coverage-suite:
 	@if [ ! -d coverage-suite ]; then \
