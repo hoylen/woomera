@@ -27,7 +27,17 @@ class SimulatedHttpHeaders extends HttpHeaders {
       _data[lcName] = createdList;
       values = createdList;
     }
-    values.add(value.toString());
+
+    // A HttpHeader from a real HTTP request discards any whitespace from
+    // the left (i.e. after the colon), but preserves any whitespaces at the
+    // right end of the line. Empty string values are preserved.
+    // Values which are empty strings, and values which are all whitespace,
+    // are kept as an empty string.
+    //
+    // Note: when testing, be aware clients may modify/discard headers
+    // before sending them.
+
+    values.add(value.toString().trimLeft());
 
     _originalHeaderNames[lcName] = preserveHeaderCase ? name : lcName;
   }
@@ -46,14 +56,19 @@ class SimulatedHttpHeaders extends HttpHeaders {
     final values = _data[lcName];
     if (values != null) {
       if (values.isEmpty) {
-        return null;
+        return null; // unexpected: treat as if header does not exist
       } else if (values.length == 1) {
         return values.first;
       } else {
-        throw StateError('multiple values in header: $lcName');
+        // Multiple values not permitted for this method.
+        //
+        // This is the exception that the implementation of
+        // `_HttpHeaders.value`, in the Dart SDK internal "http_headers.dart"
+        // file, throws when there are multiple values.
+        throw HttpException('More than one value for header $name');
       }
     } else {
-      return null;
+      return null; // header does not exist
     }
   }
 

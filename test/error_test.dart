@@ -202,7 +202,7 @@ void runTests(Future<int> numProcessedFuture) {
 
   test('Handler Exception and onError', () async {
     final str = await getRequest('/test3');
-    expect(str, startsWith('Pipeline caught: test3a\n'));
+    expect(str, startsWith('Pipeline caught: test3b\n'));
   });
 
   //----------------

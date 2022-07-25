@@ -1,6 +1,7 @@
 ## 7.2.0
 
 - Added HTTP client information and certificate getters to Request.
+- Changed SimulatedHttpHeaders.value to throw HttpException instead of StateError to match that thrown by a real HTTP header.
 
 ## 7.1.1
 
