@@ -81,6 +81,8 @@ class Request {
       {String? sessionId,
       String? id,
       RequestParams? queryParams,
+      HttpConnectionInfo? connectionInfo,
+      X509Certificate? certificate,
       SimulatedHttpHeaders? headers,
       List<Cookie>? cookies,
       String? bodyStr,
@@ -92,6 +94,8 @@ class Request {
         _coreRequest = _CoreRequestSimulated(method, internalPath,
             sessionId: sessionId ?? '',
             queryParams: queryParams,
+            certificate: certificate,
+            connectionInfo: connectionInfo,
             headers: headers ?? SimulatedHttpHeaders(),
             cookies: cookies ?? <Cookie>[],
             bodyStr: bodyStr,
@@ -114,6 +118,8 @@ class Request {
       {String? sessionId,
       String? id,
       RequestParams? queryParams,
+      HttpConnectionInfo? connectionInfo,
+      X509Certificate? certificate,
       SimulatedHttpHeaders? headers,
       List<Cookie>? cookies,
       String? bodyStr,
@@ -124,6 +130,8 @@ class Request {
         _coreRequest = _CoreRequestSimulated('GET', internalPath,
             sessionId: sessionId ?? '',
             queryParams: queryParams,
+            connectionInfo: connectionInfo,
+            certificate: certificate,
             headers: headers ?? SimulatedHttpHeaders(),
             cookies: cookies ?? <Cookie>[],
             bodyStr: bodyStr,
@@ -139,6 +147,8 @@ class Request {
       {String? sessionId,
       String? id,
       RequestParams? queryParams,
+      HttpConnectionInfo? connectionInfo,
+      X509Certificate? certificate,
       SimulatedHttpHeaders? headers,
       List<Cookie>? cookies,
       String? bodyStr,
@@ -149,6 +159,8 @@ class Request {
         _coreRequest = _CoreRequestSimulated('POST', internalPath,
             sessionId: sessionId ?? '',
             queryParams: queryParams,
+            connectionInfo: connectionInfo,
+            certificate: certificate,
             headers: headers ?? SimulatedHttpHeaders(),
             cookies: cookies ?? <Cookie>[],
             bodyStr: bodyStr,
@@ -251,7 +263,7 @@ class Request {
   /// to have it exposed by [Request] in a manner that allows it to be used for
   /// both real and simulated HTTP requests.
 
-  @deprecated
+  @Deprecated('Use methods to get info about a request; not the request itself')
   HttpRequest get request {
     final _cr = _coreRequest;
     if (_cr is _CoreRequestReal) {
@@ -365,6 +377,25 @@ class Request {
 
   List<String>? get _pathSegments =>
       _coreRequest._pathSegments(_server._basePath);
+
+  //----------------------------------------------------------------
+  /// Information about the client connection.
+  ///
+  /// Returns the client connection information.
+  /// Returns null if the socket is not available.
+
+  HttpConnectionInfo? get connectionInfo => _coreRequest.connectionInfo;
+
+  //----------------------------------------------------------------
+  /// Client certificate for client authenticated TLS connections.
+  ///
+  /// Returns the client certificate used to establish the TLS connection
+  /// the request was sent over. Returns null if there was no client certificate
+  /// (either because the connection was not over TLS, the server did not
+  /// request the client to present a certificate, or the client did not provide
+  /// one).
+
+  X509Certificate? get certificate => _coreRequest.certificate;
 
   //----------------------------------------------------------------
   /// HTTP request headers.

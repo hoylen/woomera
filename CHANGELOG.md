@@ -1,3 +1,7 @@
+## 7.2.0
+
+- Added HTTP client information and certificate getters to Request.
+
 ## 7.1.1
 
 - Fixed bug in isCustomExceptionHandler and isCustomRawExceptionHandler.

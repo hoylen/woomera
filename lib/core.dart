@@ -128,6 +128,7 @@ part 'src/core/server.dart';
 part 'src/core/server_pipeline.dart';
 part 'src/core/server_rule.dart';
 part 'src/core/session.dart';
+part 'src/core/simulated_connection.dart';
 part 'src/core/simulated_headers.dart';
 part 'src/core/simulated_response.dart';
 

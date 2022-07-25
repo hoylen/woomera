@@ -16,6 +16,8 @@ part of scan;
 /// (which is the default), in which case all libraries with a "file" scheme
 /// are scanned, even if they don't appear in the list of _libraries_.
 ///
+/// Library names are usually of the form "package:pname/lname.dart".
+///
 /// Every part of a Dart problem belongs to a library which is identified by
 /// a URI. Libraries with a URI scheme of "dart" are never scanned (even
 /// if they are listed in _libraries_). For example, "dart:io" is a library
@@ -24,7 +26,7 @@ part of scan;
 /// If you find an annotated request handler is not getting invoked, check
 /// if its library has been included in the list.
 ///
-/// Libraries must be listed for them to be scanned. Firstly, because it is
+/// Libraries **must** be listed for them to be scanned. Firstly, because it is
 /// inefficient to scan all the libraries of the program: third party packages
 /// won't have any _Handles_ annotations. Secondly, for security, since you
 /// don't want a third-party package from adding request handlers that you
@@ -33,7 +35,6 @@ part of scan;
 ServerPipeline serverPipelineFromAnnotations(
     String pipelineName, Iterable<String>? libraries,
     {bool scanAllFileLibraries = true}) {
-  ArgumentError.checkNotNull(pipelineName, 'no pipeline name'); // use default
   final pipeline = ServerPipeline(pipelineName);
 
   // Make sure annotations from the desired libraries have been scanned
@@ -58,10 +59,20 @@ ServerPipeline serverPipelineFromAnnotations(
 
   if (!haveRequestHandlers) {
     // Usually a programming error, since there is no point in creating a
-    // pipeline with no request handlers. Check the name is correct.
+    // pipeline with no request handlers. Check the pipeline name is correct
+    // and if the library the annotation has been defined in is listed
+    // in the _libraries_ parameter. If the annotation is on a function that
+    // is not in any library, ensure _scanAllFileLibraries_ is set to true.
 
-    throw ArgumentError.value(pipelineName, 'pipelineName',
-        'no Handles annotations on request handlers exist for this pipeline');
+    final rest =
+        scanAllFileLibraries ? '' : ' and/or set scanAllFileLibraries to true';
+
+    throw ArgumentError.value(
+        pipelineName,
+        'pipelineName',
+        'no Handles annotations on request handlers exist for this pipeline'
+            ' (check ...FromAnnotations() was called with a list of libraries'
+            ' like "package:foo/foo.dart"$rest');
   }
 
   // Set the pipeline exception handler from annotations

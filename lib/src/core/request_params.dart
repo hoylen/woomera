@@ -285,7 +285,8 @@ class RequestParams {
   /// Do not use both _raw_ and _mode_.
 
   List<String> values(String key,
-      {@deprecated bool raw = false, ParamsMode mode = ParamsMode.standard}) {
+      {@Deprecated('use mode with ParamsMode.raw instead') bool raw = false,
+      ParamsMode mode = ParamsMode.standard}) {
     // When the deprecated "raw" parameter is removed, delete the next few lines
     // and just use the "mode".
     assert(
@@ -445,7 +446,8 @@ class RequestParamsMutable extends RequestParams {
   /// Do not use both _raw_ and _mode_.
 
   void remove(String key, String value,
-      {@deprecated bool raw = false, ParamsMode mode = ParamsMode.standard}) {
+      {@Deprecated('use mode: ParamsMode.raw') bool raw = false,
+      ParamsMode mode = ParamsMode.standard}) {
     // When the deprecated "raw" parameter is removed, delete the next few lines
     // and just use the "mode".
     assert(

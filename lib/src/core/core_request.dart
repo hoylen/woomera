@@ -28,6 +28,21 @@ abstract class _CoreRequest {
 
   List<String>? _pathSegments(String serverBasePath);
 
+  /// Information about the client connection.
+  ///
+  /// Returns the client connection information.
+  /// Returns null if the socket is not available.
+  HttpConnectionInfo? get connectionInfo;
+
+  /// Client certificate for client authenticated TLS connections.
+  ///
+  /// Returns the client certificate used to establish the TLS connection
+  /// the request was sent over. Returns null if there was no client certificate
+  /// (either because the connection was not over TLS, the server did not
+  /// request the client to present a certificate, or the client did not provide
+  /// one).
+  X509Certificate? get certificate;
+
   /// The cookies in the request.
   List<Cookie> get cookies;
 
@@ -127,6 +142,12 @@ class _CoreRequestReal implements _CoreRequest {
       return null;
     }
   }
+
+  @override
+  HttpConnectionInfo? get connectionInfo => _httpRequest.connectionInfo;
+
+  @override
+  X509Certificate? get certificate => _httpRequest.certificate;
 
   @override
   HttpHeaders get headers => _httpRequest.headers;
@@ -325,9 +346,13 @@ class _CoreRequestSimulated implements _CoreRequest {
       required List<Cookie> cookies,
       this.sessionId = '',
       this.queryParams,
+      HttpConnectionInfo? connectionInfo,
+      X509Certificate? certificate,
       String? bodyStr,
       List<int>? bodyBytes})
       : _headers = headers,
+        _connectionInfo = connectionInfo,
+        _certificate = certificate,
         _cookies = cookies,
         _bodyStr = bodyStr,
         _bodyBytes = bodyBytes {
@@ -350,6 +375,10 @@ class _CoreRequestSimulated implements _CoreRequest {
   final String _method;
 
   final String _internalPath;
+
+  final HttpConnectionInfo? _connectionInfo;
+
+  final X509Certificate? _certificate;
 
   final HttpHeaders _headers;
 
@@ -391,6 +420,12 @@ class _CoreRequestSimulated implements _CoreRequest {
   // server base path to strip out.
   @override
   String internalPath(String serverBasePath) => _internalPath;
+
+  @override
+  HttpConnectionInfo? get connectionInfo => _connectionInfo;
+
+  @override
+  X509Certificate? get certificate => _certificate;
 
   @override
   HttpHeaders get headers => _headers;

@@ -15,10 +15,17 @@ part of scan;
 /// not created unless the [ServerPipeline.defaultName] explicitly appears as
 /// one of the names in the list.
 ///
-/// **Important:** the list of [libraries] must be correct, otherwise it
+/// **Important:** the list of [libraries] **must** be correct, otherwise it
 /// may not find all the annotations. Please see the documentation on
 /// [serverPipelineFromAnnotations] for details about the _libraries_ and
 /// _scanAllFileLibraries_ parameters.
+///
+/// Library names are usually of the form "package:pname/lname.dart".
+///
+/// ```dart
+/// final ws = serverFromAnnotations(
+///   libraries: ['package:foo/foo.dart', 'package:bar/bar.dart'])
+/// ```
 ///
 /// Throws a [LibraryNotFound] if one or more of the explicitly identified
 /// libraries does not exist.
@@ -52,6 +59,8 @@ Server serverFromAnnotations(
     //
     // This exception means one or more of the values in [libraries] does
     // not exist in the program. Solution: remove or fix the offending value.
+    //
+    // Library names are usually of the form "package:pname/lname.dart".
     //
     // Don't know what library values to use? Set the logging level for
     // "woomera.handles" to FINEST to log the URIs for the libraries that
