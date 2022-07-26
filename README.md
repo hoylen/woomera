@@ -61,6 +61,18 @@ This following is a tutorial which provides an overview the main
 features of the package. For details about the package and its
 advanced features, please see the API documentation.
 
+## Platform support
+
+This package is supported on all platforms where "dart:io" is
+supported.
+
+The _Scores_ page incorrectly says the package is not compatible with
+any package, because of the use of "dart:mirrors" in one of its
+libraries.
+
+This package can be used without "dart:mirrors", by only importing its
+_core_ library.
+
 ## Tutorial
 
 ### 1. A basic Web server

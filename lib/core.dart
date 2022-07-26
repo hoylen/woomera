@@ -103,6 +103,7 @@ library core;
 import 'dart:async';
 import 'dart:convert' show Encoding, utf8;
 import 'dart:io';
+import 'dart:typed_data';
 
 import 'package:http/http.dart' as http;
 import 'package:logging/logging.dart';
@@ -129,6 +130,7 @@ part 'src/core/server_pipeline.dart';
 part 'src/core/server_rule.dart';
 part 'src/core/session.dart';
 part 'src/core/simulated_connection.dart';
+part 'src/core/simulated_core_request.dart';
 part 'src/core/simulated_headers.dart';
 part 'src/core/simulated_response.dart';
 

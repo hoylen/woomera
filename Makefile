@@ -6,7 +6,7 @@
 FILES_TO_INSTALL=bin lib pubspec.yaml pubspec.lock packages
 FILES_IN_BUILD=bin lib etc pubspec.yaml pubspec.lock README.md Makefile
 
-.PHONY: build coverage-suite
+.PHONY: doc build coverage-suite
 
 APP_NAME=`awk '/^name:/ {print $$2}' pubspec.yaml`
 APP_VERSION=`awk '/^version:/ {print $$2}' pubspec.yaml`
@@ -32,7 +32,7 @@ help:
 	@if [ -e "test" ]; then \
 	  echo "Development targets:"; \
 	  echo "  format   format Dart files"; \
-	  echo "  dartdoc  generate API documentation"; \
+	  echo "  doc      generate API documentation"; \
 	  echo "  clean    deletes build directory"; \
 	fi
 
@@ -99,8 +99,11 @@ purge: uninstall
 format:
 	@dart format lib test example
 
-dartdoc:
+doc:
 	@dart doc "$$(pwd)"
+
+doc-open: doc
+	@open doc/api/index.html
 
 coverage-suite:
 	@if [ ! -d coverage-suite ]; then \

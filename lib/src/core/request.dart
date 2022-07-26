@@ -2,6 +2,16 @@ part of core;
 
 //================================================================
 /// Request class.
+///
+/// Represents a HTTP request.
+///
+/// The framework will invoke the request handlers or exception handlers
+/// of a [Server] with an instance of this class. That request object will
+/// be created from the real HTTP request.
+///
+/// For testing, with the [Server.simulate] method, instances can be created
+/// using the [Request.simulated] constructor or one of the convenience
+/// constructors: [Request.simulatedGet] or [Request.simulatedPost].
 
 class Request {
   //================================================================
@@ -75,11 +85,49 @@ class Request {
   }
 
   //----------------------------------------------------------------
-  /// Constructor for a simulated request.
+  /// Creates a simulated request.
+  ///
+  /// A simulated HTTP request is used for testing a server. The simulated
+  /// request is "sent" to the server using the [Server.simulate] method.
+  /// This is an alternative to testing by sending real HTTP requests to it
+  /// over the network.
+  ///
+  /// The request has the HTTP [method] (e.g. "GET", "POST", "PATCH") and
+  /// is for the [internalPath] (a string starting with "~/").
+  ///
+  /// The [id] is an identifier for the request. This identifier is used in any
+  /// log entries about the request. If not provided, an identifier will
+  /// be generated ("SIM:" followed by a number).
+  ///
+  /// The [sessionId] is identifier of a session. Sessions are optional.
+  ///
+  /// The [queryParams] contain the query parameters of the request.
+  /// Conceptually, the URL of the request would include the _internalPath_
+  /// and any _queryParameters_.
+  ///
+  /// The [connectionInfo] contains the information about the connection the
+  /// request was sent over. In a simulated request, no real network connection
+  /// is involved. But a value can be provided for it, for use by the
+  /// request handler (e.g. to test logging or to allow list checking).
+  ///
+  /// The client [certificate] for the TLS connect the request was sent over.
+  /// In a simulated request, no real TLS connection is involved. But a
+  /// value can be provided for the client certificate, for use by the request
+  /// handler (e.g. to test client authentication using client certificates).
+  ///
+  /// The HTTP [headers] contains the headers of the request.
+  ///
+  /// The [cookies] contains the cookies of the request.
+  ///
+  /// The body of the request can be provided as [bodyBytes] or [bodyStr].
+  /// If neither is provided, the body is empty. Do not provide both.
+  /// If the request handler retrieves the body as a stream using
+  /// [Request.bodyStream], [bodyStreamEventSize] is the maximum number
+  /// of bytes in each event from the stream.
 
   Request.simulated(String method, String internalPath,
-      {String? sessionId,
-      String? id,
+      {String? id,
+      String? sessionId,
       RequestParams? queryParams,
       HttpConnectionInfo? connectionInfo,
       X509Certificate? certificate,
@@ -87,6 +135,7 @@ class Request {
       List<Cookie>? cookies,
       String? bodyStr,
       List<int>? bodyBytes,
+      int? bodyStreamEventSize,
       this.postParams})
       : _id = id ?? _defaultSimulatedId,
         queryParams = queryParams ?? RequestParams._internalConstructor(),
@@ -98,6 +147,7 @@ class Request {
             connectionInfo: connectionInfo,
             headers: headers ?? SimulatedHttpHeaders(),
             cookies: cookies ?? <Cookie>[],
+            bodySteamEventSize: bodyStreamEventSize,
             bodyStr: bodyStr,
             bodyBytes: bodyBytes),
         _coreResponse = _CoreResponseSimulated() {
@@ -112,62 +162,63 @@ class Request {
   // extracted to populate the sessionId.
 
   //----------------
-  /// Constructor for a simulated GET request.
+  /// Convenience method for creating a simulated GET request.
+  ///
+  /// See [Request.simulated] for details.
 
-  Request.simulatedGet(String internalPath,
-      {String? sessionId,
-      String? id,
-      RequestParams? queryParams,
-      HttpConnectionInfo? connectionInfo,
-      X509Certificate? certificate,
-      SimulatedHttpHeaders? headers,
-      List<Cookie>? cookies,
-      String? bodyStr,
-      List<int>? bodyBytes})
-      : _id = id ?? _defaultSimulatedId,
-        queryParams = queryParams ?? RequestParams._internalConstructor(),
-        _sessionUsingCookies = true,
-        _coreRequest = _CoreRequestSimulated('GET', internalPath,
-            sessionId: sessionId ?? '',
-            queryParams: queryParams,
-            connectionInfo: connectionInfo,
-            certificate: certificate,
-            headers: headers ?? SimulatedHttpHeaders(),
-            cookies: cookies ?? <Cookie>[],
-            bodyStr: bodyStr,
-            bodyBytes: bodyBytes),
-        _coreResponse = _CoreResponseSimulated() {
-    _constructorCommon();
-  }
+  factory Request.simulatedGet(String internalPath,
+          {String? sessionId,
+          String? id,
+          RequestParams? queryParams,
+          HttpConnectionInfo? connectionInfo,
+          X509Certificate? certificate,
+          SimulatedHttpHeaders? headers,
+          List<Cookie>? cookies,
+          String? bodyStr,
+          List<int>? bodyBytes,
+          int? bodySteamEventSize}) =>
+      Request.simulated('GET', internalPath,
+          sessionId: sessionId,
+          id: id,
+          queryParams: queryParams,
+          connectionInfo: connectionInfo,
+          certificate: certificate,
+          headers: headers,
+          cookies: cookies,
+          bodyStr: bodyStr,
+          bodyBytes: bodyBytes,
+          bodyStreamEventSize: bodySteamEventSize);
 
   //----------------
   /// Constructor for a simulated Post request.
+  ///
+  /// Note: [postParams] is mandatory, but it can contain no actual parameters.
+  ///
+  /// See [Request.simulated] for details.
 
-  Request.simulatedPost(String internalPath, this.postParams,
-      {String? sessionId,
-      String? id,
-      RequestParams? queryParams,
-      HttpConnectionInfo? connectionInfo,
-      X509Certificate? certificate,
-      SimulatedHttpHeaders? headers,
-      List<Cookie>? cookies,
-      String? bodyStr,
-      List<int>? bodyBytes})
-      : _id = id ?? _defaultSimulatedId,
-        queryParams = queryParams ?? RequestParams._internalConstructor(),
-        _sessionUsingCookies = true,
-        _coreRequest = _CoreRequestSimulated('POST', internalPath,
-            sessionId: sessionId ?? '',
-            queryParams: queryParams,
-            connectionInfo: connectionInfo,
-            certificate: certificate,
-            headers: headers ?? SimulatedHttpHeaders(),
-            cookies: cookies ?? <Cookie>[],
-            bodyStr: bodyStr,
-            bodyBytes: bodyBytes),
-        _coreResponse = _CoreResponseSimulated() {
-    _constructorCommon();
-  }
+  factory Request.simulatedPost(String internalPath, RequestParams postParams,
+          {String? sessionId,
+          String? id,
+          RequestParams? queryParams,
+          HttpConnectionInfo? connectionInfo,
+          X509Certificate? certificate,
+          SimulatedHttpHeaders? headers,
+          List<Cookie>? cookies,
+          String? bodyStr,
+          List<int>? bodyBytes,
+          int? bodySteamEventSize}) =>
+      Request.simulated('POST', internalPath,
+          sessionId: sessionId,
+          id: id,
+          queryParams: queryParams,
+          connectionInfo: connectionInfo,
+          certificate: certificate,
+          headers: headers,
+          cookies: cookies,
+          bodyStr: bodyStr,
+          bodyBytes: bodyBytes,
+          bodyStreamEventSize: bodySteamEventSize,
+          postParams: postParams);
 
   //----------------
   // Code common to all constructors.
@@ -248,15 +299,16 @@ class Request {
 
   final _CoreRequest _coreRequest;
 
-  /// Returns the [HttpRequest].
+  /// Returns the underlying [HttpRequest].
   ///
   /// This member should not be used unless absolutely necessary.
-  /// Please use [method], [requestPath], [headers], [cookies],
-  /// [bodyBytes], [bodyStr] to obtain information about the request.
+  /// Please use [method], [requestPath], [connectionInfo], [certificate],
+  /// [headers], [cookies], [bodyBytes], [bodyStr] or [bodyStream] to obtain
+  /// information about the request.
   ///
   /// It is only available for [Request] objects from real HTTP requests, and
   /// will throw an [UnsupportedError] exception when called on a simulated
-  /// _Request_. Therefore, using this method will prevent the server from being
+  /// _Request_. Therefore, using it will prevent the server from being
   /// tested using [Server.simulate].
   ///
   /// If a value is required from [HttpRequest], consider submitting an issue
@@ -413,7 +465,7 @@ class Request {
   //================================================================
   // Body of the request
 
-  /// Retrieves the entire body of the request as a string.
+  /// The entire body of the request as a string.
   ///
   /// The bytes in the body of the HTTP request are interpreted as an UTF-8
   /// encoded string. If the bytes cannot be decoded as UTF-8, a
@@ -423,16 +475,52 @@ class Request {
   /// thrown. Set the _maxBytes_ to a value that is not less than the maximum
   /// size the request handler ever expects to receive. This limit prevents
   /// incorrect/malicious clients from flooding the request handler with
-  /// too much data om the body (e.g. several gigabytes). Note: the maximum
-  /// number of characters in the string may be equal to or less than the
-  /// maximum number of bytes, since a single Unicode code point may require
-  /// one or more bytes to encode.
+  /// too much data in the body (e.g. several gigabytes).
+  /// To retrieve arbitrarily large bodies, use [bodyStream].
+  ///
+  /// Note: the maximum number of **characters** allowed in the string may be
+  /// equal to or less than the specified maximum number of **bytes**.
+  /// This is because a single Unicode code point may require multiple bytes
+  /// to represent in UTF-8.
 
   Future<String> bodyStr(int maxBytes) => _coreRequest.bodyStr(maxBytes);
 
-  /// Retrieves the entire body of the request as a sequence of bytes.
+  /// The entire body of the request as a list of bytes.
+  ///
+  /// Returns a Future to a list of integers.
+  ///
+  /// Throws [PostTooLongException] if the HTTP request body is longer than
+  /// [maxBytes]. To retrieve arbitrarily large bodies, use [bodyStream].
 
   Future<List<int>> bodyBytes(int maxBytes) => _coreRequest.bodyBytes(maxBytes);
+
+  /// The body of the request as a stream of bytes.
+  ///
+  /// There is no limit on the size of the body that can be retrieved using this
+  /// stream, unlike with [bodyStr] or [bodyBytes].
+  ///
+  /// Returns a Stream of [Uint8List].
+  ///
+  /// Throws a [StateError] if  _bodyStr_, _bodyBytes_ or _bodyStream_ has
+  /// previously been invoked. The stream can only be retrieved once.
+  ///
+  /// ## Example
+  ///
+  /// ```dart
+  /// Future<void> processBody(Request req) async {
+  ///   var total = 0;
+  ///   var count = 0;
+  ///   await for (final chunk in req.bodyStream()) {
+  ///     count++;
+  ///     total += chunk.length;
+  ///     print('[$count] ${chunk.length} bytes');
+  ///     ...
+  ///   }
+  ///   print('body: $total bytes, received on $count events from bodyStream');
+  /// }
+  /// ```
+
+  Stream<Uint8List> bodyStream() => _coreRequest.bodyStream();
 
   //================================================================
 
@@ -457,11 +545,18 @@ class Request {
   // The [pathParams] will be set by the server when it processes the request.
 
   //----------------
-  /// The parameters from the POST request.
+  /// The parameters from a 'application/x-www-form-urlencoded' request:
+  /// typically from a POST request from a HTML form.
   ///
-  /// This is not null if the context is a POST request with a MIME type of
-  /// 'application/x-www-form-urlencoded'. Beware that it will be null for
-  /// other types of POST requests (e.g. JSON).
+  /// This is not null if the context is a request with a MIME type of
+  /// 'application/x-www-form-urlencoded'.
+  ///
+  /// Typically, this is associated with a POST request. For example, from
+  /// a HTML form submitted with "method=POST". But there can be other HTTP
+  /// methods that use that format; and there can be POST requests that do not
+  /// use that format (e.g. POST requests with JSON in the body).
+  /// Therefore, the name "postParams" is sometimes incorrect, but it is a
+  /// nicer name than "xWwwFormUrlencodedParams".
 
   RequestParams? postParams;
 

@@ -1,6 +1,6 @@
 part of core;
 
-//================================================================
+//################################################################
 /// The abstract core request.
 ///
 /// This is an abstract class used by [Request] to represent the underlying
@@ -46,11 +46,19 @@ abstract class _CoreRequest {
   /// The cookies in the request.
   List<Cookie> get cookies;
 
-  /// The body of the HTTP request, as a sequence of bytes.
+  //================================================================
+  // Body methods
+
+  /// The body of the HTTP request, as a list of bytes.
   Future<List<int>> bodyBytes(int maxSize);
 
   /// The body of the HTTP request, decoded as UTF-8 into a String.
   Future<String> bodyStr(int maxBytes);
+
+  /// The body of the HTTP request as a stream of bytes.
+  Stream<Uint8List> bodyStream();
+
+  //================================================================
 
   /// Retrieves the session ID, if any.
   ///
@@ -60,7 +68,7 @@ abstract class _CoreRequest {
   String _extractSessionId(Server server, Request req);
 }
 
-//================================================================
+//################################################################
 /// Implementation of [_CoreRequest] for real HTTP requests.
 ///
 /// It is a wrapper around the [HttpRequest] passed to its constructor.
@@ -158,38 +166,79 @@ class _CoreRequestReal implements _CoreRequest {
   //================================================================
   // Body
   //
-  // With a [HttpRequest], the body is obtained from a stream of bytes.
+  // There are three methods to retrieve the body: [bodyBytes], [bodyStr]
+  // and [bodyStream].
   //
-  // This implementation reads the stream and stores them in [_bodyBytes].
-  // If the bytes are requested again, that cached copy is returned (since the
-  // stream cannot be read again).
+  // The contents of the HTTP request body is provided by the [HttpRequest]
+  // as a stream of bytes. Once read, a stream cannot be read again.
   //
-  // The implementation of [bodyStr] obtains the bytes and decodes them as
-  // UTF-8, storing the result in [_bodyStr]. If the string value is requested
-  // again, the cached copy is returned to save decoding it again.
+  // If [bodyBytes] or [bodyStr] is invoked first, it reads the stream and
+  // stores it (in either _bodyBytes or _bodyStr, respectively). It is stored
+  // so the body can be retrieved by subsequent invocation of either method.
+  //
+  // The [bodyStream] is different: it does not store a copy of the body and
+  // it can only be invoked at most once. It also cannot be used in conjunction
+  // with the other two methods.
   //
   // Future implementations might need to support other encodings, in which case
   // the encoding for the cached string needs to be kept track of.
 
-  List<int>? _bodyBytes; // cache of bytes read in
+  /// Cache of bytes read in.
+  ///
+  /// This is set if [bodyBytes] was invoked first. Otherwise, it is null.
+  ///
+  /// If this is set, [_bodyStreamHasBeenRead] will be always be true and
+  /// [_bodyStr] will always remain null.
 
-  String? _bodyStr; // cache of decoded string value
+  List<int>? _bodyBytes;
+
+  /// Cache of string decoded from the body.
+  ///
+  /// This is set if [bodyStr] was invoked first. Otherwise, it is null.
+  ///
+  /// The [_bodyBytes] is never set if this is set to a value.
+
+  /// If this is set, [_bodyStreamHasBeenRead] will always be true and
+  /// [_bodyBytes] will always remain null.
+
+  String? _bodyStr;
+
+  /// Indicates if the stream has been read.
+  ///
+  /// This is set when any of the three body methods have been invoked.
+  /// This prevents [bodyStream] from being invoked multiple times, or
+  /// it being invoked before (or after) either [_bodyBytes] or [_bodyStr]
+  /// have been (or will be) invoked.
+
+  bool _bodyStreamHasBeenRead = false;
+
+  //----------------------------------------------------------------
+  // The HTTP request body as a list of bytes.
 
   @override
   Future<List<int>> bodyBytes(int maxSize) async {
-    if (_bodyBytes == null) {
-      // Bytes not cached: read them in and Ystore them in the bytes cache
+    if (!_bodyStreamHasBeenRead) {
+      assert(_bodyBytes == null);
+      assert(_bodyStr == null);
 
-      _bodyBytes = <int>[];
-      await for (var bytes in _httpRequest) {
-        if (maxSize < _bodyBytes!.length + bytes.length) {
-          throw PostTooLongException();
-        }
-        _bodyBytes!.addAll(bytes);
+      _bodyBytes = await _internalBodyBytes(maxSize);
+      assert(_bodyStreamHasBeenRead);
+
+      // Return the bytes that have just ben read in
+
+      return _bodyBytes!;
+    } else {
+      if (_bodyBytes != null) {
+        // Stream was previously read and stored as bytes
+        return _bodyBytes!; // return the previously read in bytes
+      } else if (_bodyStr != null) {
+        // Stream was previously read and stored as a string
+        return utf8.encode(_bodyStr!); // encode string in UTF-8
+      } else {
+        // Stream was previously used for [_bodyStream], so cannot be re-read
+        throw StateError('bodyBytes cannot be invoked after bodyStream');
       }
     }
-
-    return _bodyBytes!;
   }
 
   //----------------------------------------------------------------
@@ -197,13 +246,56 @@ class _CoreRequestReal implements _CoreRequest {
 
   @override
   Future<String> bodyStr(int maxBytes) async {
-    if (_bodyStr == null) {
-      // String not cached: get the bytes and decode them into the string cache
-      final bytes = _bodyBytes ?? await bodyBytes(maxBytes);
+    if (!_bodyStreamHasBeenRead) {
+      assert(_bodyBytes == null);
+      assert(_bodyStr == null);
 
-      _bodyStr = utf8.decode(bytes, allowMalformed: false);
+      _bodyStr = utf8.decode(await _internalBodyBytes(maxBytes),
+          allowMalformed: false);
+      assert(_bodyStreamHasBeenRead);
+
+      return _bodyStr!;
+    } else {
+      if (_bodyBytes != null) {
+        // Stream was previously read and stored as bytes
+        return utf8.decode(_bodyBytes!); // decode the previously read in bytes
+      } else if (_bodyStr != null) {
+        // Stream was previously read and stored as a string
+        return _bodyStr!;
+      } else {
+        // Stream was previously used for [_bodyStream], so cannot be re-read
+        throw StateError('bodyStr cannot be invoked after bodyStream');
+      }
     }
-    return _bodyStr!;
+  }
+
+  //----------------------------------------------------------------
+  // Internal method used by both [bodyBytes] and [bodyStr].
+
+  Future<List<int>> _internalBodyBytes(int maxSize) async {
+    final bytes = <int>[];
+    await for (var chunk in bodyStream()) {
+      if (maxSize < bytes.length + chunk.length) {
+        throw PostTooLongException();
+      }
+      bytes.addAll(chunk);
+    }
+
+    return bytes;
+  }
+
+  //----------------------------------------------------------------
+  // The HTTP body as a stream of bytes.
+
+  @override
+  Stream<Uint8List> bodyStream() {
+    if (_bodyStreamHasBeenRead) {
+      throw StateError(
+          'bodyStream cannot be invoked after bodyBytes/bodyStr/bodyStream');
+    }
+
+    _bodyStreamHasBeenRead = true;
+    return _httpRequest;
   }
 
   //================================================================
@@ -327,247 +419,4 @@ class _CoreRequestReal implements _CoreRequest {
 
     return result;
   }
-}
-
-//================================================================
-/// Implementation of [_CoreRequest] for simulated HTTP requests.
-///
-/// It stores and returns the values passed to its constructor.
-/// That constructor is invoked by [Request.simulated], [Request.simulatedGet]
-/// and [Request.simulatedPost] - the constroctors used for simulated HTTP
-/// requests.
-
-class _CoreRequestSimulated implements _CoreRequest {
-  //================================================================
-  /// Constructor
-
-  _CoreRequestSimulated(this._method, this._internalPath,
-      {required SimulatedHttpHeaders headers,
-      required List<Cookie> cookies,
-      this.sessionId = '',
-      this.queryParams,
-      HttpConnectionInfo? connectionInfo,
-      X509Certificate? certificate,
-      String? bodyStr,
-      List<int>? bodyBytes})
-      : _headers = headers,
-        _connectionInfo = connectionInfo,
-        _certificate = certificate,
-        _cookies = cookies,
-        _bodyStr = bodyStr,
-        _bodyBytes = bodyBytes {
-    if (!_internalPath.startsWith('~/')) {
-      throw ArgumentError.value(
-          _internalPath, 'path', 'does not start with "~/"');
-    }
-
-    if (bodyStr != null && bodyBytes != null) {
-      throw ArgumentError('do not set body as both a String and bytes');
-    }
-  }
-
-  //================================================================
-  // Internal implementation
-  //
-  // This implementation stores the values provided by the application
-  // (via one of the simulated constructors of a [Request]).
-
-  final String _method;
-
-  final String _internalPath;
-
-  final HttpConnectionInfo? _connectionInfo;
-
-  final X509Certificate? _certificate;
-
-  final HttpHeaders _headers;
-
-  final List<Cookie> _cookies;
-
-  // The body as a series of bytes.
-  //
-  // If the body has not been set, both [_bodyBytes] and [_bodyStr] are null.
-  // Attempts to retrieve either the bytes or string returns an empty
-  // list of bytes or the empty string, respectively.
-  //
-  // If the body has been set as bytes, then [_bodyBytes] is not null.
-  //
-  // If the body has been set as a string, then [_bodyStr] is not null.
-  //
-  // If the body has been set in one form and then retrieved in the other form,
-  // then the other form is also set (i.e. both forms are available/cached).
-
-  List<int>? _bodyBytes;
-
-  // The body as a string.
-  //
-  // See [_bodyBytes].
-
-  String? _bodyStr;
-
-  /// The query parameters
-
-  final RequestParams? queryParams;
-
-  //================================================================
-
-  /// HTTP method
-
-  @override
-  String get method => _method;
-
-  // This implementation stores the internal path, so it does not have any
-  // server base path to strip out.
-  @override
-  String internalPath(String serverBasePath) => _internalPath;
-
-  @override
-  HttpConnectionInfo? get connectionInfo => _connectionInfo;
-
-  @override
-  X509Certificate? get certificate => _certificate;
-
-  @override
-  HttpHeaders get headers => _headers;
-
-  @override
-  List<String>? _pathSegments(String serverBasePath) {
-    // Since this implementation stores the internal path as a string, just
-    // split the string, remove the leading "~", and account for the special
-    // case of the root path.
-
-    final s = _internalPath.split('/');
-
-    final firstItem = s.removeAt(0);
-    assert(firstItem == '~');
-
-    if (s.length == 1 && s.first.isEmpty) {
-      // Internal path was "~/"
-      return [];
-    } else if (s.contains('..')) {
-      _logRequest.finest('path contains "..": request rejected');
-      return null;
-    } else {
-      // Success
-
-      return s;
-    }
-  }
-
-  @override
-  List<Cookie> get cookies => _cookies;
-
-  //================================================================
-  // Body
-  //
-  // The body of the simulated request is stored in the [_bodyBytes] and/or
-  // [_bodyStr] members.
-  //
-  // If they are both null, there is no body.
-  //
-  // If one has a value and the other is null, the one is the value that was
-  // set. The first time the other format is requested, it will be converted
-  // from the set value and stored for future requests.
-  //
-  // If both are not null, then one was set and the other was converted from it.
-  // Both are the value of the body, just in different forms.
-
-  //----------------------------------------------------------------
-  /// Set the body to a sequence of bytes
-
-  void bodySetBytes(List<int> bytes) {
-    _bodyBytes = bytes;
-    _bodyStr = null; // clear any cached string
-  }
-
-  //----------------------------------------------------------------
-  /// Set the body to a string.
-
-  void bodySetStr(String string) {
-    _bodyBytes = null; // clear any cached bytes
-    _bodyStr = string;
-  }
-
-  //----------------------------------------------------------------
-
-  @override
-  Future<String> bodyStr(int maxBytes) async {
-    final str = _bodyStr;
-    final bytes = _bodyBytes;
-
-    if (str != null) {
-      // Have string: return it
-
-      if (maxBytes < str.length) {
-        // Note: this is not exact, since the number of bytes needed to encode
-        // in UTF-8 may be larger than the number of code points in the string.
-        throw PostTooLongException();
-      }
-
-      return str;
-    } else if (bytes != null) {
-      // Have bytes: need to convert it into a string
-
-      if (maxBytes < bytes.length) {
-        throw PostTooLongException();
-      }
-
-      final decodedStr = utf8.decode(bytes);
-
-      _bodyStr = decodedStr; // cache the body string value
-      return decodedStr;
-    } else {
-      // No body
-      return '';
-    }
-  }
-
-  //----------------------------------------------------------------
-  /// Retrieves the entire body of the request as a sequence of bytes.
-
-  @override
-  Future<List<int>> bodyBytes(int maxBytes) async {
-    final str = _bodyStr;
-    final bytes = _bodyBytes;
-
-    if (bytes != null) {
-      // Have bytes: return it
-
-      if (maxBytes < bytes.length) {
-        throw PostTooLongException();
-      }
-
-      return bytes;
-    } else if (str != null) {
-      // Have string: need to convert it into bytes
-
-      if (maxBytes < str.length) {
-        // Note: this is not exact, since the number of bytes needed to encode
-        // in UTF-8 may be larger than the number of code points in the string.
-        throw PostTooLongException();
-      }
-
-      final encodedAsBytes = utf8.encode(str);
-
-      if (maxBytes < encodedAsBytes.length) {
-        // Now we have the exact bytes, an exact check can be done
-        throw PostTooLongException();
-      }
-
-      _bodyBytes = encodedAsBytes; // cache the body bytes value
-      return encodedAsBytes;
-    } else {
-      // No body
-      return <int>[];
-    }
-  }
-
-  //================================================================
-  // Session ID
-
-  String sessionId;
-
-  @override
-  String _extractSessionId(Server server, Request req) => sessionId;
-  // The implementation for a simulated request is trivial.
 }

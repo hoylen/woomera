@@ -8,7 +8,6 @@ library main;
 
 import 'dart:async';
 
-import 'dart:io';
 import 'package:test/test.dart';
 
 import 'package:woomera/woomera.dart';

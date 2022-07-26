@@ -1,3 +1,7 @@
+## 7.3.0
+
+- Added Request.bodyStream to process large bodies as a strem of bytes.
+
 ## 7.2.0
 
 - Added HTTP client information and certificate getters to Request.
