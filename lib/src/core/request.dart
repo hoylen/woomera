@@ -166,28 +166,35 @@ class Request {
   ///
   /// See [Request.simulated] for details.
 
-  factory Request.simulatedGet(String internalPath,
-          {String? sessionId,
-          String? id,
-          RequestParams? queryParams,
-          HttpConnectionInfo? connectionInfo,
-          X509Certificate? certificate,
-          SimulatedHttpHeaders? headers,
-          List<Cookie>? cookies,
-          String? bodyStr,
-          List<int>? bodyBytes,
-          int? bodySteamEventSize}) =>
-      Request.simulated('GET', internalPath,
-          sessionId: sessionId,
-          id: id,
-          queryParams: queryParams,
-          connectionInfo: connectionInfo,
-          certificate: certificate,
-          headers: headers,
-          cookies: cookies,
-          bodyStr: bodyStr,
-          bodyBytes: bodyBytes,
-          bodyStreamEventSize: bodySteamEventSize);
+  Request.simulatedGet(String internalPath,
+      {String? sessionId,
+      String? id,
+      RequestParams? queryParams,
+      HttpConnectionInfo? connectionInfo,
+      X509Certificate? certificate,
+      SimulatedHttpHeaders? headers,
+      List<Cookie>? cookies,
+      String? bodyStr,
+      List<int>? bodyBytes,
+      int? bodyStreamEventSize})
+      : _id = id ?? _defaultSimulatedId,
+        queryParams = queryParams ?? RequestParams._internalConstructor(),
+        _sessionUsingCookies = true,
+        _coreRequest = _CoreRequestSimulated('GET', internalPath,
+            sessionId: sessionId ?? '',
+            queryParams: queryParams,
+            certificate: certificate,
+            connectionInfo: connectionInfo,
+            headers: headers ?? SimulatedHttpHeaders(),
+            cookies: cookies ?? <Cookie>[],
+            bodySteamEventSize: bodyStreamEventSize,
+            bodyStr: bodyStr,
+            bodyBytes: bodyBytes),
+        _coreResponse = _CoreResponseSimulated() {
+    // Important: this must be a constructor and not a factory.
+    // Some tests may implement their own subclass of it.
+    _constructorCommon();
+  }
 
   //----------------
   /// Constructor for a simulated Post request.
@@ -196,29 +203,35 @@ class Request {
   ///
   /// See [Request.simulated] for details.
 
-  factory Request.simulatedPost(String internalPath, RequestParams postParams,
-          {String? sessionId,
-          String? id,
-          RequestParams? queryParams,
-          HttpConnectionInfo? connectionInfo,
-          X509Certificate? certificate,
-          SimulatedHttpHeaders? headers,
-          List<Cookie>? cookies,
-          String? bodyStr,
-          List<int>? bodyBytes,
-          int? bodySteamEventSize}) =>
-      Request.simulated('POST', internalPath,
-          sessionId: sessionId,
-          id: id,
-          queryParams: queryParams,
-          connectionInfo: connectionInfo,
-          certificate: certificate,
-          headers: headers,
-          cookies: cookies,
-          bodyStr: bodyStr,
-          bodyBytes: bodyBytes,
-          bodyStreamEventSize: bodySteamEventSize,
-          postParams: postParams);
+  Request.simulatedPost(String internalPath, this.postParams,
+      {String? sessionId,
+      String? id,
+      RequestParams? queryParams,
+      HttpConnectionInfo? connectionInfo,
+      X509Certificate? certificate,
+      SimulatedHttpHeaders? headers,
+      List<Cookie>? cookies,
+      String? bodyStr,
+      List<int>? bodyBytes,
+      int? bodyStreamEventSize})
+      : _id = id ?? _defaultSimulatedId,
+        queryParams = queryParams ?? RequestParams._internalConstructor(),
+        _sessionUsingCookies = true,
+        _coreRequest = _CoreRequestSimulated('POST', internalPath,
+            sessionId: sessionId ?? '',
+            queryParams: queryParams,
+            certificate: certificate,
+            connectionInfo: connectionInfo,
+            headers: headers ?? SimulatedHttpHeaders(),
+            cookies: cookies ?? <Cookie>[],
+            bodySteamEventSize: bodyStreamEventSize,
+            bodyStr: bodyStr,
+            bodyBytes: bodyBytes),
+        _coreResponse = _CoreResponseSimulated() {
+    // Important: this must be a constructor and not a factory.
+    // Some tests may implement their own subclass of it.
+    _constructorCommon();
+  }
 
   //----------------
   // Code common to all constructors.

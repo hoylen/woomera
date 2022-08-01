@@ -1,3 +1,8 @@
+## 7.3.1
+
+- Reverted Request.simulatedGet and Request.simulatedPost to constructors.
+- Fixed spelling mistake in "bodySteamEventSize" to "bodyStreamEventSize".
+
 ## 7.3.0
 
 - Added Request.bodyStream to process large bodies as a strem of bytes.
