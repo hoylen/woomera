@@ -364,7 +364,12 @@ abstract class Response {
     if (req._sessionUsingCookies) {
       // Set up cookie for session management
 
-      final _session = req.session;
+      var _session = req.session; // original session from request object
+
+      if (_sessionSetInResponse) {
+        _session = _sessionInResponse; // override from this response object
+      }
+
       if (_session != null) {
         // Need to set the session cookie
         final c = Cookie(req.server.sessionCookieName, _session.id)
@@ -426,6 +431,26 @@ abstract class Response {
     if (!_headersOutputted) {
       throw StateError('Header has not been outputted');
     }
+  }
+
+  //================================================================
+  // Session
+
+  bool _sessionSetInResponse = false;
+
+  Session? _sessionInResponse;
+
+  /// Convenience method for setting the session.
+  ///
+  /// Originally, to change the session, it needs to be changed o the request
+  /// object. But often for convenience, it is easier to set it on the response
+  /// object.
+  ///
+  /// Note: this only works when cookies are used to manage state.
+
+  void set session(Session? s) {
+    _sessionSetInResponse = true;
+    _sessionInResponse = s;
   }
 
   //================================================================

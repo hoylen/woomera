@@ -1,6 +1,7 @@
 ## 7.4.0
 
 - Added ResponseNoContent response type.
+- Added session setting on Response.
 
 ## 7.3.1
 
