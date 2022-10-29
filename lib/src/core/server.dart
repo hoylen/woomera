@@ -964,7 +964,12 @@ class Server {
       message = 'Internal error';
     }
 
-    _logResponse.fine('[$requestId] status=$status ($message)');
+    _logResponse
+      ..fine('[$requestId] default raw exception handler: '
+          'responding with HTTP status=$status')
+      ..finer('[$requestId] default raw exception handler '
+          '(${e.runtimeType}): $e')
+      ..finest(s);
 
     httpRequest.response
       ..statusCode = status

@@ -1,3 +1,7 @@
+## 7.4.0
+
+- Added ResponseNoContent response type.
+
 ## 7.3.1
 
 - Reverted Request.simulatedGet and Request.simulatedPost to constructors.

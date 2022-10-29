@@ -687,3 +687,29 @@ class ResponseRedirect extends Response {
     super._finish(req);
   }
 }
+
+//================================================================
+/// HTTP response has no response body.
+
+class ResponseNoContent extends Response {
+  /// Constructor.
+  ///
+  /// The default status is [HttpStatus.noContent] (204) and no
+  /// _Content-Type_ header.
+
+  ResponseNoContent({int status = HttpStatus.noContent}) : super() {
+    this.status = status;
+  }
+
+  /// Produce the response.
+  ///
+  @override
+  void _finish(Request req) {
+    _logResponse.fine('[${req.id}] no response body: status=$_status');
+
+    super._outputHeaders(req);
+    // Note: there is no body
+
+    super._finish(req);
+  }
+}
