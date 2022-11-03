@@ -959,6 +959,9 @@ class Server {
         e is PostTooLongException) {
       status = HttpStatus.badRequest;
       message = 'Bad request';
+    } else if (e is NotFoundException) {
+      status = HttpStatus.notFound;
+      message = 'Not found';
     } else {
       status = HttpStatus.internalServerError;
       message = 'Internal error';

@@ -1,3 +1,7 @@
+## 7.4.2
+
+- Throw NotFoundException when requested URL is not under server base path.
+
 ## 7.4.1
 
 - Fixed bug with producing double slashes in Request.internalPath.

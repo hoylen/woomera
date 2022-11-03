@@ -107,8 +107,11 @@ class _CoreRequestReal implements _CoreRequest {
         baseSegments[skip] == pathSegments[skip]) {
       skip++;
     }
-    assert(skip == baseSegments.length,
-        'request path not under "$serverBasePath": "${_httpRequest.uri}"');
+    if (skip != baseSegments.length) {
+      // Request path is not under the base path.
+      // Note: this will need to be handled by the raw exception handler.
+      throw NotFoundException(NotFoundException.foundMethod);
+    }
 
     // Create a relative URL from the remaining segments
 
