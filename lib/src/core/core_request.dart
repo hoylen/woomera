@@ -96,19 +96,25 @@ class _CoreRequestReal implements _CoreRequest {
 
   @override
   String internalPath(String serverBasePath) {
-    var p = _httpRequest.uri.path;
+    final baseSegments = Uri.parse(serverBasePath).pathSegments;
+    final pathSegments = _httpRequest.uri.pathSegments;
 
-    if (p.startsWith(serverBasePath)) {
-      if (p.length <= serverBasePath.length) {
-        p = '~/';
-      } else {
-        p = '~/${p.substring(serverBasePath.length)}';
-      }
-    } else {
-      p = '~/';
+    // Skip the initial segments that are in the base segments
+
+    var skip = 0;
+    while (skip < baseSegments.length &&
+        skip < pathSegments.length &&
+        baseSegments[skip] == pathSegments[skip]) {
+      skip++;
     }
+    assert(skip == baseSegments.length,
+        'request path not under "$serverBasePath": "${_httpRequest.uri}"');
 
-    return p;
+    // Create a relative URL from the remaining segments
+
+    final remainingSegments = pathSegments.sublist(skip);
+
+    return '~/${remainingSegments.join('/')}';
   }
 
   @override

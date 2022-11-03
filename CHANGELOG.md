@@ -1,3 +1,7 @@
+## 7.4.1
+
+- Fixed bug with producing double slashes in Request.internalPath.
+
 ## 7.4.0
 
 - Added ResponseNoContent response type.
