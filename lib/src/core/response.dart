@@ -314,6 +314,8 @@ abstract class Response {
     if (_headersOutputted) {
       throw StateError('Header already outputted');
     }
+    _logResponseCookie.fine('add: $cookie');
+
     cookies.add(cookie);
   }
 
@@ -324,6 +326,9 @@ abstract class Response {
       throw StateError('Header already outputted');
     }
     try {
+      _logResponseCookie
+          .fine('delete: $name${path != null ? ' path=$path' : ''}');
+
       // Normally, to delete a cookie, the value can be an empty string, but
       // since Dart 2.1.0 (at least until and including Dart 2.2.0), the
       // Cookie constructor throws a RangeError if passed an empty string.

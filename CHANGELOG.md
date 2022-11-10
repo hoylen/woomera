@@ -1,3 +1,7 @@
+## 7.5.0
+
+- Added Server.sessionCookieAlways to always use session cookies when cookie support detection fails.
+
 ## 7.4.2
 
 - Throw NotFoundException when requested URL is not under server base path.

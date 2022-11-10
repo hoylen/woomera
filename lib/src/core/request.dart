@@ -78,7 +78,9 @@ class Request {
     if (_coreRequest.cookies.isNotEmpty) {
       _sessionUsingCookies = true; // got cookies, so browser must support them
     } else {
-      _sessionUsingCookies = false; // don't know, so assume browser doesn't
+      // Cannot detect from HTTP request whether cookies are supported or not.
+      // Use default setting from server.
+      _sessionUsingCookies = _server.sessionCookieAlways;
     }
 
     _constructorCommon();

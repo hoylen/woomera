@@ -144,6 +144,7 @@ Logger _logRequestHeader = Logger('woomera.request.header');
 Logger _logRequestParam = Logger('woomera.request.param');
 
 Logger _logResponse = Logger('woomera.response');
+Logger _logResponseCookie = Logger('woomera.response.cookie');
 
 Logger _logSession = Logger('woomera.session');
 

@@ -575,7 +575,7 @@ class Server {
       if (e is StateError && e.message == 'Header already sent') {
         // Cannot generate an error page, since a page has already started
 
-        _logRequest.fine('_handleRequest: error (${e.runtimeType}): $e\n$s');
+        _logRequest.fine('[$requestId] error (${e.runtimeType}): $e\n$s');
         try {
           await httpRequest.response.close(); // try to close the response
         } catch (e) {
@@ -593,7 +593,7 @@ class Server {
       }
     }
 
-    _logRequest.finest('_handleRequest: done');
+    _logRequest.finest('[$requestId] done');
   }
 
   //--------
@@ -654,7 +654,7 @@ class Server {
 
             handlerFound = true;
 
-            _logRequest.finer('[${req.id}] matched rule: $rule');
+            _logRequest.finer('[${req.id}] matched rule: ${req.method} $rule');
 
             req.pathParams = params; // set matched path parameters
 
@@ -1071,6 +1071,8 @@ class Server {
       throw ArgumentError.value(value, 'value',
           'basePath: does not start with a "/" and is not null/blank');
     }
+
+    _logServer.config('basePath = $_basePath');
   }
 
   //----------------------------------------------------------------
@@ -1099,6 +1101,25 @@ class Server {
 
   //================================================================
   // Session management
+
+  /// Use cookies to record sessions or not.
+  ///
+  /// This value is used if a request cannot detect cookies are enabled in the
+  /// browser.
+  ///
+  /// If true, session cookies will be used. Even though there is no guarantee
+  /// the browser will support cookies.
+  ///
+  /// If false, session cookies will not be used unless the HTTP request had
+  /// cookies in it (indicating the browser has cookies enabled). Instead,
+  /// URL rewriting will be usued.
+  ///
+  /// The default is false for backward compatibility with previous behaviour.
+  /// But since all modern browsers and nearly all users have enabled cookies,
+  /// A future release of this library might set it to true, or eliminate the
+  /// support for URL rewriting.
+
+  bool sessionCookieAlways = false;
 
   /// The name of the cookie used to track sessions.
   ///
