@@ -308,6 +308,40 @@ class Pattern {
   RequestParams? match(List<String> components) {
     final result = RequestParams._internalConstructor();
 
+    if (_segments.isEmpty &&
+        (components.isEmpty ||
+            components.length == 1 && components.first.isEmpty)) {
+      // Special handling for matching the "~/" pattern.
+      //
+      // While the for-loop below will correctly handle the situation of
+      // empty components, it will not match when the components contains
+      // exactly one empty string component. This code handles both sitautions.
+      //
+      // The first situation occurs when there is no prefix
+      // (e.g. https://example.com matching "~/") or there
+      // is a prefix and the requested path does not end with a slash
+      // (e.g. prefix is "foobar" and https://example.com/foobar is requested).
+      // Triggering this when components is empty is optional: it simply saves
+      // going through the for-loop below.
+      //
+      // The second situation occurs when there is a prefix and the requested
+      // path ends with a slash (e.g. prefix is "foobar" and
+      // https://example.com/foobar/ is requested). This situation commonly
+      // happens when a reverse proxy is redirecting URLs with "/foobar/" to
+      // the server configure with a prefix.
+      // Trigger this when components contains one empty string is necessary
+      // to handle this situation. Otherwise, the rule will not match when it
+      // should.
+      //
+      // Another way to think of this special case is: when no prefix is used
+      // there is no difference between https://example.com and
+      // https://example.com/, so they should both match "~/". When there
+      // is a prefix, https://example.com/foobar and https://example.com/foobar/
+      // are distinct URLs, but they should both still match the same "~/".
+
+      return result;
+    }
+
     var componentIndex = 0;
     var segmentIndex = 0;
     for (var segment in _segments) {

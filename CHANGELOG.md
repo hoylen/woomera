@@ -1,3 +1,7 @@
+## 7.5.1
+
+- Fixed pattern matching to match "~/" correctly when a prefix is used.
+
 ## 7.5.0
 
 - Added Server.sessionCookieAlways to always use session cookies when cookie support detection fails.
