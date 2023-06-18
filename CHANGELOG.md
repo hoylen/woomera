@@ -1,7 +1,8 @@
-## 7.6.1
+## 7.6.0
 
 - Added Response.session getter.
 - Fixed warnings in Dart 3.0.
+- Allow use with http 1.0.0 package.
 
 ## 7.5.1
 
