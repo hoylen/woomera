@@ -605,7 +605,7 @@ can be accidently leaked.</body>
 
 /// Method that throws an exception some time in the future.
 ///
-Future<ResponseBuffered> oldStyleFuture({bool throwException: false}) {
+Future<ResponseBuffered> oldStyleFuture({bool throwException = false}) {
   const duration = const Duration(seconds: 3);
 
   final c = Completer<ResponseBuffered>();

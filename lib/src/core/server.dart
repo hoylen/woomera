@@ -470,7 +470,6 @@ class Server {
           // and the code below "uses" it.
 
           //_logServer.info("HTTP Request: [$id$requestNo] handler started");
-
         } catch (e, s) {
           _logServer.shout(
               'uncaught try/catch exception (${e.runtimeType}): $e', e, s);
@@ -564,7 +563,6 @@ class Server {
       // that might be thrown, otherwise something very bad went wrong!
       // The following catch statements deal with that situation, or if the
       // context could not be created (which is also very bad).
-
     } catch (e, s) {
       // Exception occurred.
 
@@ -756,7 +754,6 @@ class Server {
               // the next match in the rule/pipeline.
             }
           } // pattern match found in this pipeline
-
         }
         // for all rules in the pipeline
 

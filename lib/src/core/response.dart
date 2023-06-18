@@ -453,10 +453,20 @@ abstract class Response {
   ///
   /// Note: this only works when cookies are used to manage state.
 
-  void set session(Session? s) {
+  set session(Session? s) {
     _sessionSetInResponse = true;
     _sessionInResponse = s;
   }
+
+  /// Gets the session.
+  ///
+  /// The session may be set explicitly with the [session] setter or
+  /// from the session in the request (if there was one).
+  ///
+  /// Returns null if there was no session in the request and [session] was
+  /// not used to set it to a non-null value.
+
+  Session? get session => _sessionInResponse;
 
   //================================================================
   // Static methods

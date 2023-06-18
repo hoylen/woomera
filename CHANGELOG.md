@@ -1,3 +1,8 @@
+## 7.6.1
+
+- Added Response.session getter.
+- Fixed warnings in Dart 3.0.
+
 ## 7.5.1
 
 - Fixed pattern matching to match "~/" correctly when a prefix is used.
