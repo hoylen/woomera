@@ -116,7 +116,7 @@ class Server {
   /// This is used as a prefix to the request number to form the [Request.id] to
   /// identify the [Request]. This is commonly used in log messages:
   ///
-  ///     mylog.info("[${req.id}] something happened");
+  ///     myLog.info("[${req.id}] something happened");
   ///
   /// The default value of the empty string is usually fine for most
   /// applications, since most applications are only running one [Server].  But
@@ -236,8 +236,8 @@ class Server {
   /// Ideally, this exception handler should not thrown an exception.  But if it
   /// did, the low-level exception handler will handle it.
   ///
-  /// This server exception handler can also be set using a
-  /// `@Handles.exceptions()` annotation.
+  /// The server exception handler can be annotated with
+  /// `@ServerExceptionHandler()`.
 
   ExceptionHandler exceptionHandler = _noExceptionHandler;
 
@@ -275,8 +275,8 @@ class Server {
   /// probably better; since the application is using this package to avoid
   /// dealing with the low-level Dart HttpRequest.
   ///
-  /// This server raw exception handler can also be set using a
-  /// `@Handles.rawExceptions()` annotation.
+  /// The server raw exception handler can be annotated with
+  /// `@ServerExceptionHandlerRaw()`.
 
   ExceptionHandlerRaw exceptionHandlerRaw = _defaultRawExceptionHandler;
 
@@ -631,7 +631,7 @@ class Server {
 
       // This section of code guarantees to set the "response" (even if exceptions
       // are thrown while it is being processed), otherwise it means no matching
-      // handlers were found (or they did not preduce a response) in any of the
+      // handlers were found (or they did not produce a response) in any of the
       // pipelines. If the "response" is null, the "unsupportedMethod" indicates
       // whether there were at least one rule for the request.method, even though
       // none of the patterns matched it.
@@ -922,7 +922,7 @@ class Server {
 
       status = HttpStatus.internalServerError;
       title = 'Error';
-      message = 'An error occured while processing the request.';
+      message = 'An error occurred while processing the request.';
     }
 
     final resp = ResponseBuffered(ContentType.html)
@@ -1007,8 +1007,8 @@ class Server {
 
     final result = req._simulatedResponse;
 
-    // Once the simuation has finished, the [req._server] becomes meaningless.
-    // Previously, this code reset it back to null. But with null safty,
+    // Once the simulation has finished, the [req._server] becomes meaningless.
+    // Previously, this code reset it back to null. But with null safety,
     // it cannot be null, so the value of the request's [_server] remains set.
     // Just don't use it outside of a simulated run.
 
@@ -1109,7 +1109,7 @@ class Server {
   ///
   /// If false, session cookies will not be used unless the HTTP request had
   /// cookies in it (indicating the browser has cookies enabled). Instead,
-  /// URL rewriting will be usued.
+  /// URL rewriting will be unused.
   ///
   /// The default is false for backward compatibility with previous behaviour.
   /// But since all modern browsers and nearly all users have enabled cookies,
@@ -1135,11 +1135,12 @@ class Server {
   /// The default value is false. This allows the cookies to be used over HTTPS
   /// and unsecured HTTP, which is necessary when testing over HTTP.
   ///
-  /// Note: if the server is run over HTTPS (i.e. the [run] method is invoked
-  /// with credentials) secure cookies are automatically used. Therefore,
-  /// setting this member to true is only important if running the Web server
-  /// in unsecured mode, but with a HTTPS reverse proxy providing a secured
-  /// connection to the Web server.
+  /// In production, this property should be set to true.
+  ///
+  /// Note: if the server is run over HTTPS (i.e. the server was started using
+  /// the [runTLS] method and not the [run] method) the session cookie's
+  /// _secure_ flag is always set. That is, this property only has an effect
+  /// if the server was started using the _run_ method.
 
   bool sessionCookieForceSecure = false;
 

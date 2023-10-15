@@ -1,7 +1,7 @@
 part of annotations;
 
 //################################################################
-/// Base class for Woomera annotations.
+/// Abstract base class for all Woomera annotation classes.
 
 abstract class WoomeraAnnotation {
   /// Constructor

@@ -6,14 +6,15 @@ import 'dart:io';
 import 'package:woomera/woomera.dart';
 
 Future<void> main() async {
-  // Create and configure server
+  // Create the server with one pipeline
 
-  final ws = serverFromAnnotations()
+  final ws = Server()
     ..bindAddress = InternetAddress.anyIPv6
-    ..bindPort = 1024;
-
-  // ignore: cascade_invocations
-  ws.exceptionHandler = myExceptionHandler;
+    ..bindPort = 1024
+    ..exceptionHandler = myExceptionHandler
+    ..pipelines.add(ServerPipeline()
+      ..get('~/', handleTopLevel)
+      ..get('~/:greeting', handleGreeting));
 
   // Run the server
 
@@ -85,11 +86,11 @@ Future<Response> myExceptionHandler(
     message = 'Sorry, the page you were looking for could not be found.';
   } else {
     status = HttpStatus.internalServerError;
-    message = 'Sorry, an internal error occured.';
+    message = 'Sorry, an internal error occurred.';
     print('Exception: $ex');
   }
 
-  final resp = ResponseBuffered(ContentType.html)
+  return ResponseBuffered(ContentType.html)
     ..status = status
     ..write('''
 <!DOCTYPE html>
@@ -104,61 +105,4 @@ Future<Response> myExceptionHandler(
   </body>
 </html>
 ''');
-
-  return resp;
-}
-
-@Handles.get('~/demo/variable/:foo/bar/:baz')
-@Handles.get('~/demo/wildcard/*')
-Future<Response> handleParams(Request req) async {
-  final resp = ResponseBuffered(ContentType.html)..write('''
-<!DOCTYPE html>
-<html>
-  <head>
-    <meta charset="UTF-8">
-    <title>Woomera Tutorial</title>
-  </head>
-  <body>
-    <h1>Parameters</h1>
-''');
-
-  // ignore: cascade_invocations
-  resp.write('<h2>Path parameters</h2>');
-  _dumpParam(req.pathParams, resp);
-
-  resp.write('<h2>Query parameters</h2>');
-  _dumpParam(req.queryParams, resp);
-
-  final _postParams = req.postParams;
-  if (_postParams != null) {
-    resp.write('<h2>POST parameters</h2>');
-    _dumpParam(_postParams, resp);
-  }
-
-  resp.write('''
-  </body>
-</html>
-''');
-
-  return resp;
-}
-
-void _dumpParam(RequestParams p, ResponseBuffered resp) {
-  final keys = p.keys;
-
-  if (keys.isNotEmpty) {
-    resp.write('<p>Number of keys: ${keys.length}</p>\n<dl>');
-
-    for (var k in keys) {
-      resp.write('<dt><code>${HEsc.text(k)}</code></dt><dd><ul>');
-      for (var v in p.values(k, mode: ParamsMode.raw)) {
-        resp.write('<li><code>${HEsc.text(v)}</code></li>');
-      }
-      resp.write('</ul></dd>');
-    }
-
-    resp.write('</dl>');
-  } else {
-    resp.write('<p>No parameters.</p>');
-  }
 }

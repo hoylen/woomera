@@ -171,14 +171,18 @@ class Pattern {
   //----------------------------------------------------------------
   /// Comparing two patterns for ordering them.
   ///
-  /// This is used for sorting [Handles] annotations, to define the order
-  /// of the rules that are automatically registered with a pipeline (if the
-  /// priority of the registrations are the same).
+  /// This ordering should be used when registering request handlers to a
+  /// pipeline, since an incorrect order might cause some rules to be
+  /// masked by other rules.
   ///
-  /// For ordering, literals have priority over optionals, optionals over
-  /// variables, and variables over wildcards. If there are multiple patterns
-  /// that could match the same path, the more specific pattern will have
-  /// priority over the less specific.
+  /// The rules for ordering are:
+  ///
+  /// - literals have priority over optionals;
+  /// - optionals over variables; and
+  /// - variables over wildcards.
+  ///
+  /// If there are multiple patterns that could match the same path, the more
+  /// specific pattern will have priority over the less specific.
   ///
   /// For example, "~/foo/bar" is ordered before "~/foo/:a-variable". This
   /// is usually the desired order for rules: the path "/foo/bar" will

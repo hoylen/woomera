@@ -1,13 +1,32 @@
-/// Main library: includes both core and scan libraries.
-///
 /// This is the library that is normally imported when using Woomera. It
-/// includes features from both the `core` library and the `scan` library.
+/// exports both the `core` library and the `annotations` library.
 ///
-/// If the Dart Mirrors package is not usable (e.g. if using _dart compile_),
-/// then use the _core_ library instead.
+/// **Note: this library no longer exports the (now deprecated) `scan` library.
+/// If legacy code requires the _scan_ library, it must be explicitly
+/// imported.**
 ///
 /// ## Usage
 ///
+/// To create a Web server (a program that listens for HTTP requests
+/// and produces HTTP responses), create a `Server` object and
+/// invoke its _run_ method.
+///
+/// ```dart
+/// final ws = Server();
+/// ...
+/// await server.run();
+/// ```
+///
+/// The server only listens for requests on port 80 of the IPv4 loopback address
+/// (i.e. 127.0.0.1). This can be changed by properties on the Server object.
+///
+/// ```dart
+/// final ws = Server()
+///   ..bindAddress = InternetAddress.anyIPv6
+///   ..bindPort = 8080;
+/// ```
+///
+/// The server should be assigned one or more `ServerPipeline` objects
 /// Annotate requests handlers and exception handlers using instances of the
 /// `Handles` class (which is defined in the _core_ library).
 ///
@@ -48,5 +67,5 @@
 
 library woomera;
 
+export 'annotations.dart';
 export 'core.dart';
-export 'scan.dart';

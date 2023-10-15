@@ -1,7 +1,7 @@
 part of annotations;
 
 //################################################################
-/// Annotation for a server exception handler function.
+/// Annotation for a _pipeline exception handler_ function.
 
 class PipelineExceptionHandler extends WoomeraAnnotation {
   /// Constructor for pipeline exception handler annotations.
@@ -10,10 +10,10 @@ class PipelineExceptionHandler extends WoomeraAnnotation {
   /// is for. If it is not provided, the exception handler is for the default
   /// pipeline.
   ///
-  /// Note: page not found exceptions are not processed by the pipeline
-  /// exception handlers, but by the server exception handlers. You should
-  /// have a `@Handles.exceptions()` annotation before annotating additional
-  /// exception handlers with this pipeline exception annotation.
+  /// Note: page not found exceptions are not processed by _pipeline
+  /// exception handlers_, but by the _server exception handler_. That
+  /// exception handler should be annotated with the
+  /// [ServerExceptionHandler] class.
 
   const PipelineExceptionHandler({String? pipeline})
       : pipeline = pipeline ?? ServerPipeline.defaultName;

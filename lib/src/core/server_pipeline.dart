@@ -40,7 +40,7 @@ class ServerPipeline {
 
   /// Default pipeline name.
   ///
-  /// This value is the default name used in [Handles] objects, where no
+  /// This value is the default name used in _Handles_ annotations, where no
   /// explicit name is provided. And it is matched by the default pipeline
   /// that is created by [Server] when no explicit pipelines is
   /// requested.
@@ -59,9 +59,8 @@ class ServerPipeline {
   /// Exception/error handler for the pipeline. If not set, exceptions/errors
   /// will be handled by the server-level exception/error handler.
   ///
-  /// This pipeline exception handler can also be set using a
-  /// `@Handles.exception()` annotation, providing it the name of the
-  /// pipeline if it is not the default pipeline.
+  /// A pipeline exception handler can be annotated with
+  /// `@PipelineExceptionHandler()`.
 
   ExceptionHandler? exceptionHandler;
 

@@ -9,9 +9,10 @@ part of core;
 ///
 /// Rules are registered with instances of a [ServerPipeline] (for a particular
 /// HTTP method). Rules can be explicitly created and added to a pipeline using
-/// the [ServerPipeline.register] method. Or they can be implicitly created
+/// the [ServerPipeline.register] method. Or they can be identified
 /// by annotating request handlers (functions or static methods) with
-/// [Handles] objects.
+/// _Handles_ objects and then processed using a program that uses the
+/// [woomera_server_gen](https://github.com/hoylen/woomera_server_gen) package.
 
 class ServerRule {
   //================================================================

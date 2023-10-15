@@ -6,6 +6,7 @@ part of scan;
 /// This class extends [DuplicateRule] when the Mirrors package is available
 /// to describe the existing handler.
 
+@Deprecated('The woomera:scan library has been deprecated.')
 class DuplicateRuleWithExistingHandler extends DuplicateRule {
   /// Constructor
 
@@ -54,6 +55,7 @@ class DuplicateRuleWithExistingHandler extends DuplicateRule {
 /// for the "woomera.handles" logger to FINEST. It will then log the URI for
 /// libraries that are scanned or skipped.
 
+@Deprecated('The woomera:scan library has been deprecated.')
 class LibraryNotFound extends WoomeraException {
   /// Constructor
   LibraryNotFound(Iterable<String> missing)
@@ -72,6 +74,7 @@ class LibraryNotFound extends WoomeraException {
 //----------------------------------------------------------------
 /// Indicates the pattern to create a Handles object is invalid.
 
+@Deprecated('The woomera:scan library has been deprecated.')
 class BadHandlesPattern extends WoomeraException {
   /// Constructor for a bad handles pattern
 
@@ -111,6 +114,7 @@ class BadHandlesPattern extends WoomeraException {
 /// The type signature of the function or method was not the [RequestHandler]
 /// function type.
 
+@Deprecated('The woomera:scan library has been deprecated.')
 class NotRequestHandler extends WoomeraException {
   /// Constructor
   NotRequestHandler(this.location, this.name, this.annotation);
@@ -135,6 +139,7 @@ class NotRequestHandler extends WoomeraException {
 /// The type signature of the function or method was not the [ExceptionHandler]
 /// function type.
 
+@Deprecated('The woomera:scan library has been deprecated.')
 class NotExceptionHandler extends WoomeraException {
   /// Constructor
   NotExceptionHandler(this.location, this.name, this.annotation);
@@ -156,6 +161,7 @@ class NotExceptionHandler extends WoomeraException {
 //----------------------------------------------------------------
 /// Indicates a Handles annotation already exists for the exception handler.
 
+@Deprecated('The woomera:scan library has been deprecated.')
 class DuplicateExceptionHandler extends WoomeraException {
   /// Constructor
   DuplicateExceptionHandler(

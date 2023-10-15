@@ -1,3 +1,37 @@
+## 8.0.0
+
+- BREAKING CHANGE: _scan_ library deprecated and is no longer exported
+  by the _woomera_ library.  Programs that imported
+  "package:woomera/woomera.dart" _and_ used features from the _scan_
+  library should add an extra import for "package:woomera/scan.dart".
+  A better long-term solution is to stop using the _scan_ library:
+  consider using the new
+  [woomera_server_gen](https://pub.dev/packages/woomera_server_gen)
+  package.
+
+- BREAKING CHANGE: annotation classes moved from _core_ library into a
+  separate _annotation_ library.  Programs that imported
+  "package:woomera/core.dart" _and_ used the annotation classes should
+  be changed to import "package:woomera/woomera.dart" (which now
+  exports both _core_ and _annotations_ libraries).
+
+- Added new classes to annotate exception handlers. The use of the the
+  _Handles_ class to annotate exception handlers has been deprecated.
+
+- The `Handles.handlerWrapper` static member has been deprecated.  A
+  new `RequestHandlerWrapper` class has been defined to annotate the
+  wrapper function.
+
+- The _Handles_ class has been changed to extend an abstract
+  _WoomeraAnnotation_ base class, which is also the base class for the
+  new annotation classes for exception handlers and the wrapper
+  function.
+
+- BREAKING CHANGE: the `RequestHandler` is now defined as a function
+  that returns a `Future<Response>` instead of
+  `Future<Response?>`. Instead of returning null, those functions
+  must now throw a `NoResponseFromHandler` exception.
+
 ## 7.6.0
 
 - Added Response.session getter.
@@ -70,7 +104,7 @@
 
 ## 6.0.0
 
-- Breaking change: Proxy constructor no longer has HTTP method parameter.
+- BREAKING CHANGE: Proxy constructor no longer has HTTP method parameter.
 - Added session ID to log message when multiple session IDs are encountered.
 - Fixed Proxy work when client requests keep-alive connections.
 
@@ -99,8 +133,8 @@
 
 - Fixed annotation scanner to work when there are Dart extensions.
 - Separated annotation scanning code into a separate library.
-- Breaking change: Server.fromAnnotations becomes serverFromAnnotations.
-- Breaking change: ServerPipeline.fromAnnotations serverPipelineFromAnnotations.
+- BREAKING CHANGE: Server.fromAnnotations becomes serverFromAnnotations.
+- BREAKING CHANGE: ServerPipeline.fromAnnotations serverPipelineFromAnnotations.
 - Removed deprecated Response.header method (use headerAdd, headerAddDate).
 - Removed deprecated Response.headers (use headerExists, headerNames, etc).
 - Removed deprecated RequestFactory (use RequestCreator).

@@ -27,14 +27,20 @@ GROUP=`id -g`
 #   run "sudo apt-get install sysv-rc-conf" and uncomment the following line
 # CHKCONFIG=sysv-rc-conf
 
+#----------------------------------------------------------------
+
 help:
 	@echo "Targets for ${APP_NAME} (version ${APP_VERSION}):"
 	@if [ -e "test" ]; then \
-	  echo "Development targets:"; \
-	  echo "  format   format Dart files"; \
-	  echo "  doc      generate API documentation"; \
-	  echo "  clean    deletes build directory"; \
+	  echo "  format    format Dart files (runs \"dart format\")"; \
+	  echo "  doc       generate Dart documentation (runs \"dart doc\")"; \
+	  if uname -s | grep -q -i Darwin ; then \
+	    echo "  doc-open  opens generated Dart documentation (macOS only)" ; \
+	  fi ; \
+	  echo "  clean     deletes generated files"; \
 	fi
+
+#================================================================
 
 # Not relevant, since this is a package and not a program+service
 #	  echo "  build    creates tar distributable"; \
@@ -94,16 +100,42 @@ purge: uninstall
 	@rm -f "${CONFIGDIR}/${APP_NAME}.conf"
 	@rmdir "${CONFIGDIR}"
 
+#================================================================
 # Development targets
 
 format:
-	@dart format lib test example
+	dart format lib test example
+
+#================================================================
+# Documentation
+
+#----------------------------------------------------------------
+# Doc
+#
+# "doc" always deletes the generated documentation directory first
+# since any existing files in it are not removed by the "dart doc"
+# command.
 
 doc:
-	@dart doc "$$(pwd)"
+	rm -rf doc/api
+	dart doc
 
-doc-open: doc
-	@open doc/api/index.html
+#----------------------------------------------------------------
+# Convenient command to view generated documentation
+
+doc-open:
+	@if [ -e doc/api/index.html ]; then \
+	  if uname -s | grep -q -i Darwin ; then \
+	    open doc/api/index.html; \
+	  else \
+	    echo "doc-open: cannot run: only works on macOS"; \
+	  fi ; \
+	else \
+	  echo "doc-open: Dart doc not generated (run \"make doc\" first)"; \
+	fi
+
+#================================================================
+# Testing
 
 coverage-suite:
 	@if [ ! -d coverage-suite ]; then \
@@ -116,6 +148,9 @@ coverage-suite:
 	@echo "Coverage test programs:"
 	@find coverage-suite -type l -name \*.dart -exec echo " - {}" \;
 	@echo "Run these with Coverage and add the coverage results into one active suite."
+
+#================================================================
+# Generation
 
 build:
 	@rm -rf "build/${APP_NAME}-${APP_VERSION}"

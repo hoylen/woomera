@@ -13,12 +13,11 @@ part of core;
 ///
 /// Used for in the rules of a [ServerPipeline].
 ///
-/// **Note**: this will be changed to return a Future<Response> instead of
-/// a Future<Response?>. To prepare for that breaking change, define response
-/// handlers as `Future<Response> Function(Request req)` and throw a
-/// [NoResponseFromHandler] instead of returning null.
+/// **Note**: prior to woomera 8.0.0, the _RequestHandler_ was a function
+/// that returned a Future<Response?>. Those functions must now throw
+/// a [NoResponseFromHandler] instead of returning null.
 
-typedef RequestHandler = Future<Response?> Function(Request req);
+typedef RequestHandler = Future<Response> Function(Request req);
 
 //----------------------------------------------------------------
 
@@ -118,12 +117,12 @@ typedef ExceptionHandlerRaw = Future<void> Function(HttpRequest rawRequest,
 
 /// Invoke the request handler making sure all exceptions are captured.
 
-Future<Response?> _invokeRequestHandler(RequestHandler handler, Request req) {
+Future<Response> _invokeRequestHandler(RequestHandler handler, Request req) {
   // Invoke the handler inside its own zone to ensure all exceptions
   // are captured. With a try/catch block, exceptions from asynchronous
   // code are not caught and would cause the program to exit.
 
-  final hCompleter = Completer<Response?>();
+  final hCompleter = Completer<Response>();
 
   // ignore: UNUSED_LOCAL_VARIABLE
   final doNotWaitOnThis = runZonedGuarded(() async {

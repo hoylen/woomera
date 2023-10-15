@@ -1,4 +1,28 @@
-/// Annotations scanning library.
+/// **DEPRECATED**
+///
+/// **This library is now deprecated. It will be removed in a future release.**
+///
+/// The problem with dynamically creating pipelines and servers from
+/// annotations is it relies on the `dart:mirror` package. Using that
+/// package prevents a program from being compiled into a native binary.
+///
+/// This library also contains the experimental `dumpServer` function that
+/// takes a _Server_ and generates Dart code to create the same _Server_
+/// without using annotations. Unfortunately,
+/// a complicated build process is required to properly use it.
+///
+/// Therefore, this library has now been deprecated.
+///
+/// It is being replaced by a separate
+/// [woomera_server_gen](https://pub.dev/packages/woomera_server_gen)
+/// package.
+///
+/// If there is value in retaining this _scan_ library, please submit
+/// an [issue](https://github.com/hoylen/woomera_server_gen/issues)
+/// and we'll consider moving it to its own package instead of entirely
+/// deleting it.
+///
+/// ## Description
 ///
 /// This library contains the annotations scanning functions, which allows
 /// the `Server` and `ServerPipeline` from the core library to automatically
@@ -23,12 +47,14 @@
 ///
 /// - woomera.handles - logs rules created via Handles annotations
 
+@Deprecated('Create a program using woomera_server_gen Dart package instead.')
 library scan;
 
 import 'dart:mirrors';
 
 import 'package:logging/logging.dart';
 
+import 'annotations.dart';
 import 'core.dart';
 
 part 'src/scan/annotations_scanner.dart';

@@ -37,6 +37,7 @@ part of scan;
 /// is on will probably never get invoked. Remove the offending annotation(s),
 /// or set _ignoreUnusedAnnotations_ to true.
 
+@Deprecated('create a utility program using the woomera_server_gen package')
 Server serverFromAnnotations(
     {Iterable<String>? pipelines,
     Iterable<String>? libraries,

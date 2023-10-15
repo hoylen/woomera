@@ -800,7 +800,7 @@ class _AnnotationScanner {
       }
       _foundExceptionHandlers[goodName] = entry;
     } else {
-      // Raw server exception handler
+      // Server raw exception handler
 
       assert(annotation.isServerRawExceptionHandler);
 

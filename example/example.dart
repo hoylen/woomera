@@ -126,7 +126,7 @@ Future<Response> homePage(Request req) async {
       
       <p>The framework finds a <em>request handler</em> to process the HTTP
       request. A match is found if the HTTP method is the same and the request
-      URL's path matches the pattern.
+      URL path matches the pattern.
       When a match is found, any path parameters (as defined by the pattern),
       query parameters and POST parameters are passed to the request handler.</p>
       
@@ -171,9 +171,8 @@ Future<Response> homePage(Request req) async {
            A partial match is still not a match</a></li>
       </ul>
         
-      <p>A <em>server exception handler</em> is defined using the
-      <code>@Handles.serverException()</code>
-      annotation on an <code>ExceptionHandler</code> function.</p>
+      <p>A <em>server exception handler</em> is configured with the
+      <code>Server.exceptionHandler</code> property.</p>
       
       <h3>Other exceptions</h3>
       
@@ -207,19 +206,17 @@ Future<Response> homePage(Request req) async {
         </li>
       </ul>
       
-      <p>A <em>pipeline exception handler</em> is defined using the
-      <code>@Handles.exception()</code> annotation on an
-      <code>ExceptionHandler</code> function. A <em>server exception handler</em>
-      is defined using a <code>@Handles.serverException()</code> annotation
-      on an <code>ExceptionHandler()</code> function.
+      <p>A <em>pipeline exception handler</em> is configured using the
+      <code>ServerPipeline.exceptionHandler</code> property.
+      A <em>server exception handler</em>
+      is defined using a <code>Server.exceptionHandler</code> property.</p>
       
       <p>There is also a <em>server raw exception handler</em> which is
       triggered in edge-case situations, when the normal server or
-      pipeline exception handlers cannot be used. It is defined
-      using the <code>@Handles.rawServerException()</code> annotation on an
-      <code>ExceptionHandlerRaw</code> function. This example does not
-      demonstrate the raw exception handler, since it is not easy to
-      trigger it.</p>
+      pipeline exception handlers cannot be used. It is configured
+      using the <code>Server.exceptionHandlerRaw</code> property.
+      This example does not demonstrate the <em>raw exception handler</em>,
+      since it is not easy to trigger it.</p>
       
       <h2>Other features</h2>
 
@@ -429,7 +426,7 @@ Future<Response> handleJson(Request req) async {
 /// This will handle all exceptions raised by the application's request
 /// handlers.
 
-@Handles.pipelineExceptions()
+@PipelineExceptionHandler()
 Future<Response> pipelineExceptionHandler(
     Request req, Object exception, StackTrace st) async {
   log
@@ -479,7 +476,7 @@ Future<Response> pipelineExceptionHandler(
 /// this exception handler to process (i.e. generate a 404/405 error page for
 /// the client).
 
-@Handles.exceptions()
+@ServerExceptionHandler()
 Future<Response> serverExceptionHandler(
     Request req, Object exception, StackTrace st) async {
   log
@@ -493,8 +490,8 @@ Future<Response> serverExceptionHandler(
 
     if (originalException is DemoException) {
       if (originalException.handledBy != HandledBy.serverExceptionHandler) {
-        // Throw an exception. This will trigger the server raw exception handler
-        // (if there is one) to process it.
+        // Throw an exception. The server raw exception handler will process it
+        // (if there is one).
         throw originalException;
       }
     }
@@ -557,10 +554,10 @@ Future<Response> serverExceptionHandler(
 //----------------------------------------------------------------
 /// This is an example of a server raw exception handler.
 ///
-/// But in this simple example, there is no way to invoke it. Raw exception
-/// handlers are triggered in very rare situations.
+/// But in this simple example, there is no way to invoke it.
+/// The server raw exception handler is triggered in very rare situations.
 
-@Handles.rawExceptions()
+@ServerExceptionHandlerRaw()
 Future<void> myLowLevelExceptionHandler(
     HttpRequest rawRequest, String requestId, Object ex, StackTrace st) async {
   simLog.severe('[$requestId] raw exception (${ex.runtimeType}): $ex\n$st');
@@ -753,6 +750,15 @@ Future simulatedRun(Server server) async {
 /// Creates a server and registers request and exception handlers for it.
 
 Server _serverSetup() {
+  final mainPipeline = ServerPipeline()
+    ..exceptionHandler = pipelineExceptionHandler
+    ..get('~/', homePage)
+    ..get(testPattern, myDebugHandler)
+    ..post(iPathFormHandler, dateCalcPostHandler)
+    ..get(iPathExceptionGenerator, requestHandlerThatAlwaysThrowsException)
+    ..get('~/stream', streamTest)
+    ..get('~/json', handleJson);
+
   //--------
   // Create a new Web server
   //
@@ -765,10 +771,13 @@ Server _serverSetup() {
   // it creates one pipeline with the default name. Request handlers and
   // exception handlers are set up via the [Handles] annotations.
 
-  final webServer = serverFromAnnotations()
+  final webServer = Server()
     ..bindAddress = InternetAddress.anyIPv6
     ..v6Only = false // false = listen to any IPv4 and any IPv6 address
-    ..bindPort = port;
+    ..bindPort = port
+    ..exceptionHandlerRaw = myLowLevelExceptionHandler
+    ..exceptionHandler = serverExceptionHandler
+    ..pipelines.add(mainPipeline);
 
   log.info('Web server running on port $port');
 

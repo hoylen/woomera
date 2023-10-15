@@ -1,17 +1,16 @@
 Woomera
 =======
 
-## Introduction
-
 Woomera is a Dart package for implementing Web servers.
 
-It is used to create server-side Dart programs that function as a Web
-server. A Web server simply listens for HTTP requests and respond to
-them with HTTP responses.  But it quickly gets complicated (and
-difficult to maintain) when there are many different types of HTTP
-requests to process, different errors to detect and state needs to be
-maintained between HTTP requests. This package aims to reduce that
-complexity.
+It is used to create server-side Dart programs that listens for HTTP
+requests and respond to them with HTTP responses.
+
+A Web server is simple in theory, but in practice it quickly gets
+complicated and difficult to maintain. Especially when there are many
+different types of HTTP requests to process, different errors to
+detect and state needs to be maintained between the HTTP
+requests. This package aims to reduce that complexity.
 
 Main features include:
 
@@ -19,7 +18,7 @@ Main features include:
   [Sinatra](https://github.com/sinatra/sinatra) Web framework. This allows the
   HTTP request paths to be easily specified and different segments of
   the path to be used as parameters.
-  
+
 - Exception handling mechanism to handle all uncaught and unexpected
   exceptions.  This ensures the Web application can always generate a
   user-friendly error page, instead of sometimes producing unexpected
@@ -32,7 +31,8 @@ Main features include:
   does not maintain state between HTTP requests. This framework
   includes a mechanism for maintaining state. For example, it can be
   used to remember the user's account after they have signed in.  URL
-  rewriting works even if cookies have been disabled in the browser.
+  rewriting works if cookies have been disabled in the browser (though
+  this is rare these days).
 
 - Responses can be buffered, and sent as the HTTP response only
   when it is complete.  Therefore, if an error occurs the user won't
@@ -51,13 +51,10 @@ Main features include:
   runs faster than controlling a Web browser using WebDriver or
   Selenium Remote Control.
 
-- Can either use annotations to dynamically identify handler methods,
-  or statically identify them without relying on annotations. Static
-  identification does not require the _dart:mirrors_ package.  A
-  _dumpServer_ function is available to make it easy to switch between
-  dynamic and static methods.
+- Can be statically compiled. Annotations are also defined
+  if you want to dynamically identify the handler methods.
 
-This following is a tutorial which provides an overview the main
+The following is a tutorial which provides an overview the main
 features of the package. For details about the package and its
 advanced features, please see the API documentation.
 
@@ -66,30 +63,40 @@ advanced features, please see the API documentation.
 This package is supported on all platforms where "dart:io" is
 supported.
 
-The _Scores_ page incorrectly says the package is not compatible with
-any package, because of the use of "dart:mirrors" in one of its
-libraries.
+The pub.dev _Scores_ page incorrectly says the package is not
+compatible with any package, because "dart:mirrors" is used in the
+_scan_ library. However, the _scan_ library does not have to be used:
+in fact, it has been deprecated and will be removed in a future
+release.
 
-This package can be used without "dart:mirrors", by only importing its
-_core_ library.
+# Tutorial
 
-## Tutorial
+## 1. A basic Web server
 
-### 1. A basic Web server
+### 1.1. Overview
 
-#### 1.1. Overview
-
-This is a basic Web server that serves up two HTML pages.
+This is a basic Web server that has two _request handlers_ for
+handling two types of URI requests. And it defines one _server
+exception handler_.
 
 ```dart
 import 'dart:async';
 import 'dart:io';
+
 import 'package:woomera/woomera.dart';
 
 Future<void> main() async {
-  final ws = serverFromAnnotations()
+  // Create the server with one pipeline
+
+  final ws = Server()
     ..bindAddress = InternetAddress.anyIPv6
-    ..bindPort = 1024;
+    ..bindPort = 1024
+    ..exceptionHandler = myExceptionHandler
+    ..pipelines.add(ServerPipeline()
+      ..get('~/', handleTopLevel)
+      ..get('~/:greeting', handleGreeting));
+
+  // Run the server
 
   await ws.run();
 }
@@ -130,7 +137,7 @@ Future<Response> handleGreeting(Request req) async {
   final resp = ResponseBuffered(ContentType.html);
 
   final homeUrl = req.rewriteUrl('~/');
-  
+
   resp.write('''
 <!DOCTYPE html>
 <html>
@@ -146,211 +153,8 @@ Future<Response> handleGreeting(Request req) async {
 ''');
   return resp;
 }
-```
 
-#### 1.2. Importing the package
-
-Any program that uses the framework must first import the package:
-
-```dart
-import 'package:woomera/woomera.dart';
-```
-
-#### 1.3. Creating the server
-
-A _Server_ object must be created and configured for the TCP/IP
-address and port it will listen for HTTP requests on.
-
-```dart
-final ws = serverFromAnnotations()
-  ..bindAddress = InternetAddress.anyIPv6
-  ..bindPort = 1024;
-```
-
-For this example, it sets it to `InternetAddress.ANY_IP_V6`, so the
-service is listening to connections on any interface (i.e. both
-loopback and public addresses).
-
-When using `InternetAddress.ANY_IP_V6`, the optional `v6Only` member
-controls whether IPv4 addresses are included or not. It defaults to
-false, meaning it listens on both any IPv4 and any IPv6 address.  If
-it is true, it only listens on any IPv6 addresses, and ignore all IPv4
-addresses.  To make it easy to connect to, this example uses ANY_IP_V6
-and leaves _v6Only_ set to false.
-
-Often, when deployed in production, the service may be behind a
-reverse Web proxy (e.g. Apache or Nginx). The default bind address is
-`InternetAddress.LOOPBACK_IP_V4` can be used to for this: it means
-only listens for connections on 127.0.0.1 (i.e.  only clients from the
-same host can connect to it). Note: when configuring the reverse
-proxy, use 127.0.0.1. Avoid configuring it with "localhost", because
-on some systems that causes it to first try the IPv6 localhost address
-(::1) before trying the IPv4 localhost address: it will work, but will
-be less efficient.
-
-A port number 1024 or greater should be used, because the lower port
-numbers are require special permission to use.
-
-#### 1.4 Annotating request handlers
-
-When a server is created using `serverFromAnnotations`, it scans the
-program for top-level functions and static methods. Those with
-`Handles` annotations are used to create rules for handling HTTP
-requests.  When processing a HTTP request, if the rule matches the
-request, the request handler is invoked.
-
-A `Server` can also be created using its constructor, but all the
-request handlers and exception handers would need to be explicitly
-registered with it. It is more tedious than automatically registering
-them from the annotations, but is necessary when the Dart Mirrors
-package can't be used. Scanning of the program for annotations
-requires the Dart Mirrors package.
-
-A request handler is a function with a _Request_ parameter and returns
-a Future to a _Response_.
-
-This example has two request handler functions. They have these two
-annotations on them:
-
-```dart
-@Handles.get('~/')
-...
-
-@Handles.get('~/:greeting')
-...
-```
-
-A `Handles` object indicates what HTTP method (e.g. GET, POST, PUT)
-and the pattern that is matched against the request URL path.  The
-request handlers in this example process HTTP GET requests.
-
-The first pattern, "~/", corresponds to the root path. That is, this request handler
-will match the HTTP request for "http://localhost:1024/".
-
-The second pattern, "~/:greeting", has a segment with a variable
-called "greeting".  For example, this request handler will match the
-HTTP request for "http://localhost:1024/Hello" and set the path
-variable named "greeting" to "Hello".
-
-See the API documentation for more details about patterns. They
-consist of segments separated by a slash ("/") and the first segment
-must always be a tilde ("~"). There are several types of path
-segments: the most commonly used are literal segments and variable
-segments. Literal segments which must match exactly the path segment
-from the request URL's path.  Variable segments match any path
-segment, and the value is made available to the request handler to
-use.
-
-#### 1.5. Running the server
-
-After configuring the _Server_, start it using its _run_ method and it
-will start listening for HTTP requests.
-
-The _run_ method returns a _Future_ that completes when/if the Web
-server finishes running, but normally a Web server is designed to run
-forever without stopping.
-
-```dart
-await ws.run();
-```
-
-When a HTTP request arrives, the request handler its method and path
-matches will be invoked.
-
-#### 1.6. Creating a Response
-
-##### 1.6.1 Generating a buffered response
-
-The _ResponseBuffered_ is commonly used to generate HTML pages_ for
-the HTTP response. It acts as a buffer where the contents is appended
-to it using the _write_ method.
-
-The different _Response_ classes will be described later.
-
-##### 1.6.2 Escaping HTML attribute values
-
-The _handleTopLevel_ request handler simply generates a static HTML page.
-
-The `HEsc.attr` static method is used to escape values used inside
-HTML attributes. It will ensure any ampersands, less than signs,
-greater than signs, single quotes and double quotes are escaped.
-
-##### 1.6.3 Rewriting internal paths to produce external paths
-
-The two URLs are produced using the `rewriteUrl` method of the Request
-object. That takes an _internal path_ and produces an _external path_
-suitable for the Web browser to use. The distinction between these
-will be described later, but for now the _rewriteUrl_ method coverts
-an _internal path_ to an _external path_.
-
-This code:
-
-```dart
-final gDayUrl = req.rewriteUrl("~/G'day");
-
-resp.write('<li><a href="${HEsc.attr(gDayUrl)}">Good day</a></li>');
-```
-
-Results in the HTML response containing:
-
-```html
-<li><a href="/G&apos;day">Good day</a></li>
-```
-
-#### 1.7 Parameter handling
-
-The _handleGreeting_ request handler shows how parameters from the HTTP request
-are passed into the request handler via the _Request_.
-
-The _pathParams_ member contains the parameters from the HTTP request's
-URL's path, according to the pattern. Since the pattern was
-"~/:greeting", the path parameter named "greeting" will be set to the
-first segment in the path.
-
-The _queryParams_ member contains the parameters from the HTTP
-request's URL's query parameters.
-
-For example, if the request URL was
-"http://localhost/foo?abc=def&xyz=uvw", then the path parameter named
-"greeting" will be set to "foo"; and the query parameters will contain
-a parameter named "abc" with the value of "def" and a parameter named
-"xyz" with the value of "def".
-
-For retrieving parameters, the `[]` operator is a high-level method
-that always returns a single string whose value is trimmed of any
-leading and trailing whitespace.  If the parameter does not exist, it
-returns the empty string.  The _values_ method provides a lower-level
-access to the parameters.
-
-#### 1.8 Escaping HTML text
-
-The response produced by _handleGreeting_ uses `HEsc.text` 
- to escape values used inside HTML text. It is similar to the
-_HEsc.attr_, but does not escape single quotes and double quotes.
-
-If the value wasn't escaped, then this URL would produce the wrong HTML:
-"http://localhost:1024/Hello%20%26%20Goodbye".
-
-There is also `HEsc.lines`, which is similar to _HEsc.text_ but
-also converts any new-lines into `<br>` tags.
-
-#### 1.9 Exception handler
-
-Visiting a URL like "http://localhost:1024/nosuchpage/foo" and the
-basic built-in error page appears. To customize the error page, a
-custom exception handler is used.
-
-An _exception handler_ processes any exceptions that are raised: either
-by one of the request handlers or by the framework.
-
-It is similar to a request handler, because it is a method that
-returns a _Response_ object. But it is different, because it is also
-passed the exception and sometimes a stack trace.
-
-Here is an example of a server exception handler:
-
-```dart
-@Handles.exceptions()
+@ServerExceptionHandler()
 Future<Response> myExceptionHandler(
     Request req, Object ex, StackTrace st) async {
   int status;
@@ -363,11 +167,11 @@ Future<Response> myExceptionHandler(
     message = 'Sorry, the page you were looking for could not be found.';
   } else {
     status = HttpStatus.internalServerError;
-    message = 'Sorry, an internal error occured.';
+    message = 'Sorry, an internal error occurred.';
     print('Exception: $ex');
   }
 
-  final resp = ResponseBuffered(ContentType.html)
+  return ResponseBuffered(ContentType.html)
     ..status = status
     ..write('''
 <!DOCTYPE html>
@@ -382,30 +186,347 @@ Future<Response> myExceptionHandler(
   </body>
 </html>
 ''');
+}
+```
 
+### 1.2. Importing the package
+
+Any program that uses the framework must first import the package:
+
+```dart
+import 'package:woomera/woomera.dart';
+```
+
+### 1.3. Creating the server
+
+The Web server needs to create and configure a [Server] object. And
+then invoke its asynchronous `run` method which causes it to listen
+and process HTTP requests.
+
+This is the smallest possible server. It listens on port 80 of the
+IPv4 loopback address (127.0.0.1) for HTTP requests.  But will respond
+to every HTTP request with a _HTTP 401 Not found_.
+
+```dart
+  final ws = Server();
+  await ws.run();
+```
+
+The interface and port it listens on is configured by the _bindPort_
+and _bindAddress_ properties.
+
+This is a server that listens on port 1024 of all network interfaces
+(i.e. any IP address, both IPv4 and IPv6) of the host machine.
+
+```dart
+  final ws = Server()
+    ..bindAddress = InternetAddress.anyIPv6
+    ..bindPort = 1024;
+```
+
+Typically the application Web server is deployed behind a reverse
+proxy.  If the reverse proxy is running on the same host, restricting
+access to only the IPv4 loopback address is desirable; but usually the
+port number needs to be changed to avoid conflicts and issues with
+permissions.
+
+### 1.4. Pipelines
+
+The code to process HTTP requests is implemented in _request handler_
+functions.
+
+A server is organised as an ordered list of _pipelines_. And each of
+those pipelines has an ordered list of _rules_ and _request handlers_
+pairs.
+
+The pipelines are represented by instances of the [ServerPipeline]
+class.  The class has methods for registering rules with _request
+handlers_. Rules are made up of a HTTP method and a _pattern_.  The
+_register_ method (which is passed the HTTP method as a string) can be
+used, but there are convenient methods named after the standard HTTP
+methods too.
+
+For example, the following creates a pipeline and registers two rules
+on it.
+
+```dart
+  ServerPipeline()
+    ..get('~/', handleTopLevel)
+    ..get('~/:greeting', handleGreeting)
+```
+
+Both rules are for the HTTP GET method.
+
+The pattern is represented by a string starting with "~/" and has path
+segments that will be matched against the request URI's path.
+
+On the server object, the `pipelines` member is a list of
+_ServerPipeline_ objects. So the standard Dart methods on lists can be
+used to manage the pipelines.
+
+In this example, the list _add_ method is used to add the pipeline to
+the server.
+
+```dart
+  final ws = Server()
+    ..bindAddress = InternetAddress.anyIPv6
+    ..bindPort = 1024
+    ..pipelines.add(ServerPipeline()
+      ..get('~/', handleTopLevel)
+      ..get('~/:greeting', handleGreeting));
+```
+
+### 1.5. Rule matching
+
+A HTTP method and a pattern is referred to as a "rule".
+
+When a HTTP request is received a request handler is found, by
+searching for a rule that matches it.
+
+The search is conducted in order. It examines the pipelines in order,
+and for each pipeline it examines each of its rules in order. If a
+rule matches, its _request handler_ is invoked and the returned value
+used to produce the HTTP response.
+
+Multiple pipelines is useful is some situations. They can be used to
+control the order in which rule matching is performed. They can be
+used to handle exceptions in different ways, which will be described
+later. And they can be used to group _request handlers_.
+
+Instead of returning the response, a _request handler_ could throw a
+[NoResponseProduced] exception. This is a special exception that tells
+the matching algorith to continue searching subsequent rules, and
+subsequent pipelines, for another match. This feature can be used to
+pre-preprocess requests; for example, to have a _request handler_ that
+audits every HTTP request before letting a different _request handler_
+produce the response.
+
+A rule matches the HTTP request if its HTTP method is the same as the
+request's HTTP method, and the pattern matches the path of the request
+URI. The type of segment in the pattern determines how it is matched
+to the segments in the URI. These are the types of segments found in a
+pattern:
+
+- A _literal segment_ matches the exact same value (i.e. string equality).
+
+- A _path parameter_ starts with a colon followed by the parameter
+  name (e.g. ":greeting" or ":foo"). It matches exactly one segment at
+  that position, and its value is assigned to the path parameter with
+  that name.
+
+- A _wildcard paramter_ is represented by "`*`". It matches has one or
+  more segments. Those segments are assigned to the value of the path
+  parameter with the special name of "`*`".
+
+The "~" in the pattern is a reminder that a pattern is treated as a
+relative or "internal" path. Typically, the pattern refers to the root
+of the Web server. For example, the pattern "~/foo/bar" will match the
+URI _http://localhost/foo/bar_ by default.  This can be changed by
+setting the server's `basepath` member. For example, setting the
+_basepath_ to "/abc/def", will mean the pattern will match the URI
+_http://localhost/abc/def/foo/bar_ instead.
+
+The example has two patterns:
+
+- The "~/" pattern matches the empty path (e.g. _http://localhost:1024_).
+
+- The "~/:greeting" matches any URI path with exactly one segment,
+  assigning that segment to the value of the _path parameter_ named
+  "greeting". For example, it will match _http://localhost:1024/Hello_
+  and sets _greeting_ to "Hello". But it will not match "/", "/a/b" or
+  "/a/b/c", since they don't have one segment in their path.
+
+The order is important when registering rules to a pipeline, since
+they are searched for in that order. For example, if a rule with the
+pattern "~/foo/:bar" is registered before "~/foo/new", a request with
+the URI path of "/foo/new" will always match the first rule (assigning
+the value of "new" to the _path parameter_ named "bar") and the second
+rule will never be used (not unless the first _request handler_ throws
+a _NoResponseProduced_ exception).
+
+### 1.6. Request handler
+
+A _request handler_ is a function (or static method) that is passed
+the request as a [Request] object and returns a Future to a [Response]
+object.
+
+The example has two _request handlers_. The first one was registered
+with a rule so it handles HTTP requests for the root URI
+(e.g. http://localhost:1024). It generates a HTML page with hyperlinks
+to the other page.
+
+The [ResponseBuffered] class is used to produce the response. It has a
+`write` method used to build up the body of the HTTP response. By
+default, the status of the HTTP response is _HTTP 200 OK_.
+
+```dart
+Future<Response> handleTopLevel(Request req) async {
+  final resp = ResponseBuffered(ContentType.html);
+
+  final helloUrl = req.rewriteUrl('~/Hello');
+  final gDayUrl = req.rewriteUrl("~/G'day");
+
+  resp.write('''
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8">
+    <title>Woomera Tutorial</title>
+  </head>
+  <body>
+    <h1>Woomera Tutorial</h1>
+    <ul>
+      <li><a href="${HEsc.attr(helloUrl)}">Hello</a></li>
+      <li><a href="${HEsc.attr(gDayUrl)}">Good day</a></li>
+    </ul>
+  </body>
+</html>
+''');
   return resp;
 }
 ```
 
-This exception handler customizes the error page when the
-`NotFoundException` is encountered: which is raised by the framework
-when none of the rules matched the request. Notice that it reports a
-different HTTP status code if no rules for the HTTP request method
-could be found (405 method not allowed), versus when some rules for
-the method exist but their pattern did not match the requested path
-(404 not found).
+This example _request handler_ shows the use of the
+`Request.rewriteUrl` to convert a local path (i.e. one starting with
+"~/") to the actual path the server will be using.  The full path of
+the deployed Web server can be changed by just changing the
+[Server.basePath] property: the behaviour of the patterns and the
+values in the responses will both be changed.
 
-### 2. Patterns vs internal paths vs external paths
+This example also shows the use of the [HEsc] class to encode values
+for HTML documents. Special characters (e.g. `<`, `>` and `&`) will be
+replaced by HTML entities.
+
+The `ResponseBufferd` is the commonly used type of _Response_.  Other
+responses are: [ResponseRedirect] to produce a _HTTP 303 Redirect_,
+[ResponseNoContent] to produce a _HTTP 204 No Content_ response
+without a body and [ResponseStream] to produce the HTTP body from a
+stream source.
+
+### 1.7. Processing path parameters
+
+The other _request handler_ shows how _path parameters_ can be used.
+
+The [RequestParams.[]] operator on the request's `pathParams` property
+obtains the value corresponding to a named _path parameter_.
+
+The pattern was "~/:greeting", so the first segment will be assigned
+to the _path parameter_ named "greeting".
+
+```dart
+Future<Response> handleGreeting(Request req) async {
+  final greeting = req.pathParams['greeting'];
+```
+
+There are also _query parameters_ which are accessed through the
+request's `queryParams` member.
+
+```dart
+  var name = req.queryParams['name'];
+  name = (name.isEmpty) ? 'world' : name;
+```
+
+So if the request URI was _http://localhost:1024/Hello?name=Remi_ then
+_greeting_ will be assigned "Hello" and _name_ will be assigned
+"Remi".
+
+### 1.8. Handling exceptions
+
+If a _request handler_ throws an exception, it is passed to an
+exception handler. The exception handler should produce the response
+that gets sent back to the client.
+
+There are three types of exception handlers a program can provide:
+
+- _pipeline exception handlers_ can be registered per-pipeline.  These
+  are useful for generating different error responses, depending on
+  which pipeline the matching _request handler_ was registered to. For
+  example, an API pipeline could have a _pipeline exception handler_
+  that produces a JSON error response, while another pipeline has a
+  _pipeline exception handler_ that produces a HTML error response.
+
+- a _server exception handler_ can be registered on the server.  It
+  handles exceptions thrown by a _pipeline exception handler_, or the
+  original exception if there was no _pipeline exception handler_.
+
+- a _server raw exception handler_ handles exceptions thrown by the
+  _server exception handler_, when there is no _server exception
+  handler_ and in some other special situations.
+
+The example has a _server exception handler_.
+
+The server is configured with it.
+
+```dart
+  final ws = Server()
+    ..exceptionHandler = myExceptionHandler
+```
+
+The _server exception handler_ is passed the _Request_ as well as the
+exception object that was thrown and the stack trace of where it was
+thrown from.
+
+Like a _request handler_ it is expected to return a Future to the
+_Response_ that will be used to produce the HTML response.
+
+```dart
+Future<Response> myExceptionHandler(
+    Request req, Object ex, StackTrace st) async {
+  ...
+}
+```
+
+The _server exception handler_ will be invoked when any _request
+handler_ throws an exception.
+
+It will also be invoked when the framework cannot obtain a _Response_
+from any of the _request handlers_. The exception will be a
+`NotFoundException` object and should result in the status of _HTTP
+404 Not Found_.
+
+This example treats all other exceptions as an internal error and
+response with a status of _HTTP 500 Internal server error_.  A more
+useful _server exception handler_ could generate different responses
+depending on the exceptioin.
+
+```dart
+  int status;
+  String message;
+
+  if (ex is NotFoundException) {
+    status = (ex.found == NotFoundException.foundNothing)
+        ? HttpStatus.methodNotAllowed
+        : HttpStatus.notFound;
+    message = 'Sorry, the page you were looking for could not be found.';
+  } else {
+    status = HttpStatus.internalServerError;
+    message = 'Sorry, an internal error occurred.';
+    print('Exception: $ex');
+  }
+```
+
+The HTTP status is a property of the _Response_. The default is _HTTP
+200 OK_. Depending on the exception, the _server exception handler_ in
+the example sets it to either 404, 405 or 500.
+
+```dart
+  return ResponseBuffered(ContentType.html)
+    ..status = status
+    ..write( ... );
+}
+```
+
+## 2. Patterns vs internal paths vs external paths
 
 - **Patterns** are used for specifying which HTTP requests a request
   handler will process. When represented as a string, they look like
   `~/foo/bar/baz` or `~/account/:varname/profile`.
-  
+
 - Paths are one component of a URL. There are two types of paths:
 
   - **External paths** which are values that can be used externally.
     For example, `/foo/bar/baz` and `/account/24601/profile`.
-	
+
   - **Internal paths** are used internally in the code. They look
     similar to patterns, but every segment is a literal value.
 	For example, `~/foo/bar/baz` and `~/account/24601/profile`.
@@ -414,11 +535,11 @@ These different items are used in different places:
 
 - Patterns are used in specifying rules to match request handlers.
 - External paths appear in HTML that is used by the Web browser.
-- Internal paths should be used to identify resources that 
+- Internal paths should be used to identify resources that
   are implemented by a request handler. And they should be converted
   into an external path using the `rewriteUrl` method on the _Request_.
 
-#### 2.1 Why use internal paths?
+### 2.1. Why use internal paths?
 
 You don't have to use _internal paths_. But it is recommended, because
 it forces the application to always invoke _rewriteUrl_ before
@@ -429,7 +550,7 @@ used is important for two reasons:
   HTTP requests, _rewriteUrl_ adds the state preserving query parameter.
   This is needed when using the session feature and the browser has
   cookies disabled; and
-  
+
 - when the _basePath_ of the server is set, _rewriteUrl_ adds the base path
   to the external URL. For example, if the base path is set to "/api/v2",
   rewriting the internal path of "~/foo/bar" produces an external path
@@ -441,9 +562,9 @@ testing. Otherwise, the application could appear to be working
 correctly during testing, but will fail if the browser has cookies
 disabled.
 
-### 3. Parameters
+## 3. Parameters
 
-#### 3.1 Types of parameters
+### 3.1. Types of parameters
 
 The _Request_ passed to request handlers can include three different
 types of parameters:
@@ -472,13 +593,13 @@ _Request_. They match the variable segments in the pattern. For example:
   segments must match the corresponding path segment, and the path
   parameter named "id" will be set to the second segment from the
   path.
-  
+
 - `~/user/:id/order/:orderNumber` is a pattern with two variable segments,
   resulting in two path parameters.
 
 - `~/product/*` contains a wildcard segment that will match zero or
   more segments in the URL path.
-  
+
 A pattern can also contain an optional segment. See the API
 documentation for more information.
 
@@ -551,7 +672,7 @@ Here are a few URLs to try with the above example:
 - `http://localhost:1024/demo/wildcard/a/b/c`
 
 
-#### 3.2. Retrieving parameters
+### 3.2. Retrieving parameters
 
 Parameters can have multiple values.  For example, check boxes on a
 form will result in one named parameter with zero or more values (one
@@ -579,14 +700,14 @@ All the values for a given key can be obtained using the _values_ method.
         print('$k = $v');
       }
     }
-    
+
 If your request handler is expecting only one value, the
 square-bracket operator can be used to retrieve a single value instead
 of a list.
 
      final t = req.queryParams['title'];
 
-#### 3.3 Raw vs processed values
+### 3.3. Raw vs processed values
 
 The methods described above for retrieving value(s) returns a cleaned up
 version of the value which:
@@ -600,7 +721,7 @@ To obtain the unprocessed value, set _raw_ to true with the _values_ method:
 
     req.queryParams.values('category', raw: true);
 
-#### 3.4 Expect the unexpected
+### 3.4. Expect the unexpected
 
 To make a robust application, do not make any assumptions about what
 parameters may or may not be present: check everything and fail
@@ -622,9 +743,9 @@ is expected, will return the empty string if the multiple copies of
 the parameter exist (even if the values are not empty strings).
 
 
-### 4. Pipelines
+## 4. Pipelines
 
-#### 4.1 The default pipeline
+### 4.1. The default pipeline
 
 A server has a collection of rules. If a rule matches the HTTP request
 (i.e. matches the HTTP method and the request path), then its response
@@ -636,20 +757,7 @@ to.  Applications only need to deal with pipelines if they want more
 control over how and when rules are matched (and consequently which
 request handlers are invoked).
 
-In the above example, the default pipeline was used. The default
-pipeline is created if the _serverFromAnnotations` constructor is
-used with no parameters. The annotations define rules for the default
-pipeline, if no _pipeline_ parameter is passed to the _Handles_
-constructor.
-
-``` dart
-@Handles.get('~/foo/bar')
-...
-
-final server = serverFromAnnotations();
-```
-
-#### 4.2 Behavour of pipelines
+### 4.2. Behavour of pipelines
 
 The rules in a server are organised by the pipelines. A server has an
 ordered list of pipelines.  Each pipeline separates out its rules by
@@ -670,55 +778,34 @@ request is processed by multiple request handers, as long as the rules
 appear in the correct order.
 
 Using multiple pipelines is one way of controlling the order in which
-rules are tested. The other way is to specify a _priority_ in the
-_Handles_ annotations, or to manually create rules and append them to
-the pipeline. Rules created from annotations are sorted by their
-priority first and then by their pattern.
+rules are tested. The other way is to register the rules in a
+particular order.
 
 The other useful feature of pipelines is each pipeline can have its
-own exception handler, in addition to the server's exception handler.
-This is useful if exceptions from different sets of request handlers
-should be handled differently. For example, there could be an exception
-handler that generates a HTML error page and another that generates an
-error in JSON.
+own _pipeline exception handler_, in addition to the server's
+exception handler.  This is useful if exceptions from different sets
+of request handlers should be handled differently. For example, there
+could be an exception handler that generates a HTML error page and
+another that generates an error in JSON.
 
-#### 4.3 Creating multiple pipelines
+### 4.3. Naming pipelines
 
-Multiple pipelines can be created by providing a list of pipeline
-names to the _serverFromAnnotations_ constructor. To associate an
-annotation to a pipeline, specify the pipeline name as a parameter to
-the _Handles_ constructor.
+Every pipeline has a name. The default name is the emptty string, but
+a different name can be provided to the _ServerPipeline_ constructor.
 
 ``` dart
-@Handles.get('~/v1/account', pipeline: 'api')
-...
+final p1 = ServerPipeline('api');
 
-@Handles.get('~/welcome') // for the default pipeline
-...
-
-@Handles.get('~/foo, pipeline: 'third')
-...
-
-
-final server = serverFromAnnotations(['api', Pipeline.defaultName, 'third']);
+final p2 = ServerPipeline('main');
 ```
 
-Note: if a list of names is provided to the _serverFromAnnotations_
-constructor, the default pipeline is not created unless its name is
-explicitly one of the names in the list.
+Named pipelines are needed if using multiple pipelines with
+annotations, since they identify which pipeline to associate a
+_request handler_ with.
 
-#### 4.4 Manually creating pipelines and rules
+## 5. Exceptions
 
-Pipelines and rules manually, without using annotations.  In version
-4.3.0 and earlier, that was the only way.
-
-This approach is still possible, but using annotations leads to more
-easily managed code. The manual method may be deprecated in a future
-version.
-
-### 5. Exceptions
-
-#### 5.1. Standard exceptions
+### 5.1. Standard exceptions
 
 All the exceptions thrown by the framework are subclasses
 of the `WoomeraException` class.
@@ -741,7 +828,7 @@ application's handlers, are processed according to the exception
 handling process. The application can provide its own high-level and
 low-level exception handlers for customizing this process.
 
-#### 5.2 High-level exception handlers
+### 5.2. High-level exception handlers
 
 High-level exception handlers are a type of handler used to process
 exceptions that are raised. They are passed the request and the
@@ -749,13 +836,13 @@ exception, and are expected to generate a _Response_. The exception
 handler should create a response that is as an error page for the
 client.
 
-##### 5.2.1 Server exception handler
+#### 5.2.1. Server exception handler
 
 There can be at most one _server exception handler_. Servers should
 provide one, because it is used to indicate a page is not found.
 
 ```dart
-@Handles.exceptions()
+@ServerExceptionHandler()
 Future<Response> myExceptionHandler(Request req
     Object exception, StackTrace st) async {
   var resp = ResponseBuffered(ContentType.html);
@@ -776,19 +863,26 @@ Future<Response> myExceptionHandler(Request req
 }
 ```
 
-##### 5.2.2 Pipeline exception handler
+#### 5.2.2. Pipeline exception handler
 
 Each pipeline can also have its own exception handler.
 
 ``` dart
+final p1 = ServerPipeline()
+  ..exceptionHandler = myExceptionHandler1;
+
+final p2 = ServerPipeline('myCustomPipeline')
+  ..exceptionHandler = myExceptionHandler2;
+
+
 @Handles.pipelineExceptions()
-Future<Response> myExceptionHandler(Request req
+Future<Response> myExceptionHandler1(Request req
     Object exception, StackTrace st) async {
 	// for the default pipeline
 }
 
 @Handles.pipelineExceptions(pipeline: 'myCustomPipeline')
-Future<Response> myExceptionHandler(Request req
+Future<Response> myExceptionHandler2(Request req
     Object exception, StackTrace st) async {
 	// for the pipeline named "myCustomPipeline"
 }
@@ -800,7 +894,7 @@ for a RESTful API and its exception handler produces a XML or JSON
 error response; and other pipeline's exception handler could produce a
 HTML error page.
 
-#### 5.3 Low-level exception handling
+### 5.3. Low-level exception handling
 
 In addition to the high-level exception handlers, a low-level
 raw exception handler can be associated with the server.
@@ -810,7 +904,7 @@ needs to process a Dart HttpRequest and generate a HTTP response
 without the aid of the Woomera classes.
 
 ``` dart
-@Handles.rawExceptions()
+@ServerExceptionHandlerRaw()
 Future<void> myLowLevelExceptionHandler(
     HttpRequest rawRequest, String requestId, Object ex, StackTrace st) async {
 
@@ -832,7 +926,7 @@ Future<void> myLowLevelExceptionHandler(
 It is triggered in rare situations where a high-level exception
 handler cannot be used.
 
-#### 5.4 Exception handling process
+### 5.4. Exception handling process
 
 The process of dealing with exceptions depends on where the initial
 exception was thrown from, and what custom exception handlers the
@@ -851,7 +945,7 @@ application has provided.
 
 - If no custom high-level exception handler was attached to the server,
   a built-in default high-level exception handler is used.
-  
+
 If one of those exception handlers throws an exception, the exception
 it was processing is wrapped in an _ExceptionHandlerException_, which
 is then passed to the next handler in the process.
@@ -863,7 +957,7 @@ the page not found errors.
 
 
 
-### 6. Responses
+## 6. Responses
 
 The request handlers and exception handlers must return a _Future_
 that returns a _Response_ object. The _Response_ class is an abstract
@@ -873,7 +967,7 @@ class and three subclasses of it have been defined in the package:
 - ResponseStream
 - ResponseRedirect
 
-#### 6.1. ResponseBuffered
+### 6.1. ResponseBuffered
 
 This is used to write the contents of the response into a buffer,
 which is used to create the HTTP response after the request hander
@@ -887,16 +981,16 @@ an exception handler. The new response can show an error page, instead
 of trying to output an error message at the end of a partially
 generated page.
 
-#### 6.2. ResponseRedirect
+### 6.2. ResponseRedirect
 
 This is used to generate a HTTP redirect, which tells the client to go
 to a different URL.
 
-#### 6.3. ResponseStream
+### 6.3. ResponseStream
 
 This is used to produce the contents of the response from a stream.
 
-#### 6.4. Common features
+### 6.4. Common features
 
 With all three types of responses, the application can:
 
@@ -904,9 +998,9 @@ With all three types of responses, the application can:
 - Create HTTP headers; and/or
 - Create or delete cookies.
 
-#### 6.5 Common handlers provided
+### 6.5. Common handlers provided
 
-##### 6.5.1. Static file handler
+#### 6.5.1. Static file handler
 
 The package includes a request handler for serving up files and
 directories from the local disk. It can be used to serve static files
@@ -915,7 +1009,7 @@ stylesheets).
 
 See the API documentation for the _StaticFiles_ class.
 
-##### 6.5.2. Proxy handler
+#### 6.5.2. Proxy handler
 
 The package includes a request handler for proxying requests to
 a different server. A request for one URI is converted into a
@@ -924,7 +1018,7 @@ the target URI is used as the response.
 
 See the API documentation for the _Proxy_ class.
 
-### 7. Sessions
+## 7. Sessions
 
 The framework provides a mechanism to manage sessions. HTTP is a
 stateless protocol, but sessions have been added to support the
@@ -937,7 +1031,7 @@ session cookies or URL rewriting. The application can terminate a
 session, or they will automatically terminate after a nominated
 timeout period after they were last used.
 
-### 8. Logging
+## 8. Logging
 
 Woomera uses the [Logging](https://pub.dartlang.org/packages/logging)
 package.  See the Woomera library API documentation for the logger
@@ -948,11 +1042,23 @@ entries, unless there is a problem.  Setting the "woomera.request"
 logger to "FINE" logs the URL of every HTTP request, which might be
 useful for testing.
 
-### 9. References
+## 9. Annotations
 
-- Dart tutorial on Writing HTTP clients and servers
-<https://www.dartlang.org/docs/tutorials/httpserver/> (the package
-Woomera is built on top of).
+Maintaining the code for a large Web server gets more complicated as
+the number of _pipelines_, _request handlers_ and exception handlers
+grows. Code changes need to occur in two places: where the function is
+defined and where it is registered with a pipeline or server. For
+example, it is easy to accidentally create a _request handler_
+function and forget to register it against a pipeline.
 
-- Open Web Application Security Project
-  <https://www.owasp.org/index.php/Guide_Table_of_Contents>
+Annotations can be used to help manage the code. The server and
+pipelines can be automatically generated from the annotations.
+
+See the
+[woomera_server_gen](https://pub.dev/packages/woomera_server_gen)
+package for one way annotations can be used.
+
+# Feedback
+
+Please report bugs by opening an
+[issue](https://github.com/hoylen/woomera/issues) in GitHub.

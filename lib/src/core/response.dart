@@ -381,7 +381,10 @@ abstract class Response {
           ..path = req.server.basePath
           ..httpOnly = true;
         if (req.server.sessionCookieForceSecure || req.server.isSecure) {
-          c.secure = true; // HTTPS only: better security, but not for testing
+          c.secure = true; // HTTPS only
+          // This sets the secure flag on the cookie, telling the Web browser
+          // to only send back the cookie over HTTPS. This improves security.
+          // It means the cookie will NOT be sent back over HTTP.
         }
         cookieAdd(c);
       } else if (req._haveSessionCookie) {

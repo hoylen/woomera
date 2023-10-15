@@ -2,39 +2,57 @@ part of core;
 
 //----------------------------------------------------------------
 // ignore: avoid_classes_with_only_static_members
-/// HTML escaping methods for escaping values for output in HTML.
+/// Escaping arbitrary values for use in HTML documents.
 ///
-/// These methods are provided to help generate HTML from arbitrary strings
-/// and other objects.
+/// - Use [attr] to escape values to be used in attribute values.
+/// - Use [text] to escape values to be used in CDATA content.
+/// - Use [lines] to escape values to be used in CDATA content, where
+///   line breaks are to be indicated with `<br/>` tags.
 ///
-/// Use [attr] to escape values to be used in attributes.
-/// Use [text] to escape values to be used in CDATA content.
-/// Use [lines] to escape values to be used in CDATA content, where
-/// line breaks are to be indicated with <br/> tags.
+/// These methods can be passed any Object. If they are not Strings, the
+/// _toString_ method is invoked on it to obtain it string representation to
+/// escape.
 ///
-/// Examples:
+/// # Example
+///
 /// ```dart
-/// var alpha = 'Don't use <blink>Flash</blink> & "stuff" in HTML.';
-/// var beta = "1. First line\n2. second line\n3. third line";
+/// const alpha = 'Don\'t use <blink> & "bad" tags.';
+/// const beta = "1. First line\n2. second line\n3. third line";
 ///
-/// resp.write("""
-/// <div title="${HEsc.attr(alpha)}">
-///   <p>${HEsc.text(alpha)}</p>
-///   <p>${HEsc.text(123)}</p>
-///   <p>${HEsc.lines(beta)}</p>
-/// </div>
-/// """);
+/// resp.write('''
+/// <p>${HEsc.text(alpha)}</p>
+/// <p title="${HEsc.attr(alpha)}">attr</p>
+/// <p>${HEsc.text(123)}</p>
+/// <p>${HEsc.text(DateTime.now())}</p>
+/// <p>${HEsc.lines(beta)}</p>
+/// ''');
 /// ```
+///
 /// Writes out:
+///
 /// ```html
-/// <div title="Don&apos;t use &lt;blink&gt;Flash&lt;/blink&gt; &amp; &quot;stuff&quot;.">
-///   <p>Don't use &lt;blink&gt;Flash&lt;/blink&gt; &amp; other "stuff".</p>
-///   <p>123</p>
-///   <p>1. First line<br/>2. second line<br/>3. third line</p>
-/// </div>
+/// <p>Don't use &lt;blink&gt; &amp; "bad" tags.</p>
+/// <p title="Don&apos;t use &lt;blink&gt; &amp; &quot;bad&quot; tags.">attr</p>
+/// <p>123</p>
+/// <p>2023-10-18 17:00:00.000000</p>
+/// <p>1. First line<br/>2. second line<br/>3. third line</p>
 /// ```
+///
+/// # Alternatives
+///
+/// The standard `dart:convert` library defines a `HtmlEscape` class which can
+/// be used to perform a similar function.
+/// But it only converts Strings, is harder and is more verbose to use.
+/// It also encodes single quotes as `&#39;` instead of the more human readable
+/// `&apos;`.
 
 abstract class HEsc {
+  //----------------------------------------------------------------
+
+  // Programs should never create this object.
+
+  HEsc._noConstructor();
+
   //----------------------------------------------------------------
   /// Escape values for placement inside a HTML or XML attribute.
   ///
@@ -107,13 +125,52 @@ abstract class HEsc {
     }
   }
 
-  //----------------------------------------------------------------
-  // Implementation should have used something like this, but this doesn't
-  // work as expected. It has/had an unusually interpretation of which characters
-  // needed to be escaped and which didn't.
+/*
+One problem with HtmlEscape in dart:convert is it makes encoding arbitrary
+values in arbitrary attributes (i.e. the program doesn't need to worry about
+if the attribute puts the value in single or double quotes) difficult.
+You either have to know how it is quoted, to choose between
+HtmlEscapeMode.attribute and HtmlEscapeMode.sqAttribute modes, or use
+HTMLEscapeMode.unknown.
 
-  // static HtmlEscape _escape_CDATA = HtmlEscape(HtmlEscapeMode.ELEMENT);
-  // static HtmlEscape _escape_PCDATA = HtmlEscape(HtmlEscapeMode.ATTRIBUTE);
-  //
-  // return _escape_PCDATA.convert(obj.toString());
+//----------------------------------------------------------------
+// Demo program
+
+import 'dart:convert';
+import 'package:woomera/woomera.dart';
+
+void main() {
+  print('Example:');
+
+  // Example in above documentation
+
+  const alpha = 'Don\'t use <blink> & "bad" tags.';
+  const beta = '1. First line\n2. second line\n3. third line';
+
+  print('''
+  <p>${HEsc.text(alpha)}</p>
+  <p title="${HEsc.attr(alpha)}">attr</p>
+  <p>${HEsc.text(123)}</p>
+  <p>${HEsc.text(DateTime.now())}</p>
+  <p>${HEsc.lines(beta)}</p>
+''');
+
+  // Showing what the dart:convert HtmlEscape class does
+
+  for (final mode in [
+    HtmlEscapeMode.element,
+    HtmlEscapeMode.attribute,
+    HtmlEscapeMode.sqAttribute,
+    HtmlEscapeMode.unknown,
+  ]) {
+    final dt = HtmlEscape(mode);
+
+    print('''
+
+HTMLEscapeMode ${dt.mode}:
+  ${dt.convert(alpha)}
+''');
+  }
+}
+*/
 }

@@ -32,6 +32,7 @@ part of scan;
 /// don't want a third-party package from adding request handlers that you
 /// don't know about.
 
+@Deprecated('create a utility program using the woomera_server_gen package')
 ServerPipeline serverPipelineFromAnnotations(
     String pipelineName, Iterable<String>? libraries,
     {bool scanAllFileLibraries = true}) {

@@ -1,61 +1,71 @@
-/// Core library.
+/// Used to implement a program that listens for HTTP requests and produces
+/// HTTP responses.
 ///
-/// This library contains the core features of Woomera, but without the
-/// scanning for annotation functions.
+/// # Overview
 ///
-/// Normally, use the full `woomera` library instead. But if Dart Mirrors
-/// cannot be used (e.g. when the program is compiled using _dart compile_),
-/// then this `core` library can be used by itself.
+/// A Web server is represented by a [Server] object that has been configured
+/// with an ordered list of
+/// one or more [ServerPipeline] objects. Pipelines have a list of
+/// _request handlers_, which process the
+/// HTTP requests to generate
+/// the HTTP responses.
 ///
-/// Listens for HTTP requests and invokes the appropriate request handler,
-/// based on rules that are matched against the request. Supports features such
-/// as session management and exception handling.
+/// When a _request handler_ is registered with a pipeline, it is associated
+/// with a rule.
+/// A rule has a HTTP method (e.g. GET or POST) and a pattern for matching
+/// against the path of the request URI (e.g. "~/api/foo/:uuid").
 ///
-/// ## Usage
+/// When a HTTP request is received, the rules in the server's pipelines
+/// are searched for a match.
+/// When a match is found, the rule's _request handler_ is invoked.
 ///
-/// Define request handler and exception handler functions. Annotations can
-/// be placed on them, but will be ignored if the scanner is not used.
+/// # Request handlers
 ///
-/// ```dart
-/// import 'package:woomera/core.dart';
+/// Request handlers are functions (or static methods) which must match
+/// the [RequestHandler] function signature.
 ///
-/// Future<Response> homePage(Request req) async {
-///   final resp = ResponseBuffered(ContentType.html)..write('''
-/// <!DOCTYPE html>
-/// <head>
-///   <title>Example</title>
-/// </head>
-/// <html>
-///   <body>
-///   <p>Hello world!</p>
-///   </body>
-/// </html>
-/// ''');
-///   return resp;
-/// }
-/// ```
+/// ## Requests
 ///
-/// Then create a `Server` and explicitly register all the handler functions
-/// with it. Then run the server.
+/// Request handlers are passed a [Request] object representing the HTTP
+/// request.
 ///
-/// ```dart
-/// Future main() async {
-///   final server = serverFromAnnotations()
-///     ..bindAddress = InternetAddress.anyIPv6
-///     ..v6Only = false // false = listen to any IPv4 and any IPv6 address
-///     ..bindPort = port;
+/// The [RequestParams] class represents parameters from the HTTP request.
+/// It is used to represent the URI query parameters, path parameters
+/// (corresponding to segments defined by the pattern) and post parameters.
+/// Post parameters are only present if the HTTP request has the content-type
+/// of "application/x-www-form-urlencoded"—which is the HTTP request
+/// produced by submitting a HTML form with the POST method.
 ///
-///   server.pipelines.first.get('~/', homePage);
+/// If the request belongs to a session, the request includes a [Session]
+/// object.
 ///
-///   await server.run();
-/// }
-/// ```
+/// ## Responses
 ///
-/// Explicitly registering all the handlers can be tedious. Therefore,
-/// automatically populating the server from annotations on the handler
-/// functions is usually a better approach. The functions for automatically
-/// populating a server is defined in the _scan_ library, and can be imported
-/// by importing the main `woomera` library.
+/// Request handlers must return a Future to a [Response] which is used to
+/// generate the HTTP response.
+///
+/// There are four concrete _Request_ classes:
+///
+/// - [ResponseBuffered] - where the body is buffered before it is sent;
+/// - [ResponseStream] - where the body comes from a stream
+/// - [ResponseRedirect] - which produces a _HTTP 303 Redirect_ response;
+/// - [ResponseNoContent] - which produces a _HTTP 204 No Content_ response
+///   with no body;
+///
+/// ### Generating HTML
+///
+/// HTML response is usually produced by writing HTML into a
+/// _ResponseBuffered_.
+///
+/// The [HEsc] class contains static methods to escape string values for use
+/// in HTML formatted responses (e.g. converting `<` to `&lt;`).
+///
+/// ### Static files
+///
+/// The [StaticFiles] class can be used to create a _request handler_ that
+/// produces a response from files and directories.
+///
+/// # Testing
 ///
 /// ## Simulated HTTP requests for testing
 ///
@@ -72,19 +82,12 @@
 /// Web browser, but it also has the disadvantge that it cannot execute any
 /// client-side JavaScript.
 ///
-/// ## Multiple pipelines
-///
-/// Usually, the default [ServerPipeline] automatically created by the server is
-/// sufficient.
-///
-/// For some situations, multiple pipelines can be useful. For example, when
-/// it is useful to have a different exception handler for different sets of
-/// rules, or to better control the order in which rules are used.
-///
 /// ## Logging
 ///
 /// The [Logger](https://pub.dartlang.org/packages/logging) package is used for
-/// logging. The available loggers are named:
+/// logging.
+///
+/// Some of the available loggers are named:
 ///
 /// - woomera.server - logs general server behaviour
 /// - woomera.handles - logs rules created via Handles annotations
@@ -95,6 +98,9 @@
 /// - woomera.session - logs information related to state management
 /// - woomera.static_file - logs static file handler
 /// - woomera.proxy - logs proxy handler
+///
+/// See the [loggers] variable
+/// for a comprehensive list of all the Loggers used in this library.
 
 library core;
 
@@ -110,9 +116,7 @@ import 'package:logging/logging.dart';
 import 'package:uuid/uuid.dart';
 
 //----------------------------------------------------------------
-// export 'src/...dart';
 
-part 'src/core/annotations.dart';
 part 'src/core/core_request.dart';
 part 'src/core/core_response.dart';
 part 'src/core/exceptions.dart';
@@ -121,6 +125,7 @@ part 'src/core/handler.dart';
 part 'src/core/handler_debug.dart';
 part 'src/core/handler_proxy.dart';
 part 'src/core/handler_static_files.dart';
+part 'src/core/loggers.dart';
 part 'src/core/pattern.dart';
 part 'src/core/request.dart';
 part 'src/core/request_params.dart';
@@ -133,23 +138,3 @@ part 'src/core/simulated_connection.dart';
 part 'src/core/simulated_core_request.dart';
 part 'src/core/simulated_headers.dart';
 part 'src/core/simulated_response.dart';
-
-//----------------------------------------------------------------
-// Loggers used in the Woomera package.
-
-Logger _logServer = Logger('woomera.server');
-
-Logger _logRequest = Logger('woomera.request');
-Logger _logRequestHeader = Logger('woomera.request.header');
-Logger _logRequestParam = Logger('woomera.request.param');
-
-Logger _logResponse = Logger('woomera.response');
-Logger _logResponseCookie = Logger('woomera.response.cookie');
-
-Logger _logSession = Logger('woomera.session');
-
-Logger _logStaticFiles = Logger('woomera.static_file');
-
-Logger _logProxy = Logger('woomera.proxy');
-Logger _logProxyRequest = Logger('woomera.proxy.request');
-Logger _logProxyResponse = Logger('woomera.proxy.response');

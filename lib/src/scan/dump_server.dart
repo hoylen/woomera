@@ -129,6 +129,7 @@ part of scan;
 /// (i.e. the `Handler` object). So it is not available when the annotations
 /// are not being used.
 
+@Deprecated('create a utility program using the woomera_server_gen package')
 String dumpServer(Server server,
     {String functionName = 'serverBuilder',
     String libraryName = '',

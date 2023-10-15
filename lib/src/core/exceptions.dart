@@ -96,6 +96,29 @@ class MalformedPathException extends WoomeraException {
 //----------------------------------------------------------------
 /// Exception indicating a response could not be created.
 ///
+/// The exact cause is indicated by the [found] property:
+///
+/// - `NotFoundException.foundNothing` means the request URI matched no rule on
+///   both the HTTP method and the pattern.
+/// - `NotFoundException.foundMethod` means, while there were rules with the
+///   same HTTP method, their patterns did not match.
+/// - `NotFoundException.foundHandler` means at least one rule matched, but they
+///   all threw the special _NoResponseProduced_ exception and there was no
+///   subsequent rule that matched and produced a _Response_.
+/// - `NotFoundException.foundStaticHandler` means the _request handler_
+///   that serves up files from under a directory was matched, but there
+///   was no file/directory that matched the URI path.
+///
+/// These should all result in a HTTP status of _HTTP 404 Not Found_ for the
+/// HTTP response.
+///
+/// **Known issue:** the _NotFoundException.foundMethod_ value was intended to
+/// distinguish between _HTTP 404 Not Found_ and _HTTP 405 Method Not
+/// Allowed_. But the implementation is incorrect. Currently, it is used when
+/// the HTTP method is not known to any rule (ignoring all the patterns). The
+/// correct situation for a HTTP 405 is when there are patterns that match but
+/// none of the HTTP methods in those rules match.
+
 class NotFoundException extends WoomeraException {
   /// Constructor.
 

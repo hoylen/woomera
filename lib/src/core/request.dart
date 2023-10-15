@@ -363,7 +363,7 @@ class Request {
   ///
   /// This is commonly used in log messages:
   ///
-  ///     mylog.info('[${req.id}] something happened');
+  ///     myLog.info('[${req.id}] something happened');
   ///
   /// Note: the value is a [String], because its value is the [Server.id] from
   /// the server (which is a String) concatenated with the request number.
@@ -384,8 +384,8 @@ class Request {
 
   /// Server the request is from.
   ///
-  /// In a normal request, the server is initialized by the requests's
-  /// constructor.
+  /// In a normal request, the server is initialized by the constructor of
+  /// the Request.
   ///
   /// In a simulated request, the request is created but the server is only
   /// assigned when a simulation is performed with it and a server.
@@ -399,7 +399,7 @@ class Request {
   // This is only used by the [Server.simulate] method.
 
   void _serverClear() {
-    assert(_server != null, '_servertSet invoked incorrectly');
+    assert(_server != null, '_serverSet invoked incorrectly');
     _server = null;
   }
    */
@@ -579,7 +579,7 @@ class Request {
   // The code will invoke [_postParamsInit] to do it.
 
   //----------------
-  /// The parameters from the URL's query parameters.
+  /// The parameters from the query parameters in the URL.
   ///
   /// This is never null when the context is created, but there is nothing
   /// stopping a filter from modifying it.
@@ -909,8 +909,7 @@ class Request {
   /// The [includeSession] should be left as true in all situations, except
   /// when used for the "method" attribute of a HTML form element. In that
   /// situation, set it to false and use [Request.sessionHiddenInputElement]
-  /// to preserve the session. See [RequestImpl,sessionHiddenInputElement] for
-  /// details.
+  /// to preserve the session.
   ///
   /// If the [internalPath] has any query parameters, they will be included in
   /// the result. So it is not just a pure path, but a path with optional

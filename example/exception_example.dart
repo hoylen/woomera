@@ -244,7 +244,7 @@ String _htmlShowingException(String who, Object exception, StackTrace st) {
 
 <h2>Details</h2>
 
-<p>In a real applcation, these details of the exception should not be exposed
+<p>In a real application, these details of the exception should not be exposed
 to the user.</p>
 
 <h3>Exception</h3>

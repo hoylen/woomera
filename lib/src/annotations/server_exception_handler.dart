@@ -1,12 +1,14 @@
 part of annotations;
 
 //################################################################
-/// Annotation for a server exception handler function.
+/// Annotation for a _server exception handler_ function.
+///
+/// A program does not have more than one _server exception handler_.
+/// Therefore, a program must not have more than one annotation using
+/// this class.
 
 class ServerExceptionHandler extends WoomeraAnnotation {
-  /// Constructor for server exception handler annotation.
-  ///
-  /// A program can have at most one such annotation.
+  /// Constructor for a _server exception handler_ annotation.
 
-   const ServerExceptionHandler();
+  const ServerExceptionHandler();
 }
