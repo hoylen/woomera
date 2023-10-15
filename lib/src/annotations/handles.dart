@@ -1,4 +1,4 @@
-part of core;
+part of annotations;
 
 //################################################################
 /// Function type for handler wrapper.
@@ -15,6 +15,7 @@ part of core;
 /// [HandlerWrapper] should keep in mind that a future release might also allow
 /// the annotation to be used elsewhere too.
 
+@Deprecated('Annotation function with @RequestHandlerWrapper instead.')
 typedef HandlerWrapper = RequestHandler Function(Handles rego, Object obj);
 
 //################################################################
@@ -28,7 +29,7 @@ typedef HandlerWrapper = RequestHandler Function(Handles rego, Object obj);
 /// ## Annotating request handlers
 ///
 /// Annotate a request handler to automatically populate pipelines with
-/// [ServerRule] objects.
+/// _ServerRule_ objects.
 ///
 /// Use the convenience constructors [Handles.get], [Handles.post],
 /// [Handles.put] etc. that are named after a standard HTTP method,
@@ -73,7 +74,7 @@ typedef HandlerWrapper = RequestHandler Function(Handles rego, Object obj);
 ///
 /// Normally, the priority can be left as the default, since sorting by the
 /// pattern should produce a properly functioning pipeline.
-/// See the [Pattern.compareTo] operator for how patterns are ordered.
+/// See the _Pattern.compareTo_ operator for how patterns are ordered.
 /// For special situations, the priority can be set to a non-zero value; but
 /// multiple pipelines can also be used to achieve the same behaviour.
 ///
@@ -87,10 +88,10 @@ typedef HandlerWrapper = RequestHandler Function(Handles rego, Object obj);
 /// While there is nothing preventing the annotation being placed on other
 /// items, they will be ignored.
 ///
-/// By default, the [handlerWrapper] is not set (i.e. it is null). In this
+/// By default, the _handlerWrapper_ is not set (i.e. it is null). In this
 /// case, the item with the annotation must be a [RequestHandler] function.
 ///
-/// If the [handlerWrapper] is set, the annotated function is passed to it,
+/// If the _handlerWrapper_ is set, the annotated function is passed to it,
 /// and the result it returns is used as the request handler.
 ///
 /// For example, this example allows a function that is not a _RequestHandler_
@@ -124,18 +125,18 @@ typedef HandlerWrapper = RequestHandler Function(Handles rego, Object obj);
 /// Annotate exception handlers to automatically set them. The three types of
 /// exception handlers are supported.
 ///
-/// Use the [Handles.exceptions] constructor for the server exception
+/// Use the [ServerExceptionHandler] constructor for the server exception
 /// handler. Servers should at least provide one of these exception handlers
 /// to customise the "not found" error page.
 ///
 /// ```dart
-/// @Handles.exceptions()
+/// @ServerExceptionHandler()
 /// Future<Response> foo(Request req, Object exception, StackTrace st) async {
 ///   ...
 /// }
 /// ```
 ///
-/// Use the [Handles.pipelineExceptions] constructor for pipeline exception
+/// Use the [PipelineExceptionHandler] constructor for pipeline exception
 /// handlers. This allows exception handling to be customised per-pipeline,
 /// instead of having all exceptions handled the same way by the server
 /// exception handler.
@@ -144,17 +145,17 @@ typedef HandlerWrapper = RequestHandler Function(Handles rego, Object obj);
 /// pipeline exception handler for the default pipeline.
 ///
 /// ```dart
-/// @Handles.pipelineExceptions(pipeline='mySpecialPipeline')
+/// @PipelineExceptionHandler(pipeline='mySpecialPipeline')
 /// Future<Response> foo(Request req, Object exception, StackTrace st) async {
 ///   ...
 /// }
 /// ```
 ///
-/// Use the [Handles.rawExceptions] constructor for the raw server
+/// Use the [ServerRawExceptionHandler] constructor for the raw server
 /// exception handler.
 ///
 /// ```dart
-/// @Handles.rawException()
+/// @ServerRawExceptionHandler()
 /// Future<void> Function(HttpRequest rawRequest, String requestId,
 ///   Object exception, StackTrace st) async {
 ///   ...
@@ -177,11 +178,11 @@ typedef HandlerWrapper = RequestHandler Function(Handles rego, Object obj);
 ///
 /// Note: the above logs the _Handles_ annotations that were found, but they
 /// will only be used if a pipeline was created with the same name (i.e. via
-/// the [ServerPipeline] constructor or [Server] constructor).
+/// the [ServerPipeline] constructor or _Server_ constructor).
 ///
 /// ## Migration from explicit registration to using _Handles_ annotations
 ///
-/// In previous versions of Woomera (version 4.3.1 and earlier), [ServerRule]
+/// In previous versions of Woomera (version 4.3.1 and earlier), _ServerRule_
 /// must be created and added to pipelines. While this is still supported,
 /// the use of _Handles_ annotation is now the preferred mechanism for
 /// populating a pipeline with rules. The code is easier to maintain, since
@@ -232,7 +233,7 @@ typedef HandlerWrapper = RequestHandler Function(Handles rego, Object obj);
 ///    // Abort after printing rules. Remove above code after migration.
 /// ```
 
-class Handles {
+class Handles extends WoomeraAnnotation {
   //================================================================
   // Constructors
 
@@ -319,6 +320,7 @@ class Handles {
   /// have a `@Handles.exceptions()` annotation before annotating additional
   /// exception handlers with this pipeline exception annotation.
 
+  @Deprecated('Use @PipelineExceptionHandler instead')
   const Handles.pipelineExceptions({String? pipeline})
       : pipeline = pipeline ?? ServerPipeline.defaultName,
         httpMethod = null,
@@ -330,6 +332,7 @@ class Handles {
   ///
   /// A program can have at most one such annotation.
 
+  @Deprecated('Use @ServerExceptionHandler instead')
   const Handles.exceptions()
       : pipeline = null,
         httpMethod = null,
@@ -341,6 +344,7 @@ class Handles {
   ///
   /// A program can have at most one such annotation.
 
+  @Deprecated('Use @ServerRawExceptionHandler instead')
   const Handles.rawExceptions()
       : pipeline = null,
         httpMethod = null,
@@ -390,6 +394,7 @@ class Handles {
   /// If set, this handler wrapper is always invoked -- even if the annotated
   /// object is already a _RequestHandler_.
 
+  @Deprecated('Annotation function with @RequestHandlerWrapper instead.')
   static HandlerWrapper? handlerWrapper;
 
   //================================================================
