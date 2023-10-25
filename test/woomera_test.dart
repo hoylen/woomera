@@ -467,7 +467,7 @@ void _runTests(Future<int> numProcessedFuture) {
       expect(
           str,
           equals(
-              'server exception handler (NotFoundException) path not supported\n'));
+              'server exception handler (NotFoundException) resource not found\n'));
     });
   });
 

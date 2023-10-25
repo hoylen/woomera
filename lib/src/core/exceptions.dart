@@ -96,28 +96,12 @@ class MalformedPathException extends WoomeraException {
 //----------------------------------------------------------------
 /// Exception indicating a response could not be created.
 ///
-/// The exact cause is indicated by the [found] property:
+/// The HTTP response should have a status of _HTTP 404 Not Found_
+/// or _HTTP 405 Method Not Allowed_ depending on if [resourceExists]
+/// is false or true, respectively.
 ///
-/// - `NotFoundException.foundNothing` means the request URI matched no rule on
-///   both the HTTP method and the pattern.
-/// - `NotFoundException.foundMethod` means, while there were rules with the
-///   same HTTP method, their patterns did not match.
-/// - `NotFoundException.foundHandler` means at least one rule matched, but they
-///   all threw the special _NoResponseProduced_ exception and there was no
-///   subsequent rule that matched and produced a _Response_.
-/// - `NotFoundException.foundStaticHandler` means the _request handler_
-///   that serves up files from under a directory was matched, but there
-///   was no file/directory that matched the URI path.
-///
-/// These should all result in a HTTP status of _HTTP 404 Not Found_ for the
-/// HTTP response.
-///
-/// **Known issue:** the _NotFoundException.foundMethod_ value was intended to
-/// distinguish between _HTTP 404 Not Found_ and _HTTP 405 Method Not
-/// Allowed_. But the implementation is incorrect. Currently, it is used when
-/// the HTTP method is not known to any rule (ignoring all the patterns). The
-/// correct situation for a HTTP 405 is when there are patterns that match but
-/// none of the HTTP methods in those rules match.
+/// For debugging purposes, the exact cause is indicated by the [found]
+/// property.
 
 class NotFoundException extends WoomeraException {
   /// Constructor.
@@ -125,15 +109,65 @@ class NotFoundException extends WoomeraException {
   NotFoundException(this.found);
 
   /// Value for [found] when no handlers for the HTTP method were found.
+  ///
+  /// This value has been deprecated in woomera 8.0.0. In previous releases,
+  /// it was implemented incorrectly. This value was used when no rules
+  /// existed for the HTTP method. And was intended for a _HTTP 405 Method
+  /// Not Found_ status; as opposed to _foundMethod_ which was intended
+  /// to produce a _HTTP 401 Not Found_ status — that behaviour was not
+  /// correct. Use [foundResourceDoesNotSupportMethod] instead.
 
+  @Deprecated('use foundResourceDoesNotSupportMethod or resourceExists instead')
   static const int foundNothing = 0;
+
+  /// Value for [found] when the resource exists but has no such HTTP method.
+  ///
+  /// That is, the URI path matched the pattern in one or more rules. But those
+  /// rules were not for the same HTTP method.
+  ///
+  /// This should result in a HTTP 405 _Method Not Allowed_ status in the
+  /// HTTP response (which means "the server knows the request method, but the
+  /// target resource doesn't support this method") and MUST include `Allow`
+  /// headers indicating which methods are allowed.
+  ///
+  /// See <https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/405>
+  /// for details.
+
+  static const int foundResourceDoesNotSupportMethod = 0;
 
   /// Value for [found] when at least one handler for the HTTP method
   /// was found, but none of them matched the request path.
 
+  /// This value has been deprecated in woomera 8.0.0. In previous releases,
+  /// it was implemented incorrect. THis value was used when there existed
+  /// one or more rules that matched the HTTP method (but could be for any
+  /// pattern). It was intended for a _HTTP 401 Not Found_ status;
+  /// as opposed to _foundNothing_ which was intended to produce a
+  /// _HTTP 405 Method Not Found_ status — that behaviour was not correct.
+  /// Use [foundNoResource] instead.
+
+  @Deprecated('use foundNoResource instead')
   static const int foundMethod = 1;
 
+  /// Value for [found] when the resource does not exist.
+  ///
+  /// That is, there are no rules with a pattern that matches the URI path.
+  ///
+  /// This should result in a _HTTP 401 Not Found_ status in the HTTP
+  /// response.
+
+  static const int foundNoResource = 1;
+
   /// Value for [found] when a handler was found, but no result was produced.
+  ///
+  /// That is, one or more rules exist where its pattern matches the URI path
+  /// and the HTTP methods are the same. But all of those _request handler_
+  /// functions did not produce a response.
+  ///
+  /// This should result in a _HTTP 401 Not Found_ status in the HTTP response.
+  /// But, unlike [foundNoResource], this value probably indicates an
+  /// incomplete implementation or a bug. Since it is expected that a
+  /// matching _request handler_ should produce a response.
 
   static const int foundHandler = 2;
 
@@ -149,31 +183,65 @@ class NotFoundException extends WoomeraException {
   /// Indicates how much was found before a result could not be created.
   ///
   /// This member is typically used to distinguish between the situation of
-  /// the HTTP method not being supported (when its value is
-  /// [NotFoundException.foundNothing] and when at least there were some rules
-  /// for processing the HTTP method (when its value is any other value).
-  /// In the former situation, the HTTP response should return a status of
-  /// [HttpStatus.methodNotAllowed]. In the later situation, the HTTP
-  /// response should return a status of [HttpStatus.notFound].
+  /// the resource exists but does not support the HTTP method (when its value
+  /// is [NotFoundException.foundResourceDoesNotSupportMethod] when
+  /// a _HTTP 405 Method Not Allow_ status ([HttpStatus.methodNotAllowed])
+  /// should be produced.
+  ///
+  /// All other values should produce a _HTTP 404 Not Found_ status
+  /// [HttpStatus.notFound]. But their different values may indicate exactly
+  /// why the resource was not found. Specifically,
+  ///
+  /// - [foundNoResource] normal situation;
+  /// - [foundHandler] may indicate an incomplete implementation or a bug; or
+  /// - [foundStaticHandler] may indicate a missing file or directory
+  ///
+  /// It is recommended to use [resourceExists] instead of examining
+  /// this member directly.
+  ///
+  /// Historical note: this is an integer and not an enum.
+  /// Because when woomera was first written in Dart 1.x, Dart did not
+  /// support enums. It was a very long time ago!
 
   final int found;
+
+  /// Indicates if the resource exists, even though the response was not found.
+  ///
+  /// Example:
+  ///
+  /// ```dart
+  /// } on NotFoundException catch (ex) {
+  ///   if (! ex.resourceExists) {
+  ///     response.status = HttpStatus.notFound; // HTTP 404
+  ///     ...
+  ///   } else {
+  ///     response.status = HttpStatus.methodNotAllowed; // HTTP 405
+  ///     ...
+  ///     // Set Allow header in response.
+  ///     // See <https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/405>
+  ///   }
+  ///   ...
+  /// }
+  /// ```
+
+  bool get resourceExists => found == foundResourceDoesNotSupportMethod;
 
   /// String representation
   @override
   String toString() {
     var s = 'unknown';
     switch (found) {
-      case foundNothing:
+      case foundResourceDoesNotSupportMethod:
         s = 'method not supported';
         break;
-      case foundMethod:
-        s = 'path not supported';
+      case foundNoResource:
+        s = 'resource not found';
         break;
       case foundHandler:
-        s = 'no result';
+        s = 'no response';
         break;
       case foundStaticHandler:
-        s = 'no resource';
+        s = 'static resource not found';
         break;
     }
     return s;

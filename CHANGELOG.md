@@ -32,6 +32,15 @@
   `Future<Response?>`. Instead of returning null, those functions
   must now throw a `NoResponseFromHandler` exception.
 
+- Fixed the semantics of `NotFoundException` to correctly match the
+  HTTP specification.  Deprecated `foundNothing` and `foundMethod`
+  constants, for the new `foundResourceDoesNotSupportMethod` and
+  `foundNoResource` constants - which better describe their
+  meaning. Added a `resourceExist` getter to avoid needing to examine
+  the exception's _found_ member for those constant values.  The
+  string values produced by _NotFoundException.toString_ have also
+  been changed.
+
 ## 7.6.0
 
 - Added Response.session getter.

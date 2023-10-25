@@ -63,12 +63,6 @@ advanced features, please see the API documentation.
 This package is supported on all platforms where "dart:io" is
 supported.
 
-The pub.dev _Scores_ page incorrectly says the package is not
-compatible with any package, because "dart:mirrors" is used in the
-_scan_ library. However, the _scan_ library does not have to be used:
-in fact, it has been deprecated and will be removed in a future
-release.
-
 # Tutorial
 
 ## 1. A basic Web server
@@ -161,9 +155,8 @@ Future<Response> myExceptionHandler(
   String message;
 
   if (ex is NotFoundException) {
-    status = (ex.found == NotFoundException.foundNothing)
-        ? HttpStatus.methodNotAllowed
-        : HttpStatus.notFound;
+    status =
+        ex.resourceExists ? HttpStatus.methodNotAllowed : HttpStatus.notFound;
     message = 'Sorry, the page you were looking for could not be found.';
   } else {
     status = HttpStatus.internalServerError;
@@ -494,9 +487,8 @@ depending on the exceptioin.
   String message;
 
   if (ex is NotFoundException) {
-    status = (ex.found == NotFoundException.foundNothing)
-        ? HttpStatus.methodNotAllowed
-        : HttpStatus.notFound;
+    status = 
+        ex.resourceExists ? HttpStatus.methodNotAllowed : HttpStatus.notFound;
     message = 'Sorry, the page you were looking for could not be found.';
   } else {
     status = HttpStatus.internalServerError;

@@ -619,7 +619,6 @@ class Server {
   // pipeline (and handling any exceptions raised).
 
   Future _handleRequestWithContext(Request req) async {
-    var methodFound = false;
     var handlerFound = false;
     Response? response;
 
@@ -642,7 +641,6 @@ class Server {
           // This pipe does not support the method
           continue; // skip to next pipe in the pipeline
         }
-        methodFound = true;
 
         for (var rule in rules) {
           final params = rule.pattern.match(pathSegments);
@@ -770,16 +768,24 @@ class Server {
 
         int found;
         if (handlerFound) {
-          assert(methodFound);
+          // One or more rules matched the request, but a Response was
+          // not produced by any of them.
           found = NotFoundException.foundHandler;
-          _logRequest
-              .fine('[${req.id}] not found: all handler(s) returned null');
-        } else if (methodFound) {
-          found = NotFoundException.foundMethod;
-          _logRequest.fine('[${req.id}] not found: found method but no rule');
+          _logRequest.fine('[${req.id}] not found:'
+              " rule(s) fully matched, but they all didn't produce a response");
+        } else if (_ruleForResourceExists(pathSegments)) {
+          // One or more rules with a pattern that matched the URI path
+          // (i.e. the resource exists), but the HTTP method didn't match.
+          found = NotFoundException.foundResourceDoesNotSupportMethod;
+          _logRequest.fine('[${req.id}] not found:'
+              ' rule(s) matched the pattern, but not the HTTP method');
         } else {
-          found = NotFoundException.foundNothing;
-          _logRequest.fine('[${req.id}] not found: method not supported');
+          // No rules with a pattern that matches the URI path.
+          // That is, the resource doesn't exist (even though the server
+          // may or may not support the HTTP method).
+          found = NotFoundException.foundNoResource;
+          _logRequest.fine('[${req.id}] not found:'
+              ' rule(s) matched the method, but not the path');
         }
 
         Exception e = NotFoundException(found);
@@ -837,7 +843,33 @@ class Server {
     await req._sessionSuspend();
   }
 
-// contentLength -1
+  //----------------
+  /// Indicates if at least one rule exists for the resource.
+  ///
+  /// That is, there is a rule where the pattern matches the URI path;
+  /// ignoring whether the HTTP method matches or not.
+  ///
+  /// This is used to distinguish between HTTP 404 or HTTP 405 situations.
+
+  bool _ruleForResourceExists(List<String> pathSegments) {
+    // Examine all pipelines
+    for (var pipe in pipelines) {
+      // Examine all methods (the HTTP method doesn't matter)
+      for (final rules in pipe._rulesByMethod.values) {
+        for (var rule in rules) {
+          final params = rule.pattern.match(pathSegments);
+
+          if (params != null) {
+            return true; // Rule with pattern match found
+          }
+        } // for all rules for that HTTP method in the pipeline
+      } // for all HTTP methods in the pipeline
+    } // for all pipelines
+
+    return false; // no pattern matched
+  }
+
+  // contentLength -1
   // cookies
   // encoding
   // headers
@@ -888,7 +920,7 @@ class Server {
           .severe('[${req.id}] not found: ${req.method} ${req.requestPath()}');
       assert(st == StackTrace.empty);
 
-      status = (thrownObject.found == NotFoundException.foundNothing)
+      status = thrownObject.resourceExists
           ? HttpStatus.methodNotAllowed
           : HttpStatus.notFound;
       title = 'Error: Not found';

@@ -82,9 +82,8 @@ Future<Response> myExceptionHandler(
   String message;
 
   if (ex is NotFoundException) {
-    status = (ex.found == NotFoundException.foundNothing)
-        ? HttpStatus.methodNotAllowed
-        : HttpStatus.notFound;
+    status =
+        ex.resourceExists ? HttpStatus.methodNotAllowed : HttpStatus.notFound;
     message = 'Sorry, the page you were looking for could not be found.';
   } else {
     status = HttpStatus.internalServerError;

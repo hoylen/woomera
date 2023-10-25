@@ -13,3 +13,4 @@ dependencies:
 
 dev_dependencies:
   test: ">=0.12.10 <2.0.0"
+  pana: ^0.21.37

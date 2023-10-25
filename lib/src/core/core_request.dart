@@ -110,7 +110,7 @@ class _CoreRequestReal implements _CoreRequest {
     if (skip != baseSegments.length) {
       // Request path is not under the base path.
       // Note: this will need to be handled by the raw exception handler.
-      throw NotFoundException(NotFoundException.foundMethod);
+      throw NotFoundException(NotFoundException.foundNoResource);
     }
 
     // Create a relative URL from the remaining segments

@@ -201,7 +201,7 @@ Future<Response> exceptionHandlerOnServer(
   int errorPageStatus;
 
   if (exception is NotFoundException) {
-    errorPageStatus = (exception.found == NotFoundException.foundNothing)
+    errorPageStatus = exception.resourceExists
         ? HttpStatus.methodNotAllowed
         : HttpStatus.notFound;
   } else {

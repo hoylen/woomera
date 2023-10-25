@@ -508,7 +508,7 @@ Future<Response> serverExceptionHandler(
     // A server exception handler gets this exception when no request handler
     // was found to process the request. HTTP has two different status codes
     // for this, depending on if the server supports the HTTP method or not.
-    resp.status = (exception.found == NotFoundException.foundNothing)
+    resp.status = (exception.resourceExists)
         ? HttpStatus.methodNotAllowed
         : HttpStatus.notFound;
     message = 'Page not found';
