@@ -90,6 +90,8 @@ class RequestParams {
   //================================================================
   // Constructors
 
+  RequestParams();
+
   //----------------------------------------------------------------
   /// Default constructor (for internal use only)
   ///
@@ -190,6 +192,10 @@ class RequestParams {
   Iterable<String> get keys => _data.keys;
 
   //================================================================
+
+  void add(String key, String value) {
+    _add(key, value);
+  }
 
   //----------------------------------------------------------------
   /// Adds a value to the parameters.

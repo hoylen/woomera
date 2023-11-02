@@ -1,5 +1,5 @@
 name: woomera
-version: 8.0.0
+version: 8.0.1
 description: "Framework for implementing Web servers: handling HTTP requests, managing sessions and generating responses"
 homepage: https://github.com/hoylen/woomera
 

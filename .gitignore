@@ -1,10 +1,20 @@
+# .gitignore
+
+# System
+
+.DS_Store
+
+# Editors and IDEs
+
 *~
-*.DS_Store
-.idea
-.pub
-.packages
-.dart_tool
+/.idea/
+
+# Dart
+
+/.dart_tool/
 pubspec.lock
-coverage-suite
-build
-doc
+
+# Development
+
+/coverage/
+/doc/api/

@@ -171,6 +171,7 @@ class Request {
   Request.simulatedGet(String internalPath,
       {String? sessionId,
       String? id,
+      RequestParams? pathParams,
       RequestParams? queryParams,
       HttpConnectionInfo? connectionInfo,
       X509Certificate? certificate,
@@ -180,6 +181,8 @@ class Request {
       List<int>? bodyBytes,
       int? bodyStreamEventSize})
       : _id = id ?? _defaultSimulatedId,
+        _server = Server(),
+        pathParams = pathParams ?? RequestParams._internalConstructor(),
         queryParams = queryParams ?? RequestParams._internalConstructor(),
         _sessionUsingCookies = true,
         _coreRequest = _CoreRequestSimulated('GET', internalPath,

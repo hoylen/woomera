@@ -1,3 +1,7 @@
+## 8.0.1
+
+- Fixes to simulated requests to better support testing.
+
 ## 8.0.0
 
 - BREAKING CHANGE: _scan_ library deprecated and is no longer exported
